@@ -3,12 +3,12 @@
 #include "dto/dto_struct.h"
 #include "user/user.h"
 #include <cstddef>
+#include <cstdint>
 #include <deque>
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
-#include <cstdint>
 
 #define MESSAGE_LENGTH 4096 // Максимальный размер буфера для данных
 #define PORT 50000          // Будем использовать этот номер порта

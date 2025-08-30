@@ -11,10 +11,9 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #endif
-
 
 std::uint64_t toBigEndian64(std::uint64_t value) {
   // делим на два 32-битных куска и применяем htonl
@@ -211,12 +210,19 @@ PacketDTO deSerializeFromBinary(const std::vector<std::uint8_t> &buffer) {
 
     case StructDTOClassType::userDTO: {
       auto readString = [&](std::string &str) {
+        if (offset + 4 > buffer.size())
+          throw exc::WrongPacketSizeException();
+
         std::uint32_t len = 0;
         len |= (buffer[offset++] << 24);
         len |= (buffer[offset++] << 16);
         len |= (buffer[offset++] << 8);
         len |= buffer[offset++];
         len = ntohl(len);
+
+        if (offset + len > buffer.size())
+          throw exc::WrongPacketSizeException();
+
         str.assign(buffer.begin() + offset, buffer.begin() + offset + len);
         offset += len;
       };
@@ -227,6 +233,31 @@ PacketDTO deSerializeFromBinary(const std::vector<std::uint8_t> &buffer) {
       readString(dto.userName);
       readString(dto.email);
       readString(dto.phone);
+      readString(dto.disable_reason);
+
+      // поле is_active
+      if (offset + 1 > buffer.size())
+        throw exc::WrongPacketSizeException();
+      dto.is_active = buffer[offset++] != 0;
+
+      if (offset + 8 > buffer.size())
+        throw exc::WrongPacketSizeException();
+
+      // std::size_t disabled_at;
+      std::uint64_t id64 = 0;
+      for (int i = 0; i < 8; ++i) {
+        id64 |= static_cast<std::uint64_t>(buffer[offset++]) << (56 - i * 8);
+      }
+      dto.disabled_at = static_cast<std::size_t>(fromBigEndian64(id64));
+
+      // std::size_t ban_until;
+      if (offset + 8 > buffer.size())
+        throw exc::WrongPacketSizeException();
+      id64 = 0;
+      for (int i = 0; i < 8; ++i) {
+        id64 |= static_cast<std::uint64_t>(buffer[offset++]) << (56 - i * 8);
+      }
+      dto.ban_until = static_cast<std::size_t>(fromBigEndian64(id64));
 
       packet.structDTOPtr = std::make_shared<StructDTOClass<UserDTO>>(dto);
       break;
@@ -663,6 +694,23 @@ std::vector<std::uint8_t> serializeToBinary(const PacketDTO &packetDTO) {
       writeString(dto.userName);
       writeString(dto.email);
       writeString(dto.phone);
+      writeString(dto.disable_reason);
+
+      // поле is_active
+      buffer.push_back(dto.is_active ? 1 : 0);
+
+      // std::size_t disabled_at;
+      std::uint64_t id64 = toBigEndian64(static_cast<std::uint64_t>(dto.disabled_at));
+      for (int i = 0; i < 8; ++i) {
+        buffer.push_back(static_cast<std::uint8_t>((id64 >> (56 - i * 8)) & 0xFF));
+      }
+
+      // std::size_t ban_until;
+      id64 = toBigEndian64(static_cast<std::uint64_t>(dto.ban_until));
+      for (int i = 0; i < 8; ++i) {
+        buffer.push_back(static_cast<std::uint8_t>((id64 >> (56 - i * 8)) & 0xFF));
+      }
+
       break;
     }
       //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

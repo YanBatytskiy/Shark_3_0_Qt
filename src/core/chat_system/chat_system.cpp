@@ -5,18 +5,18 @@
 #include "exception/validation_exception.h"
 #include "system/system_function.h"
 #include "user/user_chat_list.h"
-#include <iostream>
-#include <memory>
 #include <cstdint>
+#include <iostream>
+#include <iterator>
+#include <memory>
 
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #endif
-
 
 /**
  * @brief Default constructor for ChatSystem.
@@ -43,7 +43,6 @@ std::shared_ptr<Chat> ChatSystem::getChatById(std::size_t chatId) const {
 std::deque<std::pair<PacketDTO, std::string>> &ChatSystem::getPacketReceivedDeque() { return _packetReceivedDeque; }
 
 std::deque<std::pair<PacketListDTO, std::string>> &ChatSystem::getPacketForSendDeque() { return _packetForSendDeque; }
-
 /**
  * @brief Gets the list of users.
  * @return Const reference to the vector of users.
@@ -208,13 +207,6 @@ std::size_t ChatSystem::createNewChatId(const std::shared_ptr<Chat> &chat_ptr) {
   }
 }
 
-/**
- * @brief Finds users matching a search string.
- * @param users Vector to store found users.
- * @param textToFind Search string to match against user names or logins.
- * @details Performs case-insensitive search for users, excluding the active
- * user.
- */
 std::vector<std::shared_ptr<User>> ChatSystem::findUserByTextPart(
     const std::string &textToFind) const { // поиск пользователя
 

@@ -1,9 +1,7 @@
 #pragma once
-#include "chat/chat.h"
-#include "chat_system/chat_system.h"
+#include <libpq-fe.h>
 #include "dto/dto_struct.h"
 #include <cstdint>
-#include <memory>
 #include <optional>
 #include <vector>
 
@@ -19,30 +17,26 @@ struct ServerConnectionConfig {
 
 class ServerSession {
 private:
-  ChatSystem &_instance; // link to server
-  std::map<std::string, int> _loginToConnectionMap;
   int _connection;
   ServerConnectionConfig _serverConnectionConfig;
+  PGconn *_pqConnection;
 
 public:
   // constructors
-  ServerSession(ChatSystem &server);
+  ServerSession() = default;
 
   // getters
+  PGconn *getPGConnection();
+  const PGconn *getPGConnection() const;
 
   ServerConnectionConfig &getServerConnectionConfig();
 
   int &getConnection();
   const int &getConnection() const;
-
-  const std::shared_ptr<User> getActiveUserSrv() const;
-
-  ChatSystem &getInstance();
-
   //
   //
   // setters
-  void setActiveUserSrv(const std::shared_ptr<User> &user);
+  void setPgConnection(PGconn *connection);
 
   void setConnection(const std::uint8_t &connection);
   //
@@ -60,62 +54,45 @@ public:
   //
   // Request processing
 
-  bool routingRequestsFromClient(PacketListDTO &packetListReceived, const RequestType& requestType, int connection);
+  bool routingRequestsFromClient(PacketListDTO &packetListReceived, const RequestType &requestType, int connection);
 
-  bool processingCheckAndRegistryUser(PacketListDTO &packetListReceived, const RequestType& requestType, int connection);
+  bool processingCheckAndRegistryUser(PacketListDTO &packetListReceived, const RequestType &requestType,
+                                      int connection);
 
-  bool processingCreateObjects(PacketListDTO &packetListReceived, const RequestType& requestType, int connection);
+  bool processingCreateObjects(PacketListDTO &packetListReceived, const RequestType &requestType, int connection);
 
-  bool processingGetIndexes(PacketListDTO &packetListReceived, const RequestType& requestType, int connection);
+  bool processingGetUserData(PacketListDTO &packetListReceived, const RequestType &requestType, int connection);
 
   //
   //
   //
   bool processingReceivedtWithoutUser(std::vector<PacketDTO> &packetListReceived, int connection);
 
-  bool processingReceivedQueue(const std::string &userLogin);
-
-  bool processingSendQueue();
-  //
-  //
-  //
-
   // utilities
-  const std::vector<UserDTO> findUserByTextPartFromSrv(const std::string &textToFind) const;
+  bool checkUserLoginSrvSQL(const std::string &login);
 
-  bool checkUserLoginSrv(const UserLoginDTO &userLoginDTO) const;
+  bool checkUserPasswordSrvSql(const UserLoginPasswordDTO &userLoginPasswordDTO);
 
-  bool checkUserPasswordSrv(const UserLoginPasswordDTO &userLoginPasswordDTO) const;
+  std::string getUserPasswordSrvSql(const UserLoginPasswordDTO &userLoginPasswordDTO);
 
   // transport sending
-  UserDTO FillForSendUserDTOFromSrv(const std::string &userLogin, bool loginUser) const;
+  std::optional<UserDTO> FillForSendUserDTOFromSrvSQL(const std::string &userLogin, bool loginUser);
 
-  std::optional<ChatDTO> FillForSendOneChatDTOFromSrv(const std::shared_ptr<Chat> &chat,
-                                                      const std::shared_ptr<User> &user);
+  std::optional<std::vector<UserDTO>> FillForSendSeveralUsersDTOFromSrvSQL(const std::vector<std::string> logins);
 
-  std::optional<std::vector<ChatDTO>> FillForSendAllChatDTOFromSrv(const std::shared_ptr<User> &user);
+  std::optional<ChatDTO> FillForSendOneChatDTOFromSrvSQL(const std::string &chat_id, const std::string &login);
 
-  // получаем одно конкретное сообщение пользователя
-  std::optional<MessageDTO> FillForSendOneMessageDTOFromSrv(const std::shared_ptr<Message> &message,
-                                                            const std::size_t &chatId);
+  std::optional<std::vector<ChatDTO>> FillForSendAllChatDTOFromSrvSQL(const std::string &login);
 
   // получаем сообщения пользователя конкретного чата
-  std::optional<MessageChatDTO> fillForSendChatMessageDTOFromSrv(const std::shared_ptr<Chat> &chat);
+  std::optional<MessageChatDTO> fillForSendChatMessageDTOFromSrvSQL(const std::string &chat_id);
 
   // получаем все сообщения пользователя
-  std::optional<std::vector<MessageChatDTO>> fillForSendAllMessageDTOFromSrv(const std::shared_ptr<User> &user);
+  std::optional<std::vector<MessageChatDTO>> fillForSendAllMessageDTOFromSrvSQL(const std::string login);
 
   // utilities
 
   void runUDPServerDiscovery(std::uint16_t listenPort);
 
-  bool createUserSrv(const UserDTO &userDTO) const;
-
-  std::size_t createNewChatSrv(std::shared_ptr<Chat> &chat, ChatDTO chatDTO) const;
-
-  std::size_t createNewMessageSrv(const MessageDTO &messageDTO) const;
-
-  bool createNewMessageChatSrv(std::shared_ptr<Chat> &chat, MessageChatDTO &messageChatDTO);
-
-  std::optional<PacketListDTO> registerOnDeviceDataSrv(const std::shared_ptr<User> &user_ptr);
+  std::optional<PacketListDTO> registerOnDeviceDataSrvSQL(const std::string login);
 };

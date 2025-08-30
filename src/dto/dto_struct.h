@@ -121,6 +121,11 @@ struct UserDTO {
   std::string userName;     ///< User's display name.
   std::string email;        ///< User's email.
   std::string phone;        ///< User's phone.
+  std::string disable_reason;
+  bool is_active;
+  std::size_t disabled_at;
+  std::size_t ban_until;
+  
 };
 struct UserLoginDTO {
   std::string login; ///< User login.

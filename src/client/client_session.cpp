@@ -65,14 +65,15 @@ void ClientSession::setSocketFd(const int &socketFd) { _socketFd = socketFd; }
 //
 const std::vector<UserDTO> ClientSession::findUserByTextPartOnServerCl(const std::string &textToFind) {
 
-  UserLoginDTO userLoginDTO;
-  userLoginDTO.login = textToFind;
+  UserLoginPasswordDTO userLoginPasswordDTO;
+  userLoginPasswordDTO.login = this->getInstance().getActiveUser()->getLogin();
+  userLoginPasswordDTO.passwordhash = textToFind;
 
   PacketDTO packetDTO;
   packetDTO.requestType = RequestType::RqFrClientFindUserByPart;
-  packetDTO.structDTOClassType = StructDTOClassType::userLoginDTO;
+  packetDTO.structDTOClassType = StructDTOClassType::userLoginPasswordDTO;
   packetDTO.reqDirection = RequestDirection::ClientToSrv;
-  packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserLoginDTO>>(userLoginDTO);
+  packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserLoginPasswordDTO>>(userLoginPasswordDTO);
 
   std::vector<PacketDTO> packetDTOListSend;
   packetDTOListSend.push_back(packetDTO);

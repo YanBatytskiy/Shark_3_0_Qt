@@ -1,27 +1,60 @@
 #include "0_init_system.h"
-#include "chat_system/chat_system.h"
+#include "postgres_db.h"
 #include "server_session.h"
 #include "system/system_function.h"
 #include <arpa/inet.h>
 #include <cstring>
+#include <fstream>
 #include <iostream>
+#include <nlohmann/json.hpp> 
+#include <string>
 #include <sys/socket.h>
 #include <thread>
 #include <unistd.h>
+
+using json = nlohmann::json;
 
 int main() {
   std::setlocale(LC_ALL, "");
   enableUTF8Console();
 
-  ChatSystem serverSystem;
+  std::ifstream file(std::string(CONFIG_DIR) + "/connect_db.conf");
+
+  json config;
+  file >> config;
+
+  PostgressDatabase postgress;
+
+  postgress.setHost(config["database"]["host"]);
+  postgress.setPort(config["database"]["port"]);
+  postgress.setBaseName(config["database"]["dbname"]);
+  postgress.setUser(config["database"]["user"]);
+  postgress.setPassword(config["database"]["password"]);
+
+  postgress.setConnectionString("host=" + postgress.getHost() + " port=" + std::to_string(postgress.getPort()) +
+                                " dbname=" + postgress.getBaseName() + " user=" + postgress.getUser() +
+                                " password=" + postgress.getPassword() + " sslmode=require");
+
+  postgress.makeConnection();
+
+  if (!postgress.isConnected()) {
+    std::cerr << "[DB FATAL] Cannot connect to database." << std::endl;
+    return 1;
+  }
+
+  auto conn = postgress.getConnection();
+
   std::cout << "Server" << std::endl;
+  std::cout << "Host: " << postgress.getHost() << std::endl;
+  std::cout << "Port: " << postgress.getPort() << std::endl;
+  std::cout << "Base: " << postgress.getBaseName() << std::endl << std::endl;
 
-  ServerSession serverSession(serverSystem);
+  ServerSession serverSession;
+  serverSession.setPgConnection(conn);
 
-  serverSystem.setIsServerStatus(true);
-  serverSession.setActiveUserSrv(nullptr);
-  systemInitForTest(serverSession);
-
+  if (!systemInitForTest(serverSession, conn)) {
+    return 1;
+  }
   // 🔧 Старт UDP discovery-сервера в потоке, без копирования
   std::thread([&serverSession]() {
     serverSession.runUDPServerDiscovery(serverSession.getServerConnectionConfig().port);
@@ -57,8 +90,7 @@ int main() {
     return 1;
   }
 
-  std::cout << "[INFO] TCP-сервер запущен на порту "
-            << serverSession.getServerConnectionConfig().port << std::endl;
+  std::cout << "[INFO] TCP-сервер запущен на порту " << serverSession.getServerConnectionConfig().port << std::endl;
 
   // Главный цикл
   while (true) {

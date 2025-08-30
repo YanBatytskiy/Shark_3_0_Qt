@@ -81,3 +81,6 @@ bool figuresCheck(const std::string &inputData);
 
 // проверяем только на цифры и запятую
 bool figuresAndCommaCheck(const std::string &inputData);
+
+// экранируем значение для запроса
+std::string makeStringForSQL(const std::string &inputData);

@@ -3,13 +3,13 @@
 #include "message/message_content_struct.h"
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <ctime>
 #include <iostream>
 #include <limits>
 #include <locale>
 #include <string>
 #include <sys/utsname.h>
-#include <cstdint>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -272,4 +272,15 @@ bool figuresAndCommaCheck(const std::string &inputData) {
     ++i;
   }
   return true;
+}
+
+// экранируем значение для запроса
+std::string makeStringForSQL(const std::string &inputData) {
+
+  std::string result = inputData;
+
+  for (std::size_t pos = 0; (pos = result.find('\'', pos)) != std::string::npos; pos += 2) {
+    result.replace(pos, 1, "''");
+  }
+  return result;
 }

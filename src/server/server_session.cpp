@@ -1,41 +1,39 @@
 #include "server_session.h"
-#include "chat/chat.h"
 #include "dto/dto_struct.h"
 #include "exception/login_exception.h"
 #include "exception/network_exception.h"
+#include "exception/sql_exception.h"
 #include "exception/validation_exception.h"
 #include "message/message.h"
-#include "message/message_content_struct.h"
-#include "system/date_time_utils.h"
+#include "sql_server.h"
 #include "system/serialize.h"
 #include "system/system_function.h"
-#include "user/user.h"
-#include "user/user_chat_list.h"
 #include <arpa/inet.h>
 #include <cstddef>
 #include <cstring>
 #include <exception>
 #include <fcntl.h>
 #include <iostream>
+#include <iterator>
+#include <libpq-fe.h>
 #include <memory>
+#include <optional>
 #include <unistd.h>
 #include <vector>
 
-ServerSession::ServerSession(ChatSystem &server) : _instance(server) {}
+// ServerSession::ServerSession(ChatSystem &server) : _instance(server) {}
 
 // getters
+PGconn *ServerSession::getPGConnection() { return _pqConnection; }
+const PGconn *ServerSession::getPGConnection() const { return _pqConnection; }
 
 ServerConnectionConfig &ServerSession::getServerConnectionConfig() { return _serverConnectionConfig; }
 
 int &ServerSession::getConnection() { return _connection; }
 const int &ServerSession::getConnection() const { return _connection; }
 
-const std::shared_ptr<User> ServerSession::getActiveUserSrv() const { return _instance.getActiveUser(); }
-
-ChatSystem &ServerSession::getInstance() { return _instance; }
-
 // setters
-void ServerSession::setActiveUserSrv(const std::shared_ptr<User> &user) { _instance.setActiveUser(user); }
+void ServerSession::setPgConnection(PGconn *connection) { _pqConnection = connection; }
 
 void ServerSession::setConnection(const std::uint8_t &connection) { _connection = connection; }
 //
@@ -195,13 +193,12 @@ void ServerSession::listeningClients() {
 //
 //
 bool ServerSession::sendPacketListDTO(PacketListDTO &packetListForSend, int connection) {
-ssize_t bytesSent = 0;
+  ssize_t bytesSent = 0;
   try {
 
     // Проверка валидности соединения
     if (connection <= 0 || fcntl(connection, F_GETFD) == -1)
       throw exc::SocketInvalidException();
-
 
     // Сериализуем пакеты
 
@@ -281,7 +278,7 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   }
     // get indexes and user Data
   case RequestType::RqFrClientGetUsersData: {
-    processingGetIndexes(packetListReceived, packetDTOrequestType, connection);
+    processingGetUserData(packetListReceived, packetDTOrequestType, connection);
     break;
   }
   default:
@@ -308,13 +305,11 @@ bool ServerSession::processingCheckAndRegistryUser(PacketListDTO &packetListRece
     const auto &packet = static_cast<const StructDTOClass<UserLoginDTO> &>(*packetListReceived.packets[0].structDTOPtr)
                              .getStructDTOClass();
 
-    const auto user_ptr = _instance.findUserByLogin(packet.login);
-
     // пакет для отправки
     ResponceDTO responceDTO;
     responceDTO.anyNumber = 0;
 
-    if (user_ptr != nullptr) {
+    if (checkUserLoginSrvSQL(packet.login)) {
       responceDTO.reqResult = true;
       responceDTO.anyString = packet.login;
     } else {
@@ -339,14 +334,12 @@ bool ServerSession::processingCheckAndRegistryUser(PacketListDTO &packetListRece
                              *packetListReceived.packets[0].structDTOPtr)
                              .getStructDTOClass();
 
-    const auto user_ptr = _instance.findUserByLogin(packet.login);
-
     // пакет для отправки
     ResponceDTO responceDTO;
     responceDTO.anyNumber = 0;
 
-    if (user_ptr != nullptr) {
-      responceDTO.reqResult = packet.passwordhash == user_ptr->getPasswordHash();
+    if (checkUserPasswordSrvSql(packet)) {
+      responceDTO.reqResult = true;
       responceDTO.anyString = packet.login;
     } else {
       responceDTO.reqResult = false;
@@ -364,9 +357,7 @@ bool ServerSession::processingCheckAndRegistryUser(PacketListDTO &packetListRece
     const auto &packet = static_cast<const StructDTOClass<UserLoginDTO> &>(*packetListReceived.packets[0].structDTOPtr)
                              .getStructDTOClass();
 
-    const auto user_ptr = _instance.findUserByLogin(packet.login);
-
-    const auto packetListDTOVector = registerOnDeviceDataSrv(user_ptr);
+    const auto packetListDTOVector = registerOnDeviceDataSrvSQL(packet.login);
 
     if (!packetListDTOVector.has_value())
       return false;
@@ -376,27 +367,26 @@ bool ServerSession::processingCheckAndRegistryUser(PacketListDTO &packetListRece
     break;
   }
   case RequestType::RqFrClientFindUserByPart: {
-    const auto &packet = static_cast<const StructDTOClass<UserLoginDTO> &>(*packetListReceived.packets[0].structDTOPtr)
+    const auto &packet = static_cast<const StructDTOClass<UserLoginPasswordDTO> &>(
+                             *packetListReceived.packets[0].structDTOPtr)
                              .getStructDTOClass();
 
-    const auto usersFound = _instance.findUserByTextPart(packet.login);
+    auto userDTOVector = getUsersByTextPartSQL(this->getPGConnection(), packet);
+
+    if (!userDTOVector.has_value())
+      return false;
 
     // пакет для отправки
+    PacketDTO packetDTOForSend;
+    packetDTOForSend.requestType = RequestType::RqFrClientFindUserByPart;
+    packetDTOForSend.structDTOClassType = StructDTOClassType::userDTO;
+    packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
 
-    for (const auto &user_ptr : usersFound) {
-      if (user_ptr) {
+    for (const auto &userDTO : userDTOVector.value()) {
 
-        PacketDTO packetDTOForSend;
-        packetDTOForSend.requestType = RequestType::RqFrClientFindUserByPart;
-        packetDTOForSend.structDTOClassType = StructDTOClassType::userDTO;
-        packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
+      packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<UserDTO>>(userDTO);
 
-        auto userDTO = FillForSendUserDTOFromSrv(user_ptr->getLogin(), false);
-
-        packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<UserDTO>>(userDTO);
-
-        packetDTOListForSend.packets.push_back(packetDTOForSend);
-      }
+      packetDTOListForSend.packets.push_back(packetDTOForSend);
     }
 
     break;
@@ -405,12 +395,7 @@ bool ServerSession::processingCheckAndRegistryUser(PacketListDTO &packetListRece
     const auto &packet = static_cast<const StructDTOClass<MessageDTO> &>(*packetListReceived.packets[0].structDTOPtr)
                              .getStructDTOClass();
 
-    const auto &chatId = packet.chatId;
-    const auto &messageId = packet.messageId;
-    const auto &userLogin = packet.senderLogin;
-
-    const auto user_ptr = _instance.findUserByLogin(userLogin);
-    const auto chat_ptr = _instance.getChatById(chatId);
+    auto value = setLastReadMessageSQL(this->getPGConnection(), packet);
 
     ResponceDTO responceDTO;
     responceDTO.anyNumber = 0;
@@ -422,11 +407,10 @@ bool ServerSession::processingCheckAndRegistryUser(PacketListDTO &packetListRece
     packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
     packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
 
-    if (user_ptr == nullptr || chat_ptr == nullptr) {
-      std::cerr << "Сервер: RqFrClientSetLastReadMessage. Нет юзера или чата" << std::endl;
+    if (!value) {
+      std::cerr << "Сервер: RqFrClientSetLastReadMessage. Ошибка базы. Значение не установлено." << std::endl;
       responceDTO.reqResult = false;
     } else {
-      chat_ptr->setLastReadMessageId(user_ptr, messageId);
       responceDTO.reqResult = true;
     }
 
@@ -441,13 +425,6 @@ bool ServerSession::processingCheckAndRegistryUser(PacketListDTO &packetListRece
   }
 
   sendPacketListDTO(packetDTOListForSend, connection);
-  //   } // try
-  //   catch (const exc::UserNotFoundException &ex) {
-  //     return false;
-  //   } catch (const exc::ChatNotFoundException &ex) {
-  //     std::cerr << "Сервер: RqFrClientSetLastReadMessage. " << ex.what() << std::endl;
-  //     return false;
-  //   }
   return true;
 }
 //
@@ -482,7 +459,7 @@ bool ServerSession::processingCreateObjects(PacketListDTO &packetListReceived, c
       responceDTO.anyNumber = 0;
       responceDTO.anyString = "";
 
-      if (createUserSrv(packet)) {
+      if (createUserSQL(this->getPGConnection(), packet)) {
         responceDTO.reqResult = true;
       } else
         responceDTO.reqResult = false;
@@ -500,40 +477,34 @@ bool ServerSession::processingCreateObjects(PacketListDTO &packetListReceived, c
       packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
       packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
 
-      // добавляем чат
-      const auto &packet = static_cast<const StructDTOClass<ChatDTO> &>(*packetListReceived.packets[0].structDTOPtr)
-                               .getStructDTOClass();
+      // берем чат
+      const auto &packetChat = static_cast<const StructDTOClass<ChatDTO> &>(*packetListReceived.packets[0].structDTOPtr)
+                                   .getStructDTOClass();
+
+      // берем cообщение
+      auto &packetMessage = static_cast<StructDTOClass<MessageChatDTO> &>(*packetListReceived.packets[1].structDTOPtr)
+                                .getStructDTOClass();
 
       // пакет для отправки
       ResponceDTO responceDTO;
 
-      auto chat_ptr = std::make_shared<Chat>();
+      const auto &result = (createChatAndMessageSQL(this->getPGConnection(), packetChat, packetMessage));
 
-      if (createNewChatSrv(chat_ptr, packet)) {
+      if (result.size() > 0) {
 
-        // добавляем cообщение
-        auto &packet = static_cast<StructDTOClass<MessageChatDTO> &>(*packetListReceived.packets[1].structDTOPtr)
-                           .getStructDTOClass();
+        responceDTO.reqResult = true;
+        // chat_id
+        responceDTO.anyNumber = static_cast<size_t>(std::stoull(result[1]));
+        // message_id
+        responceDTO.anyString = result[0];
 
-        packet.chatId = chat_ptr->getChatId();
+        packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
 
-        if (createNewMessageChatSrv(chat_ptr, packet)) {
-          responceDTO.reqResult = true;
-          responceDTO.anyNumber = chat_ptr->getChatId();
-          responceDTO.anyString = std::to_string(chat_ptr->getMessages().begin()->second->getMessageId());
-
-          packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
-
-          packetDTOListForSend.packets.push_back(packetDTOForSend);
-        } // if message
-        else {
-          responceDTO.reqResult = false;
-          responceDTO.anyString = "Message false";
-        }
-      } // if chat
-      else {
+        packetDTOListForSend.packets.push_back(packetDTOForSend);
+      } else {
         responceDTO.reqResult = false;
-        responceDTO.anyNumber = -1;
+        responceDTO.anyString = "";
+        responceDTO.anyNumber = 0;
       }
       break;
     }
@@ -554,7 +525,7 @@ bool ServerSession::processingCreateObjects(PacketListDTO &packetListReceived, c
                                    *packetListReceived.packets[0].structDTOPtr)
                                    .getStructDTOClass();
 
-      const auto &result = createNewMessageSrv(messageDTO);
+      const auto &result = createMessageSQL(this->getPGConnection(), messageDTO);
 
       if (result) {
         responceDTO.reqResult = true;
@@ -584,7 +555,6 @@ bool ServerSession::processingCreateObjects(PacketListDTO &packetListReceived, c
   } catch (const exc::NetworkException &ex) {
     std::cerr << "Сервер: " << ex.what() << std::endl;
     return false;
-
   } catch (const std::bad_cast &ex) {
     std::cerr << "Сервер: Неправильный тип пакета. " << ex.what() << std::endl;
     return false;
@@ -594,12 +564,18 @@ bool ServerSession::processingCreateObjects(PacketListDTO &packetListReceived, c
 //
 //
 //
-bool ServerSession::processingGetIndexes(PacketListDTO &packetListReceived, const RequestType &requestType,
-                                         int connection) {
+bool ServerSession::processingGetUserData(PacketListDTO &packetListReceived, const RequestType &requestType,
+                                          int connection) {
+
+  // вектор логинов для запроса в базе
+  std::vector<std::string> logins;
+  logins.clear();
+
   // создали структуру вектора пакетов для отправки
   PacketListDTO packetDTOListForSend;
 
   try {
+    // заполняем вектор логинов для запроса у базы
     for (const auto &packetDTOReceived : packetListReceived.packets) {
 
       if (packetDTOReceived.requestType != RequestType::RqFrClientGetUsersData)
@@ -608,12 +584,24 @@ bool ServerSession::processingGetIndexes(PacketListDTO &packetListReceived, cons
       const auto &packet = static_cast<const StructDTOClass<UserLoginDTO> &>(*packetDTOReceived.structDTOPtr)
                                .getStructDTOClass();
 
-      const auto user_ptr = _instance.findUserByLogin(packet.login);
+      auto result = checkUserLoginSrvSQL(packet.login);
 
-      if (!user_ptr)
+      if (!result)
         throw exc::UserNotFoundException();
 
-      UserDTO userDTO = FillForSendUserDTOFromSrv(user_ptr->getLogin(), false);
+      logins.push_back(packet.login);
+    } // for
+
+    // получаем массив пользователей
+    if (logins.size() == 0)
+      throw exc::UserNotFoundException();
+
+    auto userDTOVector = FillForSendSeveralUsersDTOFromSrvSQL(logins);
+
+    if (!userDTOVector.has_value())
+      throw exc::UserNotFoundException();
+
+    for (const auto &userDTO : userDTOVector.value()) {
 
       // формируем пользователя
       PacketDTO packetDTO;
@@ -623,7 +611,7 @@ bool ServerSession::processingGetIndexes(PacketListDTO &packetListReceived, cons
       packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserDTO>>(userDTO);
 
       packetDTOListForSend.packets.push_back(packetDTO);
-    }
+    } // for user
 
     sendPacketListDTO(packetDTOListForSend, connection);
   } // try
@@ -642,307 +630,329 @@ bool ServerSession::processingGetIndexes(PacketListDTO &packetListReceived, cons
 //
 //
 //
-bool ServerSession::processingReceivedQueue(const std::string &userLogin) {
+bool ServerSession::checkUserLoginSrvSQL(const std::string &login) {
 
-  // auto &dequeReceived = _instance.getPacketReceivedDeque();
-  // auto &dequeForSend = _instance.getPacketForSendDeque();
+  PGresult *result;
 
-  // if (dequeReceived.empty())
-  //   return false;
+  std::string sql = "";
 
-  // while (!dequeReceived.empty()) {
-  //   const auto &[packetDTO, userLogin] = dequeReceived.front();
+  try {
 
-  //   PacketListDTO packetListForSend;
-
-  //   if (processingRequestToToSendToServer(packetDTO, packetListForSend))
-  //     dequeForSend.push_back({packetListForSend, userLogin});
-  //   dequeReceived.pop_front();
-  //   ;
-  // }
-  return true;
-}
-//
-//
-//
-bool ServerSession::processingSendQueue() {
-
-  // auto &dequeForSend = _instance.getPacketForSendDeque();
-  // try {
-  //   while (!dequeForSend.empty()) {
-  //     auto &[packetListDTO, userLogin] = dequeForSend.front();
-
-  //     auto PacketSendBinary = serializePacketList(packetListDTO.packets);
-  //     auto it = _loginToConnectionMap.find(userLogin);
-
-  //     if (it == _loginToConnectionMap.end()) {
-  //       std::cerr << "Сервер: логин " << userLogin
-  //                 << " не найден в loginToConnectionMap. Пропускаем
-  //                 отправку."
-  //                 << std::endl;
-  //       dequeForSend.pop_front();
-  //       continue;
-  //     }
-
-  //     int connection = it->second;
-
-  //     ssize_t bytesSent =
-  //         send(connection, PacketSendBinary.data(),
-  //         PacketSendBinary.size(), 0);
-  //     if (bytesSent <= 0) {
-  //       throw exc::SendDataException();
-  //     } else {
-  //       dequeForSend.pop_front();
-  //     }
-  //   }
-  // } // try
-  // catch (const exc::SendDataException &ex) {
-  //   std::cerr << "Сервер: " << ex.what() << std::endl;
-  //   return false;
-  // }
-
-  return true;
-}
-//
-//
-//
-
-// поиск пользователя
-const std::vector<UserDTO> ServerSession::findUserByTextPartFromSrv(const std::string &textToFind) const {
-
-  const auto &users = this->_instance.findUserByTextPart(textToFind);
-  std::vector<UserDTO> userDTO;
-
-  if (!users.empty()) {
-    for (const auto& user : users) {
-      userDTO.push_back(FillForSendUserDTOFromSrv(user->getLogin(), true));
+    std::string loginEsc = login;
+    for (std::size_t pos = 0; (pos = loginEsc.find('\'', pos)) != std::string::npos; pos += 2) {
+      loginEsc.replace(pos, 1, "''");
     }
-  } else
-    userDTO.clear();
-  return userDTO;
-}
 
-bool ServerSession::checkUserLoginSrv(const UserLoginDTO &userLoginDTO) const {
+    sql = R"(select id from public.users as u where u.login = ')";
+    sql += loginEsc + "';";
 
-  if (this->_instance.findUserByLogin(userLoginDTO.login) != nullptr)
-    return true;
-  else
+    result = execSQL(this->getPGConnection(), sql);
+
+    if (result == nullptr)
+      throw exc::SQLSelectException(", FindUserByLoginSrv");
+
+    if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result) > 0) {
+      PQclear(result);
+      return true;
+    } else {
+      return false;
+    }
+  } // try
+  catch (const exc::SQLSelectException &ex) {
+    std::cerr << "Сервер: " << ex.what() << std::endl;
     return false;
+  }
 }
 //
 //
 //
-bool ServerSession::checkUserPasswordSrv(const UserLoginPasswordDTO &userLoginPasswordDTO) const {
+bool ServerSession::checkUserPasswordSrvSql(const UserLoginPasswordDTO &userLoginPasswordDTO) {
+  PGresult *result;
 
-  return this->_instance.checkPasswordValidForUser(userLoginPasswordDTO.passwordhash, userLoginPasswordDTO.login);
+  std::string sql = "";
+
+  try {
+
+    std::string loginEsc = userLoginPasswordDTO.login;
+    for (std::size_t pos = 0; (pos = loginEsc.find('\'', pos)) != std::string::npos; pos += 2) {
+      loginEsc.replace(pos, 1, "''");
+    }
+
+    std::string passwordHashEsc = userLoginPasswordDTO.passwordhash;
+    for (std::size_t pos = 0; (pos = passwordHashEsc.find('\'', pos)) != std::string::npos; pos += 2) {
+      passwordHashEsc.replace(pos, 1, "''");
+    }
+
+    sql = R"(with user_record as (
+		select id as user_id 
+		from public.users 
+		where login = ')";
+    sql += loginEsc + "')";
+
+    sql += R"(select password_hash from public.users_passhash as ph join user_record ur on ph
+	.user_id = ur.user_id where password_hash = ')";
+    sql += passwordHashEsc + "';";
+
+    result = execSQL(this->getPGConnection(), sql);
+
+    if (result == nullptr)
+      throw exc::SQLSelectException(", checkUserPasswordSrvSql");
+
+    if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result) > 0) {
+      PQclear(result);
+      return true;
+    } else {
+      return false;
+    }
+  } // try
+  catch (const exc::SQLSelectException &ex) {
+    std::cerr << "Сервер: " << ex.what() << std::endl;
+    return false;
+  }
 }
 //
 //
 //
-UserDTO ServerSession::FillForSendUserDTOFromSrv(const std::string &userLogin, bool loginUser) const {
+std::string ServerSession::getUserPasswordSrvSql(const UserLoginPasswordDTO &userLoginPasswordDTO) {
+  PGresult *result;
 
-  UserDTO userDTO;
-  auto user = this->_instance.findUserByLogin(userLogin);
-  if (!user)
-    throw exc::UserNotFoundException();
+  std::string sql = "";
 
-  userDTO.login = user->getLogin();
-  userDTO.userName = user->getUserName();
-  userDTO.email = user->getEmail();
-  userDTO.phone = user->getPhone();
-  userDTO.passwordhash = loginUser ? user->getPasswordHash() : "-1";
+  try {
 
-  return userDTO;
+    std::string loginEsc = userLoginPasswordDTO.login;
+    for (std::size_t pos = 0; (pos = loginEsc.find('\'', pos)) != std::string::npos; pos += 2) {
+      loginEsc.replace(pos, 1, "''");
+    }
+
+    std::string passwordHashEsc = userLoginPasswordDTO.passwordhash;
+    for (std::size_t pos = 0; (pos = passwordHashEsc.find('\'', pos)) != std::string::npos; pos += 2) {
+      passwordHashEsc.replace(pos, 1, "''");
+    }
+
+    sql = R"(with user_record as (
+		select id as user_id 
+		from public.users 
+		where login = ')";
+    sql += loginEsc + "')";
+
+    sql += R"(select password_hash from public.users_passhash as ph join user_record ur on ph
+	.user_id = ur.user_id where password_hash = ')";
+    sql += passwordHashEsc + "';";
+
+    result = execSQL(this->getPGConnection(), sql);
+
+    if (result == nullptr)
+      throw exc::SQLSelectException(", checkUserPasswordSrvSql");
+
+    if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result) > 0) {
+
+      std::string value = PQgetvalue(result, 0, 0);
+      PQclear(result);
+      return value;
+
+    } else {
+      return "";
+    }
+  } // try
+  catch (const exc::SQLSelectException &ex) {
+    std::cerr << "Сервер: " << ex.what() << std::endl;
+    return "";
+  }
 }
+
+//
+//
+//
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11
+std::optional<UserDTO> ServerSession::FillForSendUserDTOFromSrvSQL(const std::string &login, bool loginUser) {
+
+  PGresult *result = nullptr;
+
+  std::string sql = "";
+
+  try {
+
+    std::string loginEsc = login;
+    for (std::size_t pos = 0; (pos = loginEsc.find('\'', pos)) != std::string::npos; pos += 2) {
+      loginEsc.replace(pos, 1, "''");
+    }
+
+    sql = R"(select * from public.users as us  
+		join public.users_passhash as ph on ph.user_id = us.id
+		where us.login = ')";
+    sql += loginEsc + "';";
+
+    result = execSQL(this->getPGConnection(), sql);
+
+    if (result == nullptr)
+      throw exc::SQLSelectException(", FillForSendUserDTOFromSrvSQL");
+
+    if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result) > 0) {
+
+      UserDTO userDTO;
+
+      userDTO.login = PQgetvalue(result, 0, 1);
+      userDTO.userName = PQgetvalue(result, 0, 2);
+      userDTO.email = PQgetvalue(result, 0, 3);
+      userDTO.phone = PQgetvalue(result, 0, 4);
+      userDTO.is_active = (std::strcmp(PQgetvalue(result, 0, 5), "t") == 0);
+      userDTO.disabled_at = static_cast<std::size_t>(std::strtoull(PQgetvalue(result, 0, 6), nullptr, 10));
+      userDTO.ban_until = static_cast<std::size_t>(std::strtoull(PQgetvalue(result, 0, 7), nullptr, 10));
+      userDTO.disable_reason = PQgetvalue(result, 0, 8);
+      userDTO.passwordhash = PQgetvalue(result, 0, 10);
+
+      PQclear(result);
+      return userDTO;
+
+    } else {
+      PQclear(result);
+      throw exc::SQLSelectException(", FillForSendUserDTOFromSrvSQL");
+    }
+  } // try
+  catch (const exc::SQLSelectException &ex) {
+    if (result != nullptr)
+      PQclear(result);
+    std::cerr << "Сервер: " << ex.what() << std::endl;
+    return std::nullopt;
+  }
+}
+
+std::optional<std::vector<UserDTO>> ServerSession::FillForSendSeveralUsersDTOFromSrvSQL(
+    const std::vector<std::string> logins) {
+
+  auto value = getSeveralUsersDTOFromSrvSQL(this->getPGConnection(), logins);
+
+  if (!value.has_value())
+    return std::nullopt;
+
+  return value;
+}
+
 //
 //
 //
 // получаем один чат пользователя
-std::optional<ChatDTO> ServerSession::FillForSendOneChatDTOFromSrv(const std::shared_ptr<Chat> &chat_ptr,
-                                                                   const std::shared_ptr<User> &user) {
+std::optional<ChatDTO> ServerSession::FillForSendOneChatDTOFromSrvSQL(const std::string &chat_id,
+                                                                      const std::string &login) {
   ChatDTO chatDTO;
 
-  // взяли chatId
-  chatDTO.chatId = chat_ptr->getChatId();
-  chatDTO.senderLogin = user->getLogin();
+  // взяли chatId  и логин
+  chatDTO.chatId = static_cast<std::size_t>(std::stoull(chat_id));
+  chatDTO.senderLogin = login;
+
+  // получаем список участников
+  auto participants = getChatParticipantsSQL(this->getPGConnection(), chat_id);
 
   try {
-    // получаем список участников
-    auto participants = chat_ptr->getParticipants();
 
-    // перебираем участников
-    for (const auto &participant : participants) {
+    if (!participants.has_value()) {
+      throw exc::ChatListNotFoundException(login);
+    }
 
-      // получили указатель на юзера
-      const auto user_ptr = participant._user.lock();
+    auto deletedMessagesMultiset = getChatMessagesDeletedStatusSQL(this->getPGConnection(), chat_id);
 
-      // временная структура для заполнения
-      ParticipantsDTO participantsDTO;
+    if (deletedMessagesMultiset.has_value() && deletedMessagesMultiset.value().size() > 0) {
 
-      if (user_ptr) {
+      // перебираем участников
+      for (auto &participant : participants.value()) {
 
-        // заполняем данные на юзера для регистрации в системе
+        // берем конкретного участника
+        const auto &participantLogin = participant.login;
 
-        participantsDTO.login = user_ptr->getLogin();
+        // берем массив его значений
+        const auto &range = deletedMessagesMultiset.value().equal_range({participantLogin, 0});
 
-        participantsDTO.lastReadMessage = chat_ptr->getLastReadMessageId(user_ptr);
+        // перебираем все сообщения пользователя и добавляем его в вектор для отправки
+        if (std::distance(range.first, range.second)) {
+          for (auto it = range.first; it != range.second; ++it) {
 
-        // заполняем deletedMessageIds
-        const auto &delMsgMap = chat_ptr->getDeletedMessagesMap();
-        const auto it = delMsgMap.find(participantsDTO.login);
+            // заполняем deletedMessageIds
+            participant.deletedMessageIds.push_back(it->second);
+          } // for range
 
-        if (it != delMsgMap.end()) {
+        } // if distance
 
-          for (const auto &delMsgId : it->second)
-            participantsDTO.deletedMessageIds.push_back(delMsgId);
-        }
+      } // for participant
 
-        participantsDTO.deletedFromChat = participant._deletedFromChat;
+    } // if deletedMessagesMultiset
 
-        chatDTO.participants.push_back(participantsDTO);
-
-      } // if user_ptr
-      else
-        throw exc::UserNotFoundException();
-    } // for participants
-  }
-  // try
-  catch (const exc::UserNotFoundException &ex) {
-    std::cerr << "Сервер: FillForSendOneChatDTOFromSrv. " << ex.what() << std::endl;
+  } // try
+  catch (const exc::ChatListNotFoundException &ex) {
+    std::cerr << "Сервер: FillForSendOneChatDTOFromSrvSQL. " << ex.what() << std::endl;
     return std::nullopt;
   }
+
+  chatDTO.participants = participants.value();
 
   return chatDTO;
 }
 //
 //
 // получаем все чаты пользователя
-std::optional<std::vector<ChatDTO>> ServerSession::FillForSendAllChatDTOFromSrv(const std::shared_ptr<User> &user) {
+std::optional<std::vector<ChatDTO>> ServerSession::FillForSendAllChatDTOFromSrvSQL(const std::string &login) {
+
   // взяли чат лист
-  auto chatList = user->getUserChatList();
-  std::vector<ChatDTO> chatDTOVector;
+  auto chatList = getChatListSQL(this->getPGConnection(), login);
+
+  if (chatList.size() == 0)
+    return std::nullopt;
+
+  std::vector<ChatDTO> chatDTOResultVector;
+
   // перебираем чаты в чат листе
-  for (const auto &chat : chatList->getChatFromList()) {
+  for (const auto &chat : chatList) {
 
-    // получили указатель на чат
-    auto chat_ptr = chat.lock();
+    auto tempDTO = FillForSendOneChatDTOFromSrvSQL(chat, login);
 
-    if (!chat_ptr) {
-      std::cerr << "Сервер: FillForSendAllChatDTOFromSrv. Чат не доступен" << std::endl;
+    if (tempDTO.has_value())
+      chatDTOResultVector.push_back(tempDTO.value());
+    else {
+      std::cerr << "Сервер: FillForSendAllChatDTOFromSrvSQL. Chat_id " << chat << " не заполнен" << std::endl;
       continue;
-    } else {
-      auto tempDTO = FillForSendOneChatDTOFromSrv(chat_ptr, user);
-
-      if (tempDTO.has_value())
-        chatDTOVector.push_back(tempDTO.value());
-      else {
-        std::cerr << "Сервер: FillForSendAllChatDTOFromSrv. Чат не заполнен" << std::endl;
-        continue;
-      }
-    } // first if chat_ptr
+    }
   } // first for
 
-  return chatDTOVector;
-}
-//
-//
-// получаем одно конкретное сообщение пользователя
-std::optional<MessageDTO> ServerSession::FillForSendOneMessageDTOFromSrv(const std::shared_ptr<Message> &message,
-                                                                         const std::size_t &chatId) {
-
-  MessageDTO messageDTO;
-  auto user_ptr = message->getSender().lock();
-
-  messageDTO.senderLogin = user_ptr ? user_ptr->getLogin() : "";
-
-  messageDTO.chatId = chatId;
-  messageDTO.messageId = message->getMessageId();
-  messageDTO.timeStamp = message->getTimeStamp();
-
-  // получаем контент
-  MessageContentDTO temContent;
-  temContent.messageContentType = MessageContentType::Text;
-  auto contentElement = message->getContent().front();
-
-  auto contentTextPtr = std::dynamic_pointer_cast<MessageContent<TextContent>>(contentElement);
-
-  if (contentTextPtr) {
-    auto contentText = contentTextPtr->getMessageContent();
-    temContent.payload = contentText._text;
-  }
-
-  messageDTO.messageContent.push_back(temContent);
-
-  return messageDTO;
+  return chatDTOResultVector;
 }
 //
 //
 // получаем сообщения пользователя конкретного чата
-std::optional<MessageChatDTO> ServerSession::fillForSendChatMessageDTOFromSrv(const std::shared_ptr<Chat> &chat) {
+std::optional<MessageChatDTO> ServerSession::fillForSendChatMessageDTOFromSrvSQL(const std::string &chat_id) {
 
-  MessageChatDTO messageChatDTO;
+  auto messageChatDTO = getChatMessagesSQL(this->getPGConnection(), chat_id);
 
-  // взяли chatId
-  messageChatDTO.chatId = chat->getChatId();
-  try {
-    for (const auto &message : chat->getMessages()) {
-
-      const auto &messageDTO = FillForSendOneMessageDTOFromSrv(message.second, messageChatDTO.chatId);
-
-      if (!messageDTO.has_value())
-        throw exc::MessagesNotFoundException();
-
-      messageChatDTO.messageDTO.push_back(messageDTO.value());
-
-    } // for message
-  } // try
-  catch (const exc::MessagesNotFoundException &ex) {
-    std::cerr << "Сервер: fillForSendChatMessageDTOFromSrv. " << ex.what() << std::endl;
+  if (!messageChatDTO.has_value())
     return std::nullopt;
-  }
-  return messageChatDTO;
+
+  return messageChatDTO.value();
 }
 //
 //
 // получаем все сообщения пользователя
-std::optional<std::vector<MessageChatDTO>> ServerSession::fillForSendAllMessageDTOFromSrv(
-    const std::shared_ptr<User> &user) {
+std::optional<std::vector<MessageChatDTO>> ServerSession::fillForSendAllMessageDTOFromSrvSQL(const std::string login) {
 
   std::vector<MessageChatDTO> messageChatDTOVector;
-  try {
-    // взяли чат лист
-    auto chatList = user->getUserChatList();
 
-    // перебираем чаты в чат листе
-    for (const auto &chat : chatList->getChatFromList()) {
+  // взяли чат лист
+  auto chatList = getChatListSQL(this->getPGConnection(), login);
 
-      // получили указатель на чат
-      auto chat_ptr = chat.lock();
-
-      if (chat_ptr) {
-
-        // вызываем получение сообщений чата
-
-        const auto &messageChatDTO = fillForSendChatMessageDTOFromSrv(chat_ptr);
-
-        if (!messageChatDTO.has_value())
-          throw exc::CreateMessageException();
-
-        messageChatDTOVector.push_back(messageChatDTO.value());
-
-      } // if chat_ptr
-      else
-        throw exc::ChatNotFoundException();
-    } // first if chat_ptr
-  } // try
-  catch (const exc::ChatNotFoundException &ex) {
-    std::cerr << "Сервер: fillForSendAllMessageDTOFromSrv. " << ex.what() << std::endl;
+  if (chatList.size() == 0)
     return std::nullopt;
-  } catch (const exc::CreateMessageException &ex) {
-    std::cerr << "Сервер: fillForSendAllMessageDTOFromSrv. " << ex.what() << std::endl;
+
+  // перебираем чаты в чат листе
+  for (const auto &chat_id : chatList) {
+
+    const auto &messageChatDTO = fillForSendChatMessageDTOFromSrvSQL(chat_id);
+
+    if (messageChatDTO.has_value())
+      messageChatDTOVector.push_back(messageChatDTO.value());
+  } // for
+
+  if (messageChatDTOVector.size() == 0)
     return std::nullopt;
-  }
-  return messageChatDTOVector;
+  else
+    return messageChatDTOVector;
 }
 //
 //
@@ -982,8 +992,7 @@ void ServerSession::runUDPServerDiscovery(std::uint16_t listenPort) {
       sockaddr_in clientAddr{};
       socklen_t addrLen = sizeof(clientAddr);
 
-      ssize_t bytesReceived = recvfrom(udpSocket, buffer, sizeof(buffer) - 1, 0,
-                                       (sockaddr *)&clientAddr, &addrLen);
+      ssize_t bytesReceived = recvfrom(udpSocket, buffer, sizeof(buffer) - 1, 0, (sockaddr *)&clientAddr, &addrLen);
 
       if (bytesReceived > 0 && std::string(buffer) == "ping?") {
         const char *reply = "pong";
@@ -997,137 +1006,23 @@ void ServerSession::runUDPServerDiscovery(std::uint16_t listenPort) {
     close(udpSocket);
   }
 }
-
-bool ServerSession::createUserSrv(const UserDTO &userDTO) const {
-
-  auto user = std::make_shared<User>(
-      UserData(userDTO.login, userDTO.userName, userDTO.passwordhash, userDTO.email, userDTO.phone));
-
-  user->createChatList(std::make_shared<UserChatList>(user));
-  this->_instance.addUserToSystem(user);
-
-  return true;
-}
-//
-//
-//
-std::size_t ServerSession::createNewChatSrv(std::shared_ptr<Chat> &chat_ptr, ChatDTO chatDTO) const {
-
-  auto newChatId = _instance.createNewChatId(chat_ptr);
-  try {
-    // инициализируем чат и находим юзера
-    //   auto user_ptr = this->_instance.findUserByLogin(chatDTO.login);
-
-    // добавляем поля
-    // создаем глобальный номер чата
-    chat_ptr->setChatId(newChatId);
-
-    // добавляем участников
-    // добавляем чат в чат лист каждому участнику
-
-    for (const auto &participant : chatDTO.participants) {
-      auto participant_ptr = this->_instance.findUserByLogin(participant.login);
-
-      if (participant_ptr == nullptr) {
-        throw exc::UserNotFoundException();
-      } else {
-        chat_ptr->addParticipant(participant_ptr, participant.lastReadMessage, participant.deletedFromChat);
-      }
-    }
-
-    // добавляем чат в систему
-    this->_instance.addChatToInstance(chat_ptr);
-
-    // ⬇⬇⬇ Проверка
-    // std::cout << "\n[DEBUG] Добавлен чат на сервер:\n";
-
-    // const auto &chats = this->_instance.getChats();
-    // std::shared_ptr<Chat> chat_ptr_test;
-
-    // for (const auto &chat : chats)
-    //   if (chat->getChatId() == newChatId) {
-    //     chat_ptr_test = chat;
-    //   }
-
-    // if (!chat_ptr_test)
-    //   throw exc::InternalDataErrorException();
-
-    // std::cout << "участники:" << std::endl;
-    // for (const auto &participant : chat_ptr->getParticipants()) {
-    //   auto user = participant._user.lock();
-    //   if (user) {
-    //     std::cout << "- " << user->getLogin() << " | deleted: " << participant._deletedFromChat << std::endl;
-    //   } else {
-    //     throw exc::UserNotFoundException();
-    //   }
-    // }
-  } // try
-  catch (const exc::UserNotFoundException &ex) {
-    std::cerr << "Сервер: createNewChatSrv Пользователя уже удалили. " << ex.what() << std::endl;
-    _instance.moveToFreeChatIdSrv(newChatId);
-    return 0;
-  }
-  return newChatId;
-}
-//
-//
-//
-std::size_t ServerSession::createNewMessageSrv(const MessageDTO &messageDTO) const {
-  try {
-    const auto &chat_ptr = this->_instance.getChatById(messageDTO.chatId);
-    if (!chat_ptr)
-      throw exc::ChatNotFoundException();
-
-    auto sender_ptr = this->_instance.findUserByLogin(messageDTO.senderLogin);
-    if (!sender_ptr)
-      throw exc::UserNotFoundException();
-
-    if (messageDTO.messageContent.empty())
-      throw exc::CreateMessageException();
-
-    auto message_ptr = std::make_shared<Message>(
-        createOneMessage(messageDTO.messageContent[0].payload, sender_ptr, messageDTO.timeStamp, 0));
-
-    chat_ptr->addMessageToChat(message_ptr, sender_ptr, true);
-
-    const auto &t = message_ptr->getMessageId();
-
-    return t;
-
-  } catch (const exc::UserNotFoundException &ex) {
-    std::cerr << "Сервер: createNewMessageSrv: пользователь не найден: " << ex.what() << std::endl;
-    return 0;
-  } catch (const exc::ChatNotFoundException &ex) {
-    std::cerr << "Сервер: createNewMessageSrv: чат не найден: " << ex.what() << std::endl;
-    return 0;
-  } catch (const exc::CreateMessageException &ex) {
-    std::cerr << "Сервер: createNewMessageSrv: сообщение пустое: " << ex.what() << std::endl;
-    return 0;
-  }
-}
-
-//
-//
-//
-bool ServerSession::createNewMessageChatSrv(std::shared_ptr<Chat> &chat, MessageChatDTO &messageChatDTO) {
-  // добавляем сообщения из чата
-  for (auto &messageDTO : messageChatDTO.messageDTO) {
-    messageDTO.chatId = messageChatDTO.chatId;
-    createNewMessageSrv(messageDTO);
-  }
-  return true;
-}
 //
 //
 // формируем и отдаем в ответ на запрос юзера, чаты и сообщения
-std::optional<PacketListDTO> ServerSession::registerOnDeviceDataSrv(const std::shared_ptr<User> &user) {
+std::optional<PacketListDTO> ServerSession::registerOnDeviceDataSrvSQL(const std::string login) {
 
   PacketListDTO packetListDTO;
 
-  const auto login = user->getLogin();
+  //   const auto login = user->getLogin();
 
   UserDTO userDTO;
-  userDTO = FillForSendUserDTOFromSrv(login, true);
+
+  auto const &tempUserDTO = FillForSendUserDTOFromSrvSQL(login, true);
+
+  if (tempUserDTO.has_value())
+    userDTO = tempUserDTO.value();
+  else
+    return std::nullopt;
 
   // формируем пользователя
   PacketDTO packetDTO;
@@ -1139,39 +1034,37 @@ std::optional<PacketListDTO> ServerSession::registerOnDeviceDataSrv(const std::s
   packetListDTO.packets.push_back(packetDTO);
 
   // формируем чаты
-  //   std::vector<ChatDTO> chatDTO;
-  //   std::unordered_set<std::shared_ptr<User>> participantLogins;
 
-  auto chatDTOVector = FillForSendAllChatDTOFromSrv(user);
+  auto chatDTOVector = FillForSendAllChatDTOFromSrvSQL(login);
 
-  if (!chatDTOVector.has_value())
-    return std::nullopt;
+  if (chatDTOVector.has_value()) {
 
-  for (const auto &pct : chatDTOVector.value()) {
-    PacketDTO packetDTO;
-    packetDTO.requestType = RequestType::RqFrClientRegisterUser;
-    packetDTO.structDTOClassType = StructDTOClassType::chatDTO;
-    packetDTO.reqDirection = RequestDirection::ClientToSrv;
-    packetDTO.structDTOPtr = std::make_shared<StructDTOClass<ChatDTO>>(pct);
+    for (const auto &pct : chatDTOVector.value()) {
+      PacketDTO packetDTO;
+      packetDTO.requestType = RequestType::RqFrClientRegisterUser;
+      packetDTO.structDTOClassType = StructDTOClassType::chatDTO;
+      packetDTO.reqDirection = RequestDirection::ClientToSrv;
+      packetDTO.structDTOPtr = std::make_shared<StructDTOClass<ChatDTO>>(pct);
 
-    packetListDTO.packets.push_back(packetDTO);
+      packetListDTO.packets.push_back(packetDTO);
+    }
   }
 
   // формируем сообщения
 
-  const auto &messageChatDTO = fillForSendAllMessageDTOFromSrv(user);
+  const auto &messageChatDTO = fillForSendAllMessageDTOFromSrvSQL(login);
 
-  if (!messageChatDTO.has_value())
-    return std::nullopt;
+  if (messageChatDTO.has_value()) {
 
-  for (const auto &pct : messageChatDTO.value()) {
-    PacketDTO packetDTO;
-    packetDTO.requestType = RequestType::RqFrClientRegisterUser;
-    packetDTO.structDTOClassType = StructDTOClassType::messageChatDTO;
-    packetDTO.reqDirection = RequestDirection::ClientToSrv;
-    packetDTO.structDTOPtr = std::make_shared<StructDTOClass<MessageChatDTO>>(pct);
+    for (const auto &pct : messageChatDTO.value()) {
+      PacketDTO packetDTO;
+      packetDTO.requestType = RequestType::RqFrClientRegisterUser;
+      packetDTO.structDTOClassType = StructDTOClassType::messageChatDTO;
+      packetDTO.reqDirection = RequestDirection::ClientToSrv;
+      packetDTO.structDTOPtr = std::make_shared<StructDTOClass<MessageChatDTO>>(pct);
 
-    packetListDTO.packets.push_back(packetDTO);
+      packetListDTO.packets.push_back(packetDTO);
+    }
   }
 
   for (std::size_t i = 0; i < packetListDTO.packets.size(); ++i) {

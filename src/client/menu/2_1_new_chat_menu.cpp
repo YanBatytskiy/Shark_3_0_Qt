@@ -8,19 +8,27 @@
 #include "exception/validation_exception.h"
 #include "system/system_function.h"
 #include "user/user_chat_list.h"
+#include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
-#include <cstdint>
 
-UserDTO chooseOneParticipant(ClientSession &clientSession, std::shared_ptr<Chat> &chat_ptr) {
+std::optional<std::vector<UserDTO>> chooseParticipants(ClientSession &clientSession, std::shared_ptr<Chat> &chat_ptr,
+                                                       MessageTarget target) {
 
   std::string inputData;
   int userChoiceNumber;
+
   std::vector<UserDTO> userListDTO;
-  UserDTO userDTOresult{"", "", "", "", ""};
+  userListDTO.clear();
+  std::vector<UserDTO> result;
+  result.clear();
+
+  UserDTO userDTO{"", "", "", "", ""};
 
   bool exit = true;
   while (exit) {
@@ -36,8 +44,7 @@ UserDTO chooseOneParticipant(ClientSession &clientSession, std::shared_ptr<Chat>
         throw exc::EmptyInputException();
 
       if (inputData == "0") {
-        userDTOresult.passwordhash = "0";
-        return userDTOresult;
+        return std::nullopt;
       }
 
       // проверяем на наличие недопустимых символов
@@ -54,41 +61,128 @@ UserDTO chooseOneParticipant(ClientSession &clientSession, std::shared_ptr<Chat>
 
       // выводим найденных пользователей на экран
       int index = 1;
-      std::cout << "Вот, кого мы нашли (Имя : Логин), выберите одного:" << std::endl;
+
+      std::cout << "Вот, кого мы нашли (Имя : Логин):" << std::endl;
       for (const auto &userDTO : userListDTO) {
         std::cout << index << ". " << userDTO.userName << " : " << userDTO.login << std::endl;
         ++index;
       }
       --index;
 
-      // выбрать нужного из списка
-      bool exit2 = true;
+      switch (target) {
 
-      while (exit2) {
-        // выбираем пользователя
-        std::cout << "Введите номер пользователя 0 для выхода: " << std::endl;
+        // выбрать нужного из списка
+      case MessageTarget::One: {
+        std::cout << "Выберите одного:" << std::endl;
+        bool exit2 = true;
+        while (exit2) {
+          try {
+            // выбираем пользователя
+            std::cout << "Введите номер пользователя 0 для выхода: " << std::endl;
 
-        getline(std::cin, inputData);
+            getline(std::cin, inputData);
 
-        if (inputData.empty())
-          throw exc::EmptyInputException();
+            if (inputData.empty())
+              throw exc::EmptyInputException();
 
-        if (inputData == "0") {
-          userDTOresult.passwordhash = "0";
-          exit = false;
-          break;
+            if (inputData == "0") {
+              return std::nullopt;
+            }
+
+            userChoiceNumber = parseGetlineToInt(inputData);
+
+            if (userChoiceNumber > index || userChoiceNumber < 1)
+              throw exc::IndexOutOfRangeException(inputData);
+
+            result.push_back(userListDTO[userChoiceNumber - 1]);
+
+            exit2 = false;
+            break;
+          } // try
+          catch (const exc::ValidationException &ex) {
+            std::cout << " ! " << ex.what() << " Попробуйте еще раз." << std::endl;
+            continue;
+          } // second while exit2
         }
-
-        userChoiceNumber = parseGetlineToInt(inputData);
-
-        if (userChoiceNumber > index || userChoiceNumber < 1)
-          throw exc::IndexOutOfRangeException(inputData);
-
-        userDTOresult = userListDTO[userChoiceNumber - 1];
-
-        exit2 = false;
         break;
-      } // second while exit2
+      }
+        // выбираем нескольких
+      case MessageTarget::Several: {
+
+        std::vector<std::string> usersList;
+        usersList.clear();
+
+        bool exit = true;
+        while (exit) {
+          try {
+            // получаем список получателей через ввод списка
+            std::cout << "Введите номера пользователей через запятую или 0 для отмены: " << std::endl;
+
+            getline(std::cin, inputData);
+
+            if (inputData.empty())
+              throw exc::EmptyInputException();
+
+            if (inputData == "0") {
+              exit = false;
+              return std::nullopt;
+            }
+
+            std::vector<size_t> tempIndexes;
+            tempIndexes.clear();
+
+            // проверяем на наличие недопустимых символов
+            std::size_t utf8SymbolCount = 0;
+            for (int i = 0; i < inputData.size();) {
+
+              std::size_t charLen = getUtf8CharLen(static_cast<unsigned char>(inputData[i]));
+
+              if (i + charLen > inputData.size())
+                throw exc::InvalidCharacterException("");
+
+              std::string utf8Char = inputData.substr(i, charLen);
+
+              ++utf8SymbolCount;
+
+              if (charLen == 1) {
+                char ch = utf8Char[0];
+                if (!std::isdigit(static_cast<unsigned char>(ch)) && ch != ',')
+                  throw exc::InvalidCharacterException(utf8Char);
+                else if (ch != ',') {
+                  // добавляем выбранный логин в список
+
+                  auto index = static_cast<std::size_t>(ch - '0');
+
+                  if (index > 0 && index <= userListDTO.size()) {
+                    // проверяем на дубли
+                    if (std::find(tempIndexes.begin(), tempIndexes.end(), index) == tempIndexes.end()) {
+                      result.push_back(userListDTO[index - 1]);
+                      tempIndexes.push_back(index);
+                    }
+                  } else
+                    throw exc::IndexOutOfRangeException(index);
+                }
+              } // if
+              else
+                throw exc::InvalidCharacterException(utf8Char);
+
+              i += charLen;
+            } // for inputData.Size()
+
+          } // try
+          catch (const exc::ValidationException &ex) {
+            std::cout << " ! " << ex.what() << " Попробуйте еще раз." << std::endl;
+            continue;
+          }
+          exit = false;
+        } // while
+
+        break; // case Several
+      }
+      default:
+        break;
+      }
+
     } // try
     catch (const exc::InvalidCharacterException &ex) {
       std::cout << " ! " << ex.what() << " Попробуйте еще раз." << std::endl;
@@ -105,7 +199,7 @@ UserDTO chooseOneParticipant(ClientSession &clientSession, std::shared_ptr<Chat>
     }
     exit = false;
   } // first while exit
-  return userDTOresult;
+  return result;
 }
 
 bool LoginMenu_1NewChatChooseParticipants(
@@ -117,9 +211,9 @@ bool LoginMenu_1NewChatChooseParticipants(
   case MessageTarget::One: {
     // сообщение только одному пользователю
 
-    const auto userDTO = chooseOneParticipant(clientSession, chat);
+    const auto userDTOList = chooseParticipants(clientSession, chat, MessageTarget::One);
 
-    if (userDTO.passwordhash == "0")
+    if (!userDTOList.has_value())
       return false;
 
     // добавляем отправителя в вектор участников
@@ -127,12 +221,13 @@ bool LoginMenu_1NewChatChooseParticipants(
     chat->addParticipant(clientSession.getActiveUserCl(), 0, false);
 
     // проверяем есть ли получатель уже в системе
-    auto user_ptr = clientSession.getInstance().findUserByLogin(userDTO.login);
+    auto user_ptr = clientSession.getInstance().findUserByLogin(userDTOList.value()[0].login);
 
     if (user_ptr == nullptr) {
 
-      user_ptr = std::make_shared<User>(
-          UserData(userDTO.login, userDTO.userName, userDTO.passwordhash, userDTO.email, userDTO.phone));
+      user_ptr = std::make_shared<User>(UserData(userDTOList.value()[0].login, userDTOList.value()[0].userName,
+                                                 userDTOList.value()[0].passwordhash, userDTOList.value()[0].email,
+                                                 userDTOList.value()[0].phone));
 
       clientSession.getInstance().addUserToSystem(user_ptr);
     }
@@ -153,34 +248,21 @@ bool LoginMenu_1NewChatChooseParticipants(
 
     // сообщение только некоторым пользователям
 
-    bool exit1 = true;
-    std::unordered_map<std::string, UserDTO> participants;
+    const auto userDTOList = chooseParticipants(clientSession, chat, MessageTarget::Several);
+
+    if (!userDTOList.has_value())
+      return false;
 
     // этот цикл по очереди ищет пользователей и добавляет в вектор получателей логинов
-    // while 1
-    while (exit1) {
-      const auto userDTO = chooseOneParticipant(clientSession, chat);
-
-      if (userDTO.passwordhash == "0" && participants.size() == 0)
-        return false;
-      else if (userDTO.passwordhash == "0")
-        exit1 = false;
-      else 	if (!participants.count(userDTO.login))
-        participants.insert({userDTO.login, userDTO});
-
-    } // while 1
-
-    // заполняем вектор участников
-    for (const auto &participant : participants) {
+    for (const auto &userDTO : userDTOList.value()) {
 
       // проверяем есть ли получатель уже в системе
+      auto user_ptr = clientSession.getInstance().findUserByLogin(userDTO.login);
 
-      auto user_ptr = clientSession.getInstance().findUserByLogin(participant.first);
       if (user_ptr == nullptr) {
 
-        user_ptr = std::make_shared<User>(UserData(participant.second.login, participant.second.userName,
-                                                   participant.second.passwordhash, participant.second.email,
-                                                   participant.second.phone));
+        user_ptr = std::make_shared<User>(
+            UserData(userDTO.login, userDTO.userName, userDTO.passwordhash, userDTO.email, userDTO.phone));
 
         clientSession.getInstance().addUserToSystem(user_ptr);
       }
@@ -231,7 +313,6 @@ bool CreateAndSendNewChat(ClientSession &clientSession, MessageTarget target) {
     std::cout << std::endl << "Вот твой чат. В нем всего 0 сообщения(ий). " << std::endl;
 
     bool exitCase2 = true;
-
 
     while (exitCase2) {
       try {

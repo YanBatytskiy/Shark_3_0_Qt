@@ -3,7 +3,8 @@
 // #include "chat_system/chat_system.h"
 #include "system/system_function.h"
 
-UserDTO chooseOneParticipant(ClientSession &clientSession, std::shared_ptr<Chat> &chat_ptr);
+std::optional<std::vector<UserDTO>> chooseParticipants(ClientSession &clientSession, std::shared_ptr<Chat> &chat_ptr,
+                                                       MessageTarget target);
 
 bool LoginMenu_1NewChatChooseParticipants(ClientSession &clientSession, std::shared_ptr<Chat> &chat,
                                           MessageTarget target); // создение нового сообщения путем выбора пользователей
