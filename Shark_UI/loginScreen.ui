@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Вход пользователя</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -93,6 +93,9 @@
       <property name="standardButtons">
        <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
       </property>
+      <property name="centerButtons">
+       <bool>true</bool>
+      </property>
      </widget>
      <widget class="QPushButton" name="registerModeButton">
       <property name="sizePolicy">
@@ -109,6 +112,11 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>loginEdit</tabstop>
+  <tabstop>passwordEdit</tabstop>
+  <tabstop>registerModeButton</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

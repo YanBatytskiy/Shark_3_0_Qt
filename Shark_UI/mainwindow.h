@@ -1,9 +1,9 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "qt_session/qt_session.h"
 #include <QMainWindow>
 #include <memory>
-#include "qt_session/qt_session.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -15,13 +15,13 @@ class MainWindow : public QMainWindow {
   Q_OBJECT
 
 public:
-  MainWindow(std::shared_ptr<Qt_Session> sessionPtr = nullptr, QWidget *parent = nullptr);
+  MainWindow(std::shared_ptr<QtSession> sessionPtr, QWidget *parent = nullptr);
   ~MainWindow();
-  static MainWindow* createSession(std::shared_ptr<Qt_Session> sessionPtr = nullptr);
+  static MainWindow *createSession(std::shared_ptr<QtSession> sessionPtr);
   static int kInstanceCount;
 
 private:
   Ui::MainWindow *ui;
-  std::shared_ptr<Qt_Session> _sessionPtr;
+  std::shared_ptr<QtSession> _sessionPtr;
 };
 #endif // MAINWINDOW_H

@@ -239,6 +239,51 @@ bool engAndFiguresCheck(const std::string &inputData) {
   return true;
 }
 
+bool checkNewLoginPasswordForLimits(const std::string &inputData, std::size_t contentLengthMin,
+                                         std::size_t contentLengthMax, bool isPassword) {
+
+  bool isCapital = false, isNumber = false;
+  std::size_t utf8SymbolCount = 0;
+
+  for (std::size_t i = 0; i < inputData.size();) {
+
+    std::size_t charLen = getUtf8CharLen(static_cast<unsigned char>(inputData[i]));
+
+    if (i + charLen > inputData.size())
+      throw exc::InvalidCharacterException("");
+
+    std::string utf8Char = inputData.substr(i, charLen);
+
+    ++utf8SymbolCount;
+
+    if (charLen == 1) {
+      char ch = utf8Char[0];
+      if (std::isdigit(ch))
+        isNumber = true;
+
+      if (std::isupper(ch))
+        isCapital = true;
+    } // if
+    else
+      return false;
+
+    i += charLen;
+
+  } // for i
+
+  if (utf8SymbolCount < contentLengthMin || utf8SymbolCount > contentLengthMax)
+    return false;
+
+  if (isPassword) {
+    if (!isCapital)
+      return false;
+    if (!isNumber)
+      return false;
+  }
+
+  return true;
+}
+
 // проверяем только на цифры
 bool figuresCheck(const std::string &inputData) {
   for (std::size_t i = 0; i < inputData.size();) {

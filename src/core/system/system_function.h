@@ -76,6 +76,9 @@ Message createOneMessage(const std::string &textContent, const std::shared_ptr<U
 
 bool engAndFiguresCheck(const std::string &inputData);
 
+bool checkNewLoginPasswordForLimits(const std::string &inputData, std::size_t contentLengthMin,
+                                std::size_t contentLengthMax, bool isPassword);
+
 // проверяем только на цифры
 bool figuresCheck(const std::string &inputData);
 
@@ -84,3 +87,4 @@ bool figuresAndCommaCheck(const std::string &inputData);
 
 // экранируем значение для запроса
 std::string makeStringForSQL(const std::string &inputData);
+

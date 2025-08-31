@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Регистрация нового пользователя</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -48,7 +48,7 @@
      <item row="3" column="1">
       <widget class="QLineEdit" name="passwordEdit">
        <property name="toolTip">
-        <string>Не менее 5 и не более 20 символов, только английские буквы и цифры</string>
+        <string>Не менее 5 и не более 20 символов, Мнимум одна заглавная и одна цифра (только латинские буквы)</string>
        </property>
        <property name="toolTipDuration">
         <number>10000</number>
@@ -75,7 +75,7 @@
      <item row="1" column="1">
       <widget class="QLineEdit" name="nameEdit">
        <property name="toolTip">
-        <string>Не менее 3 и не более 20 символов, только английские буквы и цифры</string>
+        <string>Не менее 2 и не более 20 символов, только английские буквы и цифры</string>
        </property>
        <property name="toolTipDuration">
         <number>10000</number>
@@ -126,6 +126,9 @@
       <property name="standardButtons">
        <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
       </property>
+      <property name="centerButtons">
+       <bool>true</bool>
+      </property>
      </widget>
      <widget class="QPushButton" name="toLoginButton">
       <property name="text">
@@ -136,6 +139,14 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+   <tabstop>loginEdit</tabstop>
+   <tabstop>nameEdit</tabstop>
+   <tabstop>passwordEdit</tabstop>
+   <tabstop>passwordConfirmEdit</tabstop>
+   <tabstop>toLoginButton</tabstop>
+   <tabstop>registerButtonBox</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

@@ -51,6 +51,9 @@ file(GLOB_RECURSE CLIENT_SRC CONFIGURE_DEPENDS ${SRC_DIR}/client/*.cpp)
 # убрать client.cpp из списка
 list(FILTER CLIENT_SRC EXCLUDE REGEX ".*/client.cpp$")
 
+# добавь явно новый файл с глобалами
+list(APPEND CLIENT_SRC ${SRC_DIR}/client/client_globals.cpp)
+
 add_library(clientlib STATIC ${CLIENT_SRC})
 target_include_directories(clientlib PUBLIC ${SRC_DIR} ${SRC_DIR}/client ${NLOHMANN_JSON_INCLUDE_DIR})
 target_link_libraries(clientlib PUBLIC core dto sqlite3 Threads::Threads)

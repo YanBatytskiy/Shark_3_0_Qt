@@ -13,7 +13,7 @@
 std::string inputNewLogin(ClientSession &clientSession) {
   while (true) {
     std::size_t dataLengthMin = 5;
-    std::size_t dataLengthMax = 15;
+    std::size_t dataLengthMax = 20;
     std::string prompt;
 
     prompt = "Введите новый Логин либо 0 для выхода. Не менее " +
@@ -44,7 +44,7 @@ std::string inputNewLogin(ClientSession &clientSession) {
 std::string inputNewPassword() {
 
   std::size_t dataLengthMin = 5;
-  std::size_t dataLengthMax = 10;
+  std::size_t dataLengthMax = 20;
   std::string prompt;
 
   prompt = "Введите новый Пароль либо 0 для выхода. Не менее " +
@@ -68,8 +68,8 @@ std::string inputNewPassword() {
  * @param chatSystem Reference to the chat system.
  */
 std::string inputNewName() {
-  std::size_t dataLengthMin = 3;
-  std::size_t dataLengthMax = 10;
+  std::size_t dataLengthMin = 2;
+  std::size_t dataLengthMax = 20;
   std::string prompt;
 
   prompt = "Введите желаемое Имя для отображениялибо 0 для выхода. Не менее " +

@@ -1,24 +1,44 @@
 #include "qt_session.h"
 #include "client_session.h"
 #include "system/picosha2.h"
+#include "system/system_function.h"
 
 // constructors
-Qt_Session::Qt_Session(ClientSession &qtClientSession) : _qtClientSession(qtClientSession) {}
+QtSession::QtSession(ClientSession &qtClientSession) : _qtClientSession(qtClientSession) {}
 
 // getters
-ClientSession &Qt_Session::getQtClientSession() { return _qtClientSession; }
+ClientSession &QtSession::getQtClientSession() { return _qtClientSession; }
 
 // setters
 
 // itilities
-bool Qt_Session::checkLoginPsswordQt(std::string login, std::string password) {
+bool QtSession::checkLoginPsswordQt(std::string login, std::string password) {
 
   auto passHash = picosha2::hash256_hex_string(password);
 
   return _qtClientSession.checkUserPasswordCl(login, passHash);
 }
 
-bool Qt_Session::registerClientOnDeviceQt(std::string login) {
+bool QtSession::registerClientOnDeviceQt(std::string login) { return _qtClientSession.registerClientToSystemCl(login); }
 
-  return _qtClientSession.registerClientToSystemCl(login);
+bool QtSession::inputNewLoginValidationQt(std::string inputData, std::size_t dataLengthMin, std::size_t dataLengthMax) {
+
+  // проверяем только на англ буквы и цифры
+  if (!engAndFiguresCheck(inputData))
+    return false;
+  else
+    return true;
+}
+
+bool QtSession::inputNewPasswordValidationQt(std::string inputData, std::size_t dataLengthMin,
+                                             std::size_t dataLengthMax) {
+
+  // проверяем только на англ буквы и цифры
+  if (!engAndFiguresCheck(inputData))
+    return false;
+
+  if (!checkNewLoginPasswordForLimits(inputData, dataLengthMin, dataLengthMax, true))
+    return false;
+  else
+    return true;
 }
