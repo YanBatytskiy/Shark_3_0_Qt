@@ -6,14 +6,32 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>333</width>
-    <height>140</height>
+    <width>400</width>
+    <height>210</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>Вход пользователя</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0">
+   <property name="leftMargin">
+    <number>3</number>
+   </property>
+   <property name="topMargin">
+    <number>3</number>
+   </property>
+   <property name="rightMargin">
+    <number>3</number>
+   </property>
+   <property name="bottomMargin">
+    <number>3</number>
+   </property>
    <item>
     <widget class="QLabel" name="label_3">
      <property name="text">
@@ -59,7 +77,7 @@
      <item row="1" column="1">
       <widget class="QLineEdit" name="passwordEdit">
        <property name="echoMode">
-        <enum>QLineEdit::EchoMode::Password</enum>
+        <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
        </property>
       </widget>
      </item>
@@ -70,16 +88,25 @@
      <property name="orientation">
       <enum>Qt::Orientation::Vertical</enum>
      </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Policy::Expanding</enum>
+     </property>
      <property name="sizeHint" stdset="0">
       <size>
        <width>20</width>
-       <height>10</height>
+       <height>5</height>
       </size>
      </property>
     </spacer>
    </item>
    <item>
     <widget class="QSplitter" name="splitter">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="orientation">
       <enum>Qt::Orientation::Horizontal</enum>
      </property>
@@ -106,6 +133,9 @@
       </property>
       <property name="text">
        <string>Register new user</string>
+      </property>
+      <property name="autoDefault">
+       <bool>false</bool>
       </property>
      </widget>
     </widget>

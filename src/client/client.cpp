@@ -1,20 +1,20 @@
-#include "client.h"
-#include "chat_system/chat_system.h"
-#include "client/client_session.h"
-#include "menu/1_0_entrance_menu.h"
-#include "menu/1_1_creation.h"
-#include "qt_session/qt_session.h"
-#include "system/system_function.h"
-#include <iostream>
-#include <unistd.h>
+// #include "client.h"
+// #include "chat_system/chat_system.h"
+// #include "client/client_session.h"
+// #include "menu/1_0_entrance_menu.h"
+// #include "menu/1_1_creation.h"
+// #include "qt_session/qt_session.h"
+// #include "system/system_function.h"
+// #include <iostream>
+// #include <unistd.h>
 
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#endif
+// #ifdef _WIN32
+// #include <winsock2.h>
+// #include <ws2tcpip.h>
+// #else
+// #include <arpa/inet.h>
+// #include <netinet/in.h>
+// #endif
 
 //   ChatSystem clientSystem;
 //   ClientSession clientSession(clientSystem);
@@ -22,8 +22,8 @@
 
 int main() {
 
-  std::setlocale(LC_ALL, "");
-  enableUTF8Console();
+  //   std::setlocale(LC_ALL, "");
+  //   enableUTF8Console();
 
   // const std::string envName = getEnvironmentName();
   // const std::string home    = getHomeDir();
@@ -49,52 +49,52 @@ int main() {
 
   // std::cout << "БД открыта: " << dbFile << "\n";
 
-  clientSystem.setIsServerStatus(false);
+  //   clientSystem.setIsServerStatus(false);
 
-  // ищем сервер и создаем соединение
-  if (clientSession.findServerAddress(clientSession.getserverConnectionConfigCl(),
-                                      clientSession.getserverConnectionModeCl())) {
+  //   // ищем сервер и создаем соединение
+  //   if (clientSession.findServerAddress(clientSession.getserverConnectionConfigCl(),
+  //                                       clientSession.getserverConnectionModeCl())) {
 
-    clientSession.createConnection(clientSession.getserverConnectionConfigCl(),
-                                   clientSession.getserverConnectionModeCl());
-    // clientSession.reidentifyClientAfterConnection();
-  } else
-    clientSession.getserverConnectionModeCl() = ServerConnectionMode::Offline;
+  //     clientSession.createConnection(clientSession.getserverConnectionConfigCl(),
+  //                                    clientSession.getserverConnectionModeCl());
+  //     // clientSession.reidentifyClientAfterConnection();
+  //   } else
+  //     clientSession.getserverConnectionModeCl() = ServerConnectionMode::Offline;
 
-    //   short userChoice;
+  //   short userChoice;
 
-    // Main program loop
-    //   while (true) {
-    //     // Reset active user
-    //     clientSession.setActiveUserCl(nullptr);
+  // Main program loop
+  //   while (true) {
+  //     // Reset active user
+  //     clientSession.setActiveUserCl(nullptr);
 
-    //     // Display authentication menu and get user choice
-    //     userChoice = entranceMenu();
+  //     // Display authentication menu and get user choice
+  //     userChoice = entranceMenu();
 
-    //     // Handle user choice for registration, login, or exit
-    //     switch (userChoice) {
-    //     case 0: // Exit the program
-    //       return 0;
-    //     case 1: // Register a new user
-    //       userCreation(clientSession);
-    //       break;
-    //     case 2: // Log in an existing user
-    //       if (userLoginInsystem(clientSession))
-    //         loginMenuChoice(clientSession);
-    //       break;
-    //     default:
-    //       break; // Handle invalid choices
-    //     }
-    //   }
+  //     // Handle user choice for registration, login, or exit
+  //     switch (userChoice) {
+  //     case 0: // Exit the program
+  //       return 0;
+  //     case 1: // Register a new user
+  //       userCreation(clientSession);
+  //       break;
+  //     case 2: // Log in an existing user
+  //       if (userLoginInsystem(clientSession))
+  //         loginMenuChoice(clientSession);
+  //       break;
+  //     default:
+  //       break; // Handle invalid choices
+  //     }
+  //   }
 
-    //   std::cout << std::endl;
+  //   std::cout << std::endl;
 
-#ifdef _WIN32
-  closesocket(socketTmp);
-  WSACleanup();
-#else
-  close(clientSession.getSocketFd());
-#endif
+  // #ifdef _WIN32
+  //   closesocket(socketTmp);
+  //   WSACleanup();
+  // #else
+  //   close(clientSession.getSocketFd());
+  // #endif
 
-  return 0;
+  //   return 0;
 }

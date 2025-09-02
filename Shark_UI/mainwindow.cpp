@@ -23,6 +23,7 @@ MainWindow::~MainWindow() {
 }
 
 MainWindow *MainWindow::createSession(std::shared_ptr<QtSession> sessionPtr) {
+
   chooseLogRegScreen s(sessionPtr);
   auto result = s.exec();
 

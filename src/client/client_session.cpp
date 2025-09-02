@@ -2,14 +2,17 @@
 #include "chat/chat.h"
 #include "chat_system/chat_system.h"
 #include "dto/dto_struct.h"
+#include "errorbus.h"
 #include "exception/login_exception.h"
 #include "exception/network_exception.h"
 #include "exception/validation_exception.h"
+#include "exception_router.h"
 #include "message/message_content_struct.h"
 #include "system/serialize.h"
 #include "system/system_function.h"
 #include "user/user.h"
 #include "user/user_chat_list.h"
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <exception>
@@ -48,13 +51,11 @@ const std::shared_ptr<User> ClientSession::getActiveUserCl() const { return _ins
 
 ChatSystem &ClientSession::getInstance() { return _instance; }
 
-const int &ClientSession::getSocketFd() const { return _socketFd; }
+std::size_t ClientSession::getSocketFd() const { return _socketFd; }
 
 // setters
 
 void ClientSession::setActiveUserCl(const std::shared_ptr<User> &user) { _instance.setActiveUser(user); }
-
-void ClientSession::setSocketFd(const int &socketFd) { _socketFd = socketFd; }
 
 //
 //
@@ -194,10 +195,10 @@ bool ClientSession::checkUserPasswordCl(const std::string &userLogin, const std:
 
   try {
     if (packetListDTOresult.packets.size() != 1)
-      throw exc::WrongPacketSizeException();
+      throw exc_qt::WrongPacketSizeException();
 
     if (packetListDTOresult.packets[0].requestType != RequestType::RqFrClientCheckLogPassword)
-      throw exc::WrongresponceTypeException();
+      throw exc_qt::WrongresponceTypeException();
     else {
       const auto &responceDTO = static_cast<const StructDTOClass<ResponceDTO> &>(
                                     *packetListDTOresult.packets[0].structDTOPtr)
@@ -206,12 +207,25 @@ bool ClientSession::checkUserPasswordCl(const std::string &userLogin, const std:
       return responceDTO.reqResult;
     }
 
-  } catch (const exc::WrongPacketSizeException &ex) {
-    std::cout << "Клиент. Проверка пароля. Неправильное количество пакетов в ответе." << ex.what() << std::endl;
-    return false;
-  } catch (const std::exception &ex) {
-    std::cout << "Клиент. Неизвестная ошибка. " << ex.what() << std::endl;
-    return false;
+  } catch (const exc_qt::WrongPacketSizeException &ex) {
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "Клиент. Проверка пароля. Неправильное количество пакетов в ответе."));
+
+    throw;
+    // return false;
+} catch (const exc_qt::WrongresponceTypeException &ex) {
+	emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+	QStringLiteral(
+		"Клиент. Проверка пароля. Неправильное тип пакета в ответе сервера."));
+		
+		throw;
+		// return false;
+	} catch (const std::exception &ex) {
+		emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+		QStringLiteral("Клиент.Проверка пароля. Неизвестная ошибка."));
+		throw;
+		// return false;
   }
 }
 // transport
@@ -647,8 +661,10 @@ PacketListDTO ClientSession::processingRequestToServer(std::vector<PacketDTO> &p
 
   } // try
   catch (const exc::LostConnectionException &ex) {
-    std::cerr << "Клиент processingRequestToServer: " << ex.what() << std::endl;
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral("Клиент processingRequestToServer: "));
     packetListDTOresult.packets.clear();
+    throw;
   }
   return packetListDTOresult;
 }
@@ -657,6 +673,21 @@ PacketListDTO ClientSession::processingRequestToServer(std::vector<PacketDTO> &p
 //
 //
 // utilities
+
+bool ClientSession::initServerConnection() {
+
+  this->getInstance().setIsServerStatus(false);
+
+  // ищем сервер и создаем соединение
+  if (findServerAddress(getserverConnectionConfigCl(), getserverConnectionModeCl())) {
+
+    createConnection(getserverConnectionConfigCl(), getserverConnectionModeCl());
+    // clientSession.reidentifyClientAfterConnection();
+  } else
+    getserverConnectionModeCl() = ServerConnectionMode::Offline;
+
+  return true;
+}
 
 void ClientSession::resetSessionData() {
   _instance = ChatSystem(); // пересоздание всего chatSystem (users, chats, id)
@@ -698,7 +729,7 @@ bool ClientSession::registerClientToSystemCl(const std::string &login) {
       // std::cout << "packet type: " << static_cast<int>(packet.requestTyfpe)
       //           << std::endl;
       if (packet.requestType != packetDTO.requestType)
-        throw exc::WrongresponceTypeException();
+        throw exc_qt::WrongresponceTypeException();
     }
 
     for (const auto &packet : packetListDTOresult.packets) {
@@ -728,13 +759,19 @@ bool ClientSession::registerClientToSystemCl(const std::string &login) {
         break;
       }
       default:
-        throw exc::WrongresponceTypeException();
+        throw exc_qt::WrongresponceTypeException();
       } // switch
     } // for
 
   } // try
-  catch (const exc::NetworkException &ex) {
-    std::cerr << "Клиент: регистрация на устройстве. " << ex.what() << std::endl;
+  catch (const exc::WrongresponceTypeException &ex) {
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "Клиент: регистрация на устройстве. Неверный тип пакета с сервера."));
+    return false;
+  } catch (const exc::NetworkException &ex) {
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral("Клиент: регистрация на устройстве. Неизвестная ошибка."));
     return false;
   }
 

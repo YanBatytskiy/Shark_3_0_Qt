@@ -85,7 +85,6 @@ public:
 // ошибки сериализации
 class UnsupportedSirializeTypeException : public NetworkException {
 public:
-
   UnsupportedSirializeTypeException() : NetworkException("Неподдерживаемый тип данных сериализации."){};
 };
 

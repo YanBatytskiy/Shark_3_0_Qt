@@ -1,22 +1,13 @@
-#pragma once
-#include "my_exception.h"
+#ifndef EXCEPTION_NETWORK_H
+#define EXCEPTION_NETWORK_H
+#include "errorbus.h"
 
-namespace exc {
+namespace exc_qt {
 
-class NetworkException : public MyException {
+
+class NetworkException : public MyException{
 public:
-  explicit NetworkException(const std::string &message) : MyException("Network Exception: " + message){};
-
-  /**
-   * @brief Конструктор, оборачивающий std::exception.
-   */
-  explicit NetworkException(const std::exception &e)
-      : MyException(std::string("Network Exception (wrapped): ") + e.what()) {}
-
-  /**
-   * @brief Конструктор, оборачивающий неизвестное исключение.
-   */
-  NetworkException() : MyException("Network Exception: неизвестное исключение.") {}
+  explicit NetworkException(const std::string &message) : MyException("Network exception: "+ message) {};
 };
 
 // ошибки соединения
@@ -85,7 +76,6 @@ public:
 // ошибки сериализации
 class UnsupportedSirializeTypeException : public NetworkException {
 public:
-
   UnsupportedSirializeTypeException() : NetworkException("Неподдерживаемый тип данных сериализации."){};
 };
 
@@ -122,15 +112,15 @@ public:
 class InternalDataErrorException : public NetworkException {
 public:
   InternalDataErrorException() : NetworkException("Ошибка обработки пакета DTO "){};
-};
+   };
 
-class WrongresponceTypeException : public NetworkException {
-public:
-  WrongresponceTypeException() : NetworkException("Неправильный тип полученного пакета."){};
-};
-class LastReadMessageException : public NetworkException {
-public:
-  LastReadMessageException() : NetworkException("Ошибка синхронизации последнего прочитанного сообщения."){};
-};
-
-} // namespace exc
+  class WrongresponceTypeException : public NetworkException {
+  public:
+    WrongresponceTypeException() : NetworkException("Неправильный тип полученного пакета."){};
+  };
+  class LastReadMessageException : public NetworkException {
+  public:
+    LastReadMessageException() : NetworkException("Ошибка синхронизации последнего прочитанного сообщения."){};
+  };
+  }
+#endif // EXCEPTION_NETWORK_H

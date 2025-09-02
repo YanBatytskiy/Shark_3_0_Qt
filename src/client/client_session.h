@@ -54,8 +54,7 @@ public:
 
   ChatSystem &getInstance();
 
-  int &getSocketFd();
-  const int &getSocketFd() const;
+  std::size_t getSocketFd() const;
 
   // setters
 
@@ -91,6 +90,8 @@ public:
   //
   //
   // utilities
+
+ bool initServerConnection();
 
   void resetSessionData();
 

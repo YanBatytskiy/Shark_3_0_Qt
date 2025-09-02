@@ -24,7 +24,15 @@ qt_add_executable(Shark_ui
   loginScreen.h loginScreen.cpp loginScreen.ui
   registerScreen.h registerScreen.cpp registerScreen.ui
   chooseLogRegScreen.h chooseLogRegScreen.cpp chooseLogRegScreen.ui
-  chatscreen.h chatscreen.cpp chatscreen.ui
+
+  chatuserdatascreen.h chatuserdatascreen.cpp chatuserdatascreen.ui
+  errorbus.h
+  exception_router.h
+  exception_login.h
+  exception_network.h
+  exception_sql.h
+  exception_valid.h
+
 )
 
 # AUTOUIC/MOC заголовки лежат в бинарной папке

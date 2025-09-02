@@ -9,6 +9,10 @@ void registerScreen::setDatabase(std::shared_ptr<QtSession> sessionPtr) { _sessi
 
 void registerScreen::on_toLoginButton_clicked()
 {
+  ui->loginEdit->clear();
+  ui->nameEdit->clear();
+  ui->passwordEdit->clear();
+  ui->passwordConfirmEdit->clear();
   emit loginRequested();
 }
 

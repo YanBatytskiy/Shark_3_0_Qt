@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_AUTOMOC ON)
+
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
 endif()
@@ -14,6 +16,7 @@ set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 
 find_package(PostgreSQL REQUIRED)
 find_package(Threads REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 
 if(APPLE)
   set(NLOHMANN_JSON_INCLUDE_DIR "/opt/homebrew/include")
@@ -47,16 +50,17 @@ endif()
 
 # ===== client как библиотека для Qt =====
 file(GLOB_RECURSE CLIENT_SRC CONFIGURE_DEPENDS ${SRC_DIR}/client/*.cpp)
-
 # убрать client.cpp из списка
 list(FILTER CLIENT_SRC EXCLUDE REGEX ".*/client.cpp$")
 
-# добавь явно новый файл с глобалами
-list(APPEND CLIENT_SRC ${SRC_DIR}/client/client_globals.cpp)
-
 add_library(clientlib STATIC ${CLIENT_SRC})
-target_include_directories(clientlib PUBLIC ${SRC_DIR} ${SRC_DIR}/client ${NLOHMANN_JSON_INCLUDE_DIR})
-target_link_libraries(clientlib PUBLIC core dto sqlite3 Threads::Threads)
+target_include_directories(clientlib PUBLIC
+  ${SRC_DIR} ${SRC_DIR}/client ${NLOHMANN_JSON_INCLUDE_DIR}
+  ${CMAKE_CURRENT_LIST_DIR}/Shark_UI
+)
+# дать moc увидеть Q_OBJECT в заголовке шины ошибок
+target_sources(clientlib PRIVATE Shark_UI/errorbus.h)
+target_link_libraries(clientlib PUBLIC core dto sqlite3 Threads::Threads Qt6::Core)
 
 # ===== server =====
 file(GLOB_RECURSE SERVER_SRC CONFIGURE_DEPENDS ${SRC_DIR}/server/*.cpp)
