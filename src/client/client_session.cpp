@@ -2,16 +2,22 @@
 #include "chat/chat.h"
 #include "chat_system/chat_system.h"
 #include "dto/dto_struct.h"
-#include "errorbus.h"
-#include "exception/login_exception.h"
-#include "exception/network_exception.h"
-#include "exception/validation_exception.h"
-#include "exception_router.h"
 #include "message/message_content_struct.h"
 #include "system/serialize.h"
 #include "system/system_function.h"
 #include "user/user.h"
 #include "user/user_chat_list.h"
+
+#include "errorbus.h"
+#include "exception_login.h"
+#include "exception_network.h"
+#include "exception_router.h"
+#include "nw_connection_monitor.h"
+#include <QCoreApplication>
+#include <qnamespace.h>
+#include <qobject.h>
+#include <qobjectdefs.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -25,17 +31,52 @@
 #include <unistd.h>
 #include <vector>
 
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#endif
+
+// #include "exception/login_exception.h"
+// #include "exception/network_exception.h"
+// #include "exception/validation_exception.h"
 
 struct sockaddr_in serveraddress, client;
-
+// constructor
 ClientSession::ClientSession(ChatSystem &client) : _instance(client), _socketFd() {}
+
+// threads
+void ClientSession::startConnectionThread() {
+
+  if (_connectionMonitor)
+    return;
+
+  _connectionMonitor = new ConnectionMonitor(nullptr);
+  _connectionMonitor->moveToThread(&_netThread);
+
+  QObject::connect(&_netThread, &QThread::started, _connectionMonitor, &ConnectionMonitor::run);
+  QObject::connect(&_netThread, &QThread::finished, _connectionMonitor, &QObject::deleteLater);
+
+  QObject::connect(_connectionMonitor, &ConnectionMonitor::connectionStateChanged, qApp,
+                   [this](bool online, ServerConnectionMode mode) { this->onConnectionStateChanged(online, mode); });
+  _netThread.start();
+}
+
+void ClientSession::stopConnectionThread() {
+
+  if (!_connectionMonitor)
+    return;
+
+  QMetaObject::invokeMethod(_connectionMonitor, "stop", Qt::QueuedConnection);
+  _netThread.quit();
+  _netThread.wait();
+  _connectionMonitor = nullptr;
+}
+
+void ClientSession::onConnectionStateChanged(bool online, ServerConnectionMode mode) {
+  _statusOnline.store(online, std::memory_order_release);
+  getInstance().setIsServerStatus(online);
+
+  if (!online)
+    exc_qt::ErrorBus::i().error("Потеряно соединение с сервером", "ClientSession");
+}
 
 // getters
 
@@ -93,7 +134,7 @@ const std::vector<UserDTO> ClientSession::findUserByTextPartOnServerCl(const std
       for (const auto &packet : responcePacketListDTO.packets) {
 
         if (packet.requestType != RequestType::RqFrClientFindUserByPart)
-          throw exc::WrongresponceTypeException();
+          throw exc_qt::WrongresponceTypeException();
         else {
           const auto &packetUserDTO = static_cast<const StructDTOClass<UserDTO> &>(*packet.structDTOPtr)
                                           .getStructDTOClass();
@@ -101,9 +142,9 @@ const std::vector<UserDTO> ClientSession::findUserByTextPartOnServerCl(const std
         }
       }
     } else
-      throw exc::WrongPacketSizeException();
+      throw exc_qt::WrongPacketSizeException();
 
-  } catch (const exc::WrongresponceTypeException &ex) {
+  } catch (const exc_qt::WrongresponceTypeException &ex) {
     std::cout << "Клиент. Поиск пользователей по части слова. " << ex.what() << std::endl;
     result.clear();
   } catch (const std::exception &ex) {
@@ -143,10 +184,10 @@ bool ClientSession::checkUserLoginCl(const std::string &userLogin) {
   //  std::vector<PacketDTO> responcePacketListDTO;
   try {
     if (packetListDTOresult.packets.size() != 1)
-      throw exc::WrongPacketSizeException();
+      throw exc_qt::WrongPacketSizeException();
 
     if (packetListDTOresult.packets[0].requestType != RequestType::RqFrClientCheckLogin)
-      throw exc::WrongresponceTypeException();
+      throw exc_qt::WrongresponceTypeException();
     else {
       const auto &responceDTO = static_cast<const StructDTOClass<ResponceDTO> &>(
                                     *packetListDTOresult.packets[0].structDTOPtr)
@@ -155,7 +196,7 @@ bool ClientSession::checkUserLoginCl(const std::string &userLogin) {
       return responceDTO.reqResult;
     }
 
-  } catch (const exc::WrongPacketSizeException &ex) {
+  } catch (const exc_qt::WrongPacketSizeException &ex) {
     std::cout << "Клиент. Проверка логина. Неправильное количество пакетов в ответе." << ex.what() << std::endl;
     return false;
   } catch (const std::exception &ex) {
@@ -213,75 +254,59 @@ bool ClientSession::checkUserPasswordCl(const std::string &userLogin, const std:
                                          "Клиент. Проверка пароля. Неправильное количество пакетов в ответе."));
 
     throw;
-    // return false;
-} catch (const exc_qt::WrongresponceTypeException &ex) {
-	emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-	QStringLiteral(
-		"Клиент. Проверка пароля. Неправильное тип пакета в ответе сервера."));
-		
-		throw;
-		// return false;
-	} catch (const std::exception &ex) {
-		emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-		QStringLiteral("Клиент.Проверка пароля. Неизвестная ошибка."));
-		throw;
-		// return false;
+  } catch (const exc_qt::WrongresponceTypeException &ex) {
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "Клиент. Проверка пароля. Неправильное тип пакета в ответе сервера."));
+
+    throw;
+  } catch (const std::exception &ex) {
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral("Клиент.Проверка пароля. Неизвестная ошибка."));
+    throw;
   }
 }
 // transport
 //
 //
-void ClientSession::reidentifyClientAfterConnection() {
+// void ClientSession::reidentifyClientAfterConnection() {
 
-  UserLoginDTO userLoginDTO;
-  PacketDTO packetDTO;
-  packetDTO.requestType = RequestType::RqFrClientUserConnectMake;
-  packetDTO.structDTOClassType = StructDTOClassType::userLoginDTO;
-  packetDTO.reqDirection = RequestDirection::ClientToSrv;
-  ;
+//   UserLoginDTO userLoginDTO;
+//   PacketDTO packetDTO;
+//   packetDTO.requestType = RequestType::RqFrClientUserConnectMake;
+//   packetDTO.structDTOClassType = StructDTOClassType::userLoginDTO;
+//   packetDTO.reqDirection = RequestDirection::ClientToSrv;
+//   ;
 
-  if (_instance.getActiveUser())
-    userLoginDTO.login = _instance.getActiveUser()->getLogin();
-  else
-    userLoginDTO.login = "";
+//   if (_instance.getActiveUser())
+//     userLoginDTO.login = _instance.getActiveUser()->getLogin();
+//   else
+//     userLoginDTO.login = "";
 
-  packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserLoginDTO>>(userLoginDTO);
+//   packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserLoginDTO>>(userLoginDTO);
 
-  std::vector<PacketDTO> packets{packetDTO};
-  processingRequestToServer(packets, packetDTO.requestType);
-}
+//   std::vector<PacketDTO> packets{packetDTO};
+//   processingRequestToServer(packets, packetDTO.requestType);
+// }
 //
 //
 //
 bool ClientSession::findServerAddress(ServerConnectionConfig &serverConnectionConfig,
                                       ServerConnectionMode &serverConnectionMode) {
 
-  // проверяем систему
-#ifdef _WIN32
-  WSADATA wsaData;
-  if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-    std::cerr << "Client: WSAStartup failed" << std::endl;
-    return false;
-  }
-#endif
-
   // открываем сокет для поиска
   int socketTmp = (socket(AF_INET, SOCK_STREAM, 0));
 
   try {
     if (socketTmp == -1) {
-      throw exc::CreateSocketTypeException();
+      throw exc_qt::CreateSocketTypeException();
     } else {
       // сначала ищем сервер на локальной машине
       sockaddr_in addr{};
       addr.sin_family = AF_INET;
       addr.sin_port = htons(serverConnectionConfig.port);
 
-#ifdef _WIN32
       addr.sin_addr.s_addr = inet_addr(serverConnectionConfig.addressLocalHost.c_str());
-#else
-      addr.sin_addr.s_addr = inet_addr(serverConnectionConfig.addressLocalHost.c_str());
-#endif
 
       int result = connect(socketTmp, (sockaddr *)&addr, sizeof(addr));
 
@@ -289,76 +314,25 @@ bool ClientSession::findServerAddress(ServerConnectionConfig &serverConnectionCo
         serverConnectionConfig.found = true;
         serverConnectionMode = ServerConnectionMode::Localhost;
 
-#ifdef _WIN32
-        closesocket(socketTmp);
-
-#else
         close(socketTmp);
-#endif
         return true;
       }
 
       // эатем пытаемся найти сервер внутри локальной сети
       discoverServerOnLAN(serverConnectionConfig);
       if (serverConnectionConfig.found) {
-        std::cout << "Сервер найден. " << serverConnectionConfig.addressLocalNetwork << ":"
-                  << serverConnectionConfig.port << std::endl;
-
         serverConnectionMode = ServerConnectionMode::LocalNetwork;
-#ifdef _WIN32
-        closesocket(socketTmp);
-
-#else
         close(socketTmp);
-#endif
-        return true;
-      }
-
-      // ищем в интернете
-      // ищем в интернете
-      addrinfo hints{}, *res = nullptr;
-      hints.ai_family = AF_INET;
-      hints.ai_socktype = SOCK_STREAM;
-
-      int gaiResult = getaddrinfo(serverConnectionConfig.addressInternet.c_str(), nullptr, &hints, &res);
-      if (gaiResult != 0 || res == nullptr) {
-        addr.sin_addr.s_addr = INADDR_NONE;
-      } else {
-        sockaddr_in *ipv4 = (sockaddr_in *)res->ai_addr;
-        addr.sin_addr = ipv4->sin_addr;
-        freeaddrinfo(res);
-      }
-
-      addr.sin_family = AF_INET;
-      addr.sin_port = htons(serverConnectionConfig.port);
-
-      result = connect(socketTmp, (sockaddr *)&addr, sizeof(addr));
-      if (result == 0) {
-        std::cout << "Сервер найден. " << serverConnectionConfig.addressInternet << ":" << serverConnectionConfig.port
-                  << std::endl;
-        serverConnectionConfig.found = true;
-        serverConnectionMode = ServerConnectionMode::Internet;
-#ifdef _WIN32
-        closesocket(socketTmp);
-#else
-        close(socketTmp);
-#endif
         return true;
       }
     }
   } // try
-  catch (const exc::CreateSocketTypeException &ex) {
-    std::cerr << "Client: " << ex.what() << std::endl;
+  catch (const exc_qt::CreateSocketTypeException &ex) {
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()), QStringLiteral("Клиент. Поиск сервера."));
   }
 
-#ifdef _WIN32
-  closesocket(socketTmp);
-  WSACleanup();
-#else
   close(socketTmp);
-#endif
-
-  std::cout << "Сервер нигде не найден. " << std::endl;
+  serverConnectionMode = ServerConnectionMode::Offline;
   return false;
 }
 //
@@ -394,43 +368,26 @@ int ClientSession::createConnection(ServerConnectionConfig &serverConnectionConf
     }
     break;
   }
-  case ServerConnectionMode::Internet: {
-    serveraddress.sin_addr.s_addr = inet_addr(serverConnectionConfig.addressInternet.c_str());
-    break;
-  }
   default:
     break;
   }
-
-  // проверяем систему
-#ifdef _WIN32
-  WSADATA wsaData;
-  if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-    std::cerr << "Client: WSAStartup failed" << std::endl;
-    return false;
-  }
-#endif
 
   // открываем сокет для поиска
   int socketTmp = (socket(AF_INET, SOCK_STREAM, 0));
 
   try {
     if (socketTmp == -1)
-      throw exc::CreateSocketTypeException();
+      throw exc_qt::CreateSocketTypeException();
     else {
       if (connect(socketTmp, (sockaddr *)&serveraddress, sizeof(serveraddress)) < 0)
-        throw exc::ConnectionToServerException();
+        throw exc_qt::ConnectionToServerException();
       else
         _socketFd = socketTmp;
     }
   } // try
-  catch (const exc::NetworkException &ex) {
+  catch (const exc_qt::NetworkException &ex) {
     std::cerr << "Client: " << ex.what() << std::endl;
-#ifdef _WIN32
-    closesocket(socketTmp);
-#else
     close(socketTmp);
-#endif
     return -1;
   }
   return _socketFd;
@@ -444,7 +401,7 @@ bool ClientSession::discoverServerOnLAN(ServerConnectionConfig &serverConnection
   try {
     int udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
     if (udpSocket < 0) {
-      throw exc::CreateSocketTypeException();
+      throw exc_qt::CreateSocketTypeException();
     }
 
     // Включаем broadcast
@@ -480,54 +437,34 @@ bool ClientSession::discoverServerOnLAN(ServerConnectionConfig &serverConnection
 
     close(udpSocket);
     return true;
-  } catch (const exc::CreateSocketTypeException &ex) {
-    std::cerr << "UDP: " << ex.what() << std::endl;
+  } catch (const exc_qt::CreateSocketTypeException &ex) {
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()), QStringLiteral("Клиент. Поиск в LAN."));
     serverConnectionConfig.found = false;
-    return false;
+    throw;
   }
-}
-//
-//
-//
-bool ClientSession::checkResponceServer() {
-  // проверяем соединение
-  int error = 0;
-  socklen_t len = sizeof(error);
-  int result = getsockopt(_socketFd, SOL_SOCKET, SO_ERROR, &error, &len);
-
-  try {
-    if (result != 0 || error != 0) {
-
-      int resultConnection = createConnection(getserverConnectionConfigCl(), getserverConnectionModeCl());
-      if (resultConnection <= 0)
-        throw exc::LostConnectionException();
-    }
-
-  } catch (const exc::LostConnectionException &ex) {
-    std::cerr << "Клиент: " << ex.what() << std::endl;
-
-    return false;
-  }
-  return true;
 }
 //
 //
 //
 PacketListDTO ClientSession::getDatafromServer(const std::vector<std::uint8_t> &packetListSend) {
 
-  PacketListDTO packetListDTOresult;
-  packetListDTOresult.packets.clear();
-
-  if (!checkResponceServer())
-    return packetListDTOresult;
-
-  // проверка
-  // for (std::uint8_t b : packetListSend) {
-  //   std::cerr << static_cast<int>(b) << " ";
-  // }
-  // std::cerr << std::endl;
-
   try {
+
+    if (!_statusOnline.load(std::memory_order_acquire))
+      throw exc_qt::ConnectionToServerException();
+
+    PacketListDTO packetListDTOresult;
+    packetListDTOresult.packets.clear();
+
+    // if (!checkResponceServer())
+    //   return packetListDTOresult;
+
+    // проверка
+    // for (std::uint8_t b : packetListSend) {
+    //   std::cerr << static_cast<int>(b) << " ";
+    // }
+    // std::cerr << std::endl;
 
     // 1. Добавляем 4 байта длины в начало
     std::vector<std::uint8_t> packetWithSize;
@@ -546,79 +483,146 @@ PacketListDTO ClientSession::getDatafromServer(const std::vector<std::uint8_t> &
 
     // Очищаем входящий буфер
     std::vector<std::uint8_t> drainBuf(4096);
-    while (recv(_socketFd, drainBuf.data(), drainBuf.size(), 0) > 0) {
+    try {
+      for (;;) {
+        ssize_t n = ::recv(_socketFd, drainBuf.data(), drainBuf.size(), MSG_DONTWAIT);
+        if (n > 0)
+          continue;
+        if (n == 0) {
+          _statusOnline.store(false, std::memory_order_release);
+          throw exc_qt::ConnectionToServerException();
+        }
+        if (n < 0) {
+          if (errno == EAGAIN || errno == EWOULDBLOCK)
+            break;
+          if (errno == EINTR)
+            continue;
+          _statusOnline.store(false, std::memory_order_release);
+          throw exc_qt::ReceiveDataException();
+        }
+      } // for
+    } catch (...) {
+      fcntl(_socketFd, F_SETFL, flags);
+      throw;
     }
 
     // Возвращаем исходный режим
     fcntl(_socketFd, F_SETFL, flags);
 
-    ssize_t bytesSent = send(_socketFd, packetWithSize.data(), packetWithSize.size(), 0);
+    // 3. Отправка
+    std::size_t totalSent = 0;
+    const std::size_t need = packetWithSize.size();
 
-    if (bytesSent <= 0 || static_cast<std::size_t>(bytesSent) != packetWithSize.size())
-      throw exc::SendDataException();
+    while (totalSent < need) {
+      ssize_t bytesSent = ::send(_socketFd, packetWithSize.data() + totalSent, need - totalSent,
+#ifdef MSG_NOSIGNAL
+                                 MSG_NOSIGNAL
+#else
+                                 0
+#endif
+      );
 
-    // получаем ответ
-    len = 0;
-    std::uint8_t lenBuf[4];
-    std::size_t total = 0;
-    while (total < 4) {
-      ssize_t r = recv(_socketFd, lenBuf + total, 4 - total, 0);
-      if (r <= 0)
-        throw exc::ReceiveDataException();
-      total += r;
-    }
+      if (bytesSent > 0) {
+        totalSent += static_cast<std::size_t>(bytesSent);
+        continue;
+      }
 
-    std::memcpy(&len, lenBuf, 4);
-    len = ntohl(len);
+      if (bytesSent < 0) {
+        if (errno == EINTR)
+          continue;
 
-    std::vector<std::uint8_t> buffer(len);
-    ssize_t bytesReceived = 0;
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+          pollfd pfd{};
+          pfd.fd = _socketFd;
+          pfd.events = POLLOUT;
+          int pr = ::poll(&pfd, 1, 1000);
+          if (pr > 0 && (pfd.revents & POLLOUT))
+            continue;
 
-    while (bytesReceived < len) {
-      ssize_t bytes = recv(_socketFd, buffer.data() + bytesReceived, len - bytesReceived, 0);
-      if (bytes <= 0)
-        throw exc::ReceiveDataException();
+          _statusOnline.store(false, std::memory_order_release);
+          throw exc_qt::SendDataException();
+        }
 
-      bytesReceived += bytes;
-    }
+        if (errno == EPIPE || errno == ECONNRESET) {
+          _statusOnline.store(false, std::memory_order_release);
+          throw exc_qt::ConnectionToServerException();
+        }
 
-    // проверка
-    // std::cout << "[DEBUG] buffer.size() = " << buffer.size() << std::endl;
-    // for (std::size_t i = 0; i < buffer.size(); ++i)
-    //   std::cout << std::hex << static_cast<int>(buffer[i]) << " ";
-    // std::cout << std::dec << std::endl;
+        _statusOnline.store(false, std::memory_order_release);
+        throw exc_qt::SendDataException();
+      };
 
-    // проверка
-    // std::cerr << "[DEBUG] Получено от сервера: " << bytesReceived << " байт" << std::endl;
-    // for (std::size_t i = 0; i < buffer.size(); ++i) {
-    //   std::cerr << static_cast<int>(buffer[i]) << " ";
-    // }
-    // std::cerr << std::endl;
+      // 4. Приём заголовка длины (4 байта)
+      len = 0;
+      std::uint8_t lenBuf[4];
+      std::size_t total = 0;
+      while (total < 4) {
+        ssize_t r = recv(_socketFd, lenBuf + total, 4 - total, 0);
+        if (r <= 0)
+          throw exc_qt::ReceiveDataException();
+        total += r;
+      }
 
-    std::vector<PacketDTO> responcePacketListDTOVector;
-    responcePacketListDTOVector = deSerializePacketList(buffer);
+      std::memcpy(&len, lenBuf, 4);
+      len = ntohl(len);
 
-    for (const auto &pct : responcePacketListDTOVector)
-      packetListDTOresult.packets.push_back(pct);
+      // 5. Приём тела
+      std::vector<std::uint8_t> buffer(len);
+      ssize_t bytesReceived = 0;
 
-    // for (const auto &packet : packetListDTOresult.packets) {
-    //   std::cerr << "[CLIENT DEBUG] Получен пакет requestType = " << static_cast<int>(packet.requestType) <<
-    //   std::endl;
-    // }
+      while (bytesReceived < len) {
+        ssize_t bytes = recv(_socketFd, buffer.data() + bytesReceived, len - bytesReceived, 0);
+        if (bytes <= 0)
+          throw exc_qt::ReceiveDataException();
 
-    if (packetListDTOresult.packets.empty())
-      throw exc::ReceiveDataException();
+        bytesReceived += bytes;
+      }
+
+      // проверка
+      // std::cout << "[DEBUG] buffer.size() = " << buffer.size() << std::endl;
+      // for (std::size_t i = 0; i < buffer.size(); ++i)
+      //   std::cout << std::hex << static_cast<int>(buffer[i]) << " ";
+      // std::cout << std::dec << std::endl;
+
+      // проверка
+      // std::cerr << "[DEBUG] Получено от сервера: " << bytesReceived << " байт" << std::endl;
+      // for (std::size_t i = 0; i < buffer.size(); ++i) {
+      //   std::cerr << static_cast<int>(buffer[i]) << " ";
+      // }
+      // std::cerr << std::endl;
+
+      std::vector<PacketDTO> responcePacketListDTOVector;
+      responcePacketListDTOVector = deSerializePacketList(buffer);
+
+      for (const auto &pct : responcePacketListDTOVector)
+        packetListDTOresult.packets.push_back(pct);
+
+      // for (const auto &packet : packetListDTOresult.packets) {
+      //   std::cerr << "[CLIENT DEBUG] Получен пакет requestType = " << static_cast<int>(packet.requestType) <<
+      //   std::endl;
+      // }
+
+      if (packetListDTOresult.packets.empty())
+        throw exc_qt::ReceiveDataException();
+    } // try
   } // try
-  catch (const exc::SendDataException &ex) {
-    std::cerr << "Клиент getDatafromServer: " << ex.what() << std::endl;
-    packetListDTOresult.packets.clear();
-    return packetListDTOresult;
-  } catch (const exc::ReceiveDataException &ex) {
-    std::cerr << "Клиент getDatafromServer: " << ex.what() << std::endl;
-    packetListDTOresult.packets.clear();
-    return packetListDTOresult;
+  catch (const exc_qt::ConnectionToServerException &ex) {
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral("Клиент. Потеряно соединение с сервером."));
+    throw;
+    // return packetListDTOresult;
+  } catch (const exc_qt::SendDataException &ex) {
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()), QStringLiteral("Клиент getDatafromServer: ."));
+    throw;
+    // packetListDTOresult.packets.clear();
+    // return packetListDTOresult;
+  } catch (const exc_qt::ReceiveDataException &ex) {
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()), QStringLiteral("Клиент getDatafromServer: ."));
+    throw;
+    // packetListDTOresult.packets.clear();
+    // return packetListDTOresult;
   }
-  return packetListDTOresult;
+  //   return packetListDTOresult;
 }
 //
 //
@@ -660,7 +664,7 @@ PacketListDTO ClientSession::processingRequestToServer(std::vector<PacketDTO> &p
     packetListDTOresult = getDatafromServer(packetListBinarySend);
 
   } // try
-  catch (const exc::LostConnectionException &ex) {
+  catch (const exc_qt::LostConnectionException &ex) {
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
                                      QStringLiteral("Клиент processingRequestToServer: "));
     packetListDTOresult.packets.clear();
@@ -682,7 +686,6 @@ bool ClientSession::initServerConnection() {
   if (findServerAddress(getserverConnectionConfigCl(), getserverConnectionModeCl())) {
 
     createConnection(getserverConnectionConfigCl(), getserverConnectionModeCl());
-    // clientSession.reidentifyClientAfterConnection();
   } else
     getserverConnectionModeCl() = ServerConnectionMode::Offline;
 
@@ -764,12 +767,12 @@ bool ClientSession::registerClientToSystemCl(const std::string &login) {
     } // for
 
   } // try
-  catch (const exc::WrongresponceTypeException &ex) {
+  catch (const exc_qt::WrongresponceTypeException &ex) {
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
                                      QStringLiteral(
                                          "Клиент: регистрация на устройстве. Неверный тип пакета с сервера."));
     return false;
-  } catch (const exc::NetworkException &ex) {
+  } catch (const exc_qt::NetworkException &ex) {
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
                                      QStringLiteral("Клиент: регистрация на устройстве. Неизвестная ошибка."));
     return false;
@@ -814,8 +817,8 @@ bool ClientSession::createUserCl(std::shared_ptr<User> &user) {
     if (packet.reqResult)
       this->_instance.addUserToSystem(user);
     else
-      throw exc::CreateUserException();
-  } catch (const exc::NetworkException &ex) {
+      throw exc_qt::CreateUserException();
+  } catch (const exc_qt::NetworkException &ex) {
     std::cerr << "Клиент: " << ex.what() << std::endl;
     return false;
   }
@@ -860,17 +863,17 @@ bool ClientSession::createNewChatCl(std::shared_ptr<Chat> &chat) {
 
   try {
     if (responcePacketListDTO.packets.empty()) {
-      throw exc::EmptyPacketException();
+      throw exc_qt::EmptyPacketException();
     } else {
       if (responcePacketListDTO.packets[0].requestType != RequestType::RqFrClientCreateChat)
-        throw exc::WrongresponceTypeException();
+        throw exc_qt::WrongresponceTypeException();
       else {
         const auto &packetDTO = static_cast<const StructDTOClass<ResponceDTO> &>(
                                     *responcePacketListDTO.packets[0].structDTOPtr)
                                     .getStructDTOClass();
 
         if (!packetDTO.reqResult)
-          throw exc::CreateChatException();
+          throw exc_qt::CreateChatException();
         else {
           //   std::cout << "[DEBUG] anyNumber = '" << packetDTO.anyNumber << "'" << std::endl;
           auto generalChatId = packetDTO.anyNumber;
@@ -882,7 +885,7 @@ bool ClientSession::createNewChatCl(std::shared_ptr<Chat> &chat) {
           chat->getMessages().begin()->second->setMessageId(generalMessageId);
 
           if (chat->getMessages().empty())
-            throw exc::CreateMessageException();
+            throw exc_qt::CreateMessageException();
 
           // добавляем чат в систему
           _instance.addChatToInstance(chat);
@@ -890,22 +893,22 @@ bool ClientSession::createNewChatCl(std::shared_ptr<Chat> &chat) {
       }
     }
   } // try
-  catch (const exc::WrongresponceTypeException &ex) {
+  catch (const exc_qt::WrongresponceTypeException &ex) {
     std::cout << "Клиент. createNewChatCl. " << ex.what() << std::endl;
     return false;
-  } catch (const exc::EmptyPacketException &ex) {
+  } catch (const exc_qt::EmptyPacketException &ex) {
     std::cout << "Клиент. createNewChatCl. " << ex.what() << std::endl;
     return false;
-  } catch (const exc::CreateChatException &ex) {
+  } catch (const exc_qt::CreateChatException &ex) {
     std::cout << "Клиент. createNewChatCl. " << ex.what() << std::endl;
     return false;
-  } catch (const exc::CreateChatIdException &ex) {
+  } catch (const exc_qt::CreateChatIdException &ex) {
     std::cout << "Клиент. createNewChatCl. " << ex.what() << std::endl;
     return false;
-  } catch (const exc::CreateMessageIdException &ex) {
+  } catch (const exc_qt::CreateMessageIdException &ex) {
     std::cout << "Клиент. createNewChatCl. " << ex.what() << std::endl;
     return false;
-  } catch (const exc::CreateMessageException &ex) {
+  } catch (const exc_qt::CreateMessageException &ex) {
     std::cout << "Клиент. createNewChatCl. " << ex.what() << std::endl;
     return false;
   }
@@ -928,7 +931,7 @@ MessageDTO ClientSession::fillOneMessageDTOFromCl(const std::shared_ptr<Message>
   MessageContentDTO temContent;
   temContent.messageContentType = MessageContentType::Text;
   if (message->getContent().empty())
-    throw exc::UnknownException("Пустой контент сообщения");
+    throw exc_qt::UnknownException("Пустой контент сообщения");
   auto contentElement = message->getContent().front();
 
   auto contentTextPtr = std::dynamic_pointer_cast<MessageContent<TextContent>>(contentElement);
@@ -970,13 +973,13 @@ bool ClientSession::createMessageCl(const Message &message, std::shared_ptr<Chat
   try {
 
     if (responcePacketListDTO.packets.empty())
-      throw exc::EmptyPacketException();
+      throw exc_qt::EmptyPacketException();
 
     if (responcePacketListDTO.packets.size() > 1)
-      throw exc::WrongPacketSizeException();
+      throw exc_qt::WrongPacketSizeException();
 
     if (responcePacketListDTO.packets[0].requestType != RequestType::RqFrClientCreateMessage)
-      throw exc::WrongresponceTypeException();
+      throw exc_qt::WrongresponceTypeException();
 
     // доастали пакет
     const auto &packetDTO = static_cast<const StructDTOClass<ResponceDTO> &>(
@@ -984,31 +987,31 @@ bool ClientSession::createMessageCl(const Message &message, std::shared_ptr<Chat
                                 .getStructDTOClass();
 
     if (!packetDTO.reqResult)
-      throw exc::CreateMessageException();
+      throw exc_qt::CreateMessageException();
     else {
       auto newMessageId = parseGetlineToSizeT(packetDTO.anyString);
 
       if (chat_ptr->getMessages().empty())
-        throw exc::CreateMessageException();
+        throw exc_qt::CreateMessageException();
 
       message_ptr->setMessageId(newMessageId);
 
       chat_ptr->addMessageToChat(message_ptr, user, false);
     }
-  } catch (const exc::EmptyPacketException &ex) {
+  } catch (const exc_qt::EmptyPacketException &ex) {
     std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
     return false;
-  } catch (const exc::WrongPacketSizeException &ex) {
+  } catch (const exc_qt::WrongPacketSizeException &ex) {
     std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
     return false;
-  } catch (const exc::WrongresponceTypeException &ex) {
+  } catch (const exc_qt::WrongresponceTypeException &ex) {
     std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
     return false;
 
-  } catch (const exc::CreateMessageException &ex) {
+  } catch (const exc_qt::CreateMessageException &ex) {
     std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
     return false;
-  } catch (const exc::ValidationException &ex) {
+  } catch (const exc_qt::ValidationException &ex) {
     std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
     return false;
   }
@@ -1045,29 +1048,29 @@ bool ClientSession::sendLastReadMessageFromClient(const std::shared_ptr<Chat> &c
 
   try {
     if (responcePacketListDTO.packets.empty()) {
-      throw exc::EmptyPacketException();
+      throw exc_qt::EmptyPacketException();
     } else {
       if (responcePacketListDTO.packets[0].requestType != RequestType::RqFrClientSetLastReadMessage)
-        throw exc::WrongresponceTypeException();
+        throw exc_qt::WrongresponceTypeException();
       else {
         const auto &packetDTO = static_cast<const StructDTOClass<ResponceDTO> &>(
                                     *responcePacketListDTO.packets[0].structDTOPtr)
                                     .getStructDTOClass();
 
         if (!packetDTO.reqResult)
-          throw exc::LastReadMessageException();
+          throw exc_qt::LastReadMessageException();
         else
           return true;
       }
     }
   } // try
-  catch (const exc::WrongresponceTypeException &ex) {
+  catch (const exc_qt::WrongresponceTypeException &ex) {
     std::cout << "Клиент. sendLastReadMessageFromClient. " << ex.what() << std::endl;
     return false;
-  } catch (const exc::EmptyPacketException &ex) {
+  } catch (const exc_qt::EmptyPacketException &ex) {
     std::cout << "Клиент. sendLastReadMessageFromClient. " << ex.what() << std::endl;
     return false;
-  } catch (const exc::LastReadMessageException &ex) {
+  } catch (const exc_qt::LastReadMessageException &ex) {
     std::cout << "Клиент. sendLastReadMessageFromClient. " << ex.what() << std::endl;
     return false;
   }
@@ -1113,7 +1116,7 @@ void ClientSession::setOneMessageDTO(const MessageDTO &messageDTO, const std::sh
   // упрощенная передача только одного текстового сообщения
 
   if (messageDTO.messageContent.empty())
-    throw exc::UnknownException("DTO-сообщение не содержит содержимого");
+    throw exc_qt::UnknownException("DTO-сообщение не содержит содержимого");
 
   auto message = createOneMessage(messageDTO.messageContent[0].payload, sender, messageDTO.timeStamp,
                                   messageDTO.messageId);
@@ -1252,7 +1255,7 @@ bool ClientSession::checkAndAddParticipantToSystem(const std::vector<std::string
             continue; // Пропускаем чужие пакеты
 
           if (responcePacket.structDTOClassType != StructDTOClassType::userDTO)
-            throw exc::WrongresponceTypeException();
+            throw exc_qt::WrongresponceTypeException();
 
           const auto &userDTO = static_cast<const StructDTOClass<UserDTO> &>(*responcePacket.structDTOPtr)
                                     .getStructDTOClass();
@@ -1281,7 +1284,7 @@ bool ClientSession::checkAndAddParticipantToSystem(const std::vector<std::string
       }
     }
   } // try
-  catch (const exc::WrongresponceTypeException &ex) {
+  catch (const exc_qt::WrongresponceTypeException &ex) {
     std::cerr << "Клиент: добавление участников. " << ex.what() << std::endl;
     return false;
   }
@@ -1398,11 +1401,11 @@ std::optional<ChatDTO> ClientSession::FillForSendOneChatDTOFromClient(const std:
 
       } // if user_ptr
       else
-        throw exc::UserNotFoundException();
+        throw exc_qt::UserNotFoundException();
     } // for participants
   }
   // try
-  catch (const exc::UserNotFoundException &ex) {
+  catch (const exc_qt::UserNotFoundException &ex) {
     std::cerr << "Клиент: FillForSendOneChatDTOFromClient. " << ex.what() << std::endl;
     return std::nullopt;
   }

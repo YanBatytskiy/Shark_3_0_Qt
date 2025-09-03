@@ -1,13 +1,14 @@
 #include "qt_session.h"
+#include "chat_system/chat_system.h"
 #include "client_session.h"
 #include "system/picosha2.h"
 #include "system/system_function.h"
 
 // constructors
-QtSession::QtSession(ClientSession &qtClientSession) : _qtClientSession(qtClientSession) {}
+QtSession::QtSession(ChatSystem& qtClientSession) : _qtClientSession(qtClientSession) {}
 
 // getters
-ClientSession &QtSession::getQtClientSession() { return _qtClientSession; }
+ClientSession &QtSession::getQtClientSession() { return _qtClientSession;; }
 
 // setters
 
@@ -15,7 +16,7 @@ ClientSession &QtSession::getQtClientSession() { return _qtClientSession; }
 bool QtSession::checkLoginPsswordQt(std::string login, std::string password) {
 
   auto passHash = picosha2::hash256_hex_string(password);
-
+ 
   return _qtClientSession.checkUserPasswordCl(login, passHash);
 }
 

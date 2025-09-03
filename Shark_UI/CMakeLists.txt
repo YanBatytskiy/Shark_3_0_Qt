@@ -10,6 +10,7 @@ if(NOT TARGET dto)
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -32,6 +33,7 @@ qt_add_executable(Shark_ui
   exception_network.h
   exception_sql.h
   exception_valid.h
+  nw_connection_monitor.h nw_connection_monitor.cpp
 
 )
 
@@ -48,6 +50,7 @@ target_link_libraries(Shark_ui PRIVATE
   core
   dto
 )
+target_link_libraries(Shark_ui PRIVATE Qt6::Core)
 
 target_include_directories(Shark_ui PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}                # Shark_UI/*

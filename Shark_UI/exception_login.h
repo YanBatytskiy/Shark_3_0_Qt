@@ -1,6 +1,8 @@
-#ifndef EXCEPTION_LOGIN_H
-#define EXCEPTION_LOGIN_H
+#ifndef SHARK_UI_EXCEPTION_LOGIN_H
+#define SHARK_UI_EXCEPTION_LOGIN_H
 #include "errorbus.h"
+
+namespace exc_qt {
 
 class LoginException : public MyException{
 public:
@@ -16,5 +18,5 @@ class IncorrectPasswordException : public LoginException {
 public:
   IncorrectPasswordException() : LoginException("!!!Неверный пароль."){};
 };
-
+}
 #endif // EXCEPTION_LOGIN_H

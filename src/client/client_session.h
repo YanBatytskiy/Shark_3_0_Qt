@@ -6,26 +6,23 @@
 #include <optional>
 #include <cstdint>
 
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#endif
 
+#include <QThread>
+#include <qthread.h>
+
+class ConnectionMonitor;
 
 enum class ServerConnectionMode {
   Localhost,    // на этом же компьютере
   LocalNetwork, // внутри LAN (UDP discovery)
-  Internet,     // через DDNS / внешний IP
   Offline       //
 };
 
 struct ServerConnectionConfig {
   std::string addressLocalHost = "127.0.0.1";
   std::string addressLocalNetwork = "";
-  std::string addressInternet = "https://yan2201moscowoct.ddns.net";
   std::uint16_t port = 50000;
   bool found = false;
 };
@@ -37,9 +34,21 @@ private:
   ServerConnectionConfig _serverConnectionConfig;
   ServerConnectionMode _serverConnectionMode;
 
+  QThread _netThread;
+  ConnectionMonitor *_connectionMonitor{nullptr};
+  std::atomic_bool _statusOnline{false};
+
+public slots:
+  void onConnectionStateChanged(bool online, ServerConnectionMode mode);
+
 public:
   // constructors
   ClientSession(ChatSystem &client);
+
+  // threads
+
+  void startConnectionThread();
+  void stopConnectionThread();
 
   // getters
   ServerConnectionConfig &getserverConnectionConfigCl();
@@ -73,15 +82,13 @@ public:
 
   // transport
 
-  void reidentifyClientAfterConnection();
+//   void reidentifyClientAfterConnection();
 
   bool findServerAddress(ServerConnectionConfig &serverConnectionConfig, ServerConnectionMode &serverConnectionMode);
 
   int createConnection(ServerConnectionConfig &serverConnectionConfig, ServerConnectionMode &serverConnectionMode);
 
   bool discoverServerOnLAN(ServerConnectionConfig &serverConnectionConfig);
-
-  bool checkResponceServer();
 
   PacketListDTO getDatafromServer(const std::vector<std::uint8_t> &packetListSend);
 

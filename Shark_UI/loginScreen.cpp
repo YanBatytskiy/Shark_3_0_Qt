@@ -6,6 +6,13 @@
 
 loginScreen::loginScreen(QWidget *parent) : QDialog(parent), ui(new Ui::loginScreen) {
   ui->setupUi(this);
+  QString serverDataText;
+
+ //label->setStyleSheet("background-color: red; border-radius: 8px;");
+//   ServerConnectionMode mode = _sessionPtr->getQtClientSession().getserverConnectionModeCl();
+//   if (mode == ServerConnectionMode::Localhost) serverDataText = "Подключено к серверу внутри рабочей станции.\n";
+//   else if (mode == ServerConnectionMode::LocalNetwork) serverDataText = "Подключено к серверу внути локальной сети.\n";
+//   else if (mode == ServerConnectionMode::Offline) serverDataText = "Подключение к серверу не удалось. Режим Offline.\n";
 }
 
 loginScreen::~loginScreen() { delete ui; }
@@ -37,9 +44,6 @@ emit exc_qt::ErrorBus::i().error(tr("Login or Password is wrong"), "login");    
     return;
   }
     catch (const std::exception&) {
-
-      // } catch (const exc_qt::NetworkException& ex) {
-      // emit exc_qt::ErrorBus::i().error(QString::fromStdString(ex.what()), "network");
     return;
   }
 }

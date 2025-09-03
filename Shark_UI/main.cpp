@@ -8,6 +8,7 @@
 #include "chat_system/chat_system.h"
 #include "client/client_session.h"
 #include "qt_session/qt_session.h"
+#include "nw_connection_monitor.h"
 #include "errorbus.h"
 #include <QMessageBox>
 #include <QObject>
@@ -28,11 +29,12 @@ int main(int argc, char *argv[])
 
 
   ChatSystem  clientSystem;
-  ClientSession clientSession(clientSystem);
+  // ClientSession clientSession(clientSystem);
 
-  clientSession.initServerConnection();
+  auto sessionPtr = std::make_shared<QtSession>(clientSystem);
 
-  auto sessionPtr = std::make_shared<QtSession>(clientSession);
+  ConnectionMonitor connectionMonitor(&sessionPtr->getQtClientSession());
+
 
   auto w = MainWindow::createSession(sessionPtr);
 
@@ -41,7 +43,7 @@ int main(int argc, char *argv[])
   else
     return 0;
 
-  close(clientSession.getSocketFd());
+  close(sessionPtr->getQtClientSession().getSocketFd());
   return app.exec();
 
 

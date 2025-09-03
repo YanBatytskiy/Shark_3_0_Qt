@@ -12,7 +12,7 @@ signals:
   void error(QString message, QString context);
 };
 
-}
+
 
 class MyException : public std::exception {
 private:
@@ -23,5 +23,5 @@ public:
 
   const char *what() const noexcept override { return _message.c_str(); };
 };
-
+};
 #endif // ERRORBUS_H

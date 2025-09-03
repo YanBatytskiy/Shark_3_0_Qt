@@ -8,7 +8,7 @@ private:
 
 public:
   // constructor
-explicit QtSession(ClientSession &qtClientSession);
+explicit QtSession(ChatSystem &qtClientSession);
 
   // getters
   ClientSession &getQtClientSession();
