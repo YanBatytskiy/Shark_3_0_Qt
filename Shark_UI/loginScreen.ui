@@ -45,7 +45,7 @@
        </size>
       </property>
       <property name="styleSheet">
-       <string notr="true">background-color: green;
+       <string notr="true">background-color: red;
 border-radius: 8px;</string>
       </property>
       <property name="text">
@@ -54,7 +54,7 @@ border-radius: 8px;</string>
      </widget>
      <widget class="QLabel" name="serverStatusLabel">
       <property name="text">
-       <string>server idle</string>
+       <string>server offline</string>
       </property>
      </widget>
      <widget class="QLabel" name="label_3">
@@ -133,7 +133,10 @@ border-radius: 8px;</string>
    <item>
     <widget class="QLabel" name="serverDataLabel">
      <property name="text">
-      <string>TextLabel</string>
+      <string/>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
      </property>
     </widget>
    </item>

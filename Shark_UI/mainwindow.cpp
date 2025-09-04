@@ -2,6 +2,7 @@
 #include "chooseLogRegScreen.h"
 #include "ui_mainwindow.h"
 
+
 int MainWindow::kInstanceCount = 0;
 
 MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr, QWidget *parent)

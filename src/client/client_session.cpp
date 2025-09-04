@@ -106,10 +106,8 @@ void ClientSession::stopConnectionThread() {
 
 void ClientSession::onConnectionStateChanged(bool online, ServerConnectionMode mode) {
   _statusOnline.store(online, std::memory_order_release);
-  getInstance().setIsServerStatus(online);
-
-  //   if (!online)
-  //     exc_qt::ErrorBus::i().error("Потеряно соединение с сервером", "ClientSession");
+   _serverConnectionMode = mode;
+  emit serverStatusChanged(online, mode);
 }
 
 // getters
@@ -133,6 +131,8 @@ std::size_t ClientSession::getSocketFd() const { return _socketFd; }
 // setters
 
 void ClientSession::setActiveUserCl(const std::shared_ptr<User> &user) { _instance.setActiveUser(user); }
+
+void ClientSession::setSocketFd(int socketFd) { _socketFd = socketFd; };
 
 //
 //
@@ -269,6 +269,8 @@ bool ClientSession::checkUserPasswordCl(const std::string &userLogin, const std:
   packetListDTOresult.packets.clear();
 
   packetListDTOresult = processingRequestToServer(packetDTOListSend, packetDTO.requestType);
+  if (packetListDTOresult.packets.size() == 0)
+    return false;
 
   try {
     if (packetListDTOresult.packets.size() != 1)
@@ -303,28 +305,6 @@ bool ClientSession::checkUserPasswordCl(const std::string &userLogin, const std:
   }
 }
 // transport
-//
-//
-// void ClientSession::reidentifyClientAfterConnection() {
-
-//   UserLoginDTO userLoginDTO;
-//   PacketDTO packetDTO;
-//   packetDTO.requestType = RequestType::RqFrClientUserConnectMake;
-//   packetDTO.structDTOClassType = StructDTOClassType::userLoginDTO;
-//   packetDTO.reqDirection = RequestDirection::ClientToSrv;
-//   ;
-
-//   if (_instance.getActiveUser())
-//     userLoginDTO.login = _instance.getActiveUser()->getLogin();
-//   else
-//     userLoginDTO.login = "";
-
-//   packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserLoginDTO>>(userLoginDTO);
-
-//   std::vector<PacketDTO> packets{packetDTO};
-//   processingRequestToServer(packets, packetDTO.requestType);
-// }
-//
 //
 //
 bool ClientSession::findServerAddress(ServerConnectionConfig &serverConnectionConfig,
@@ -760,6 +740,7 @@ bool ClientSession::initServerConnection() {
 
   if (!findServerAddress(getserverConnectionConfigCl(), getserverConnectionModeCl())) {
     getserverConnectionModeCl() = ServerConnectionMode::Offline;
+    emit serverStatusChanged(false, getserverConnectionModeCl());
     return false;
   }
 
@@ -767,10 +748,12 @@ bool ClientSession::initServerConnection() {
 
   if (fd < 0) {
     getserverConnectionModeCl() = ServerConnectionMode::Offline;
+    emit serverStatusChanged(false, getserverConnectionModeCl());
     return false;
   }
   _socketFd = fd;
   this->getInstance().setIsServerStatus(true);
+  emit serverStatusChanged(true, getserverConnectionModeCl());
   return true;
 }
 

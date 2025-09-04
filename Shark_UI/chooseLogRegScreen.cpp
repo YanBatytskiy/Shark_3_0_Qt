@@ -5,17 +5,17 @@ chooseLogRegScreen::chooseLogRegScreen(std::shared_ptr<ClientSession> sessionPtr
     : QDialog(parent), ui(new Ui::chooseLogRegScreen), _sessionPtr(std::move(sessionPtr)){
 
   ui->setupUi(this);
+
   ui->loginPage->setDatabase(_sessionPtr);
-  // ui->loginPage->setMonitor(_connectionMonitorPtr);
 
   ui->regPage->setDatabase(_sessionPtr);
-  // ui->regPage->setMonitor(_connectionMonitorPtr);
 
   connect(ui->loginPage, &loginScreen::registrationRequested, this, &chooseLogRegScreen::setRegistrationForm);
   connect(ui->loginPage, &loginScreen::rejected, this, &chooseLogRegScreen::onRejectedRequested);
 
   connect(ui->regPage, &registerScreen::loginRequested, this, &chooseLogRegScreen::setLoginForm);
   connect(ui->regPage, &registerScreen::rejected, this, &chooseLogRegScreen::onRejectedRequested);
+
 }
 
 chooseLogRegScreen::~chooseLogRegScreen() { delete ui; }

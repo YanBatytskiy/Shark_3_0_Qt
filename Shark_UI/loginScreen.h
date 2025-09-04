@@ -32,6 +32,7 @@ private slots:
 private:
   Ui::loginScreen *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
+  QString _systemData;
 };
 
 #endif // LOGINSCREEN_H

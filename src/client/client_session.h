@@ -40,10 +40,15 @@ private:
   ConnectionMonitor *_connectionMonitor{nullptr};
   std::atomic_bool _statusOnline{false};
 
+signals:
+  void serverStatusChanged(bool online, ServerConnectionMode mode);
+
 public slots:
   void onConnectionStateChanged(bool online, ServerConnectionMode mode);
 
 public:
+  bool getIsServerOnline() const noexcept { return _statusOnline.load(std::memory_order_acquire); }
+
   // constructors
   ClientSession(ChatSystem &client, QObject *parent = nullptr);
   ClientSession(const ClientSession &) = delete;
@@ -55,8 +60,8 @@ public:
     stopConnectionThread(); // quit(); wait();
   }
 
-//qt methods
-  // utilities
+  // qt methods
+  //  utilities
   bool checkLoginPsswordQt(std::string login, std::string password);
 
   bool registerClientOnDeviceQt(std::string login);
@@ -64,7 +69,6 @@ public:
   bool inputNewLoginValidationQt(std::string inputData, std::size_t dataLengthMin, std::size_t dataLengthMax);
 
   bool inputNewPasswordValidationQt(std::string inputData, std::size_t dataLengthMin, std::size_t dataLengthMax);
-
 
   // threads
 
@@ -93,7 +97,7 @@ public:
 
   void setActiveUserCl(const std::shared_ptr<User> &user);
 
-  void setSocketFd(const int &socketFd);
+  void setSocketFd(int socketFd);
 
   // checking and finding
 

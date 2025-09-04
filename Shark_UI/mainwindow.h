@@ -21,8 +21,13 @@ public:
   static MainWindow *createSession(std::shared_ptr<ClientSession> sessionPtr);
   static int kInstanceCount;
 
+signals:
+  void systemDataChanged(const QString &data);
+
+
 private:
   Ui::MainWindow *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
+
 };
 #endif // MAINWINDOW_H
