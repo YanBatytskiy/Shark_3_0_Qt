@@ -32,8 +32,8 @@ private:
     if (result < 0) return false;
     if (result == 0) return true;
 
-    if (p.events & (POLLERR | POLLHUP | POLLRDHUP)) return false;
-
+    if (p.revents & (POLLERR | POLLHUP | POLLRDHUP))
+      return false;
     return true;
   }
 };

@@ -7,8 +7,6 @@
 #include <netinet/in.h>
 #include "chat_system/chat_system.h"
 #include "client/client_session.h"
-#include "qt_session/qt_session.h"
-#include "nw_connection_monitor.h"
 #include "errorbus.h"
 #include <QMessageBox>
 #include <QObject>
@@ -23,29 +21,26 @@ int main(int argc, char *argv[])
   QObject::connect(&exc_qt::ErrorBus::i(), &exc_qt::ErrorBus::error,
                    &app,
                    [](const QString& m, const QString& ctx){
-                     QMessageBox::critical(nullptr, "Ошибка",
+                     QMessageBox::critical(qApp->activeWindow(), "Ошибка",
                                            QString("[%1]\n%2").arg(ctx, m));
                    });
 
 
   ChatSystem  clientSystem;
-  // ClientSession clientSession(clientSystem);
 
-  auto sessionPtr = std::make_shared<QtSession>(clientSystem);
+  auto sessionPtr = std::make_shared<ClientSession>(clientSystem);
 
-  ConnectionMonitor connectionMonitor(&sessionPtr->getQtClientSession());
+  sessionPtr->startConnectionThread();
 
+  QObject::connect(&app, &QCoreApplication::aboutToQuit, [&]{
+    sessionPtr->stopConnectionThread();
+  });
 
-  auto w = MainWindow::createSession(sessionPtr);
+  auto w = MainWindow::createSession(sessionPtr); // или sessionPtr.get() — по сигнатуре
 
-  if (w)
-    w->show();
-  else
-    return 0;
+  if (!w) return 0;
 
-  close(sessionPtr->getQtClientSession().getSocketFd());
+  w->setAttribute(Qt::WA_DeleteOnClose);
+  w->show();
   return app.exec();
-
-
-
 }

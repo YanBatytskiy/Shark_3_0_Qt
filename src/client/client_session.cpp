@@ -8,16 +8,18 @@
 #include "user/user.h"
 #include "user/user_chat_list.h"
 
-#include "errorbus.h"
 #include "exception_login.h"
 #include "exception_network.h"
 #include "exception_router.h"
 #include "nw_connection_monitor.h"
 #include <QCoreApplication>
+#include <atomic>
+#include <cerrno>
 #include <qnamespace.h>
 #include <qobject.h>
 #include <qobjectdefs.h>
 
+#include "system/picosha2.h"
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -34,13 +36,44 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-// #include "exception/login_exception.h"
-// #include "exception/network_exception.h"
-// #include "exception/validation_exception.h"
-
 struct sockaddr_in serveraddress, client;
 // constructor
-ClientSession::ClientSession(ChatSystem &client) : _instance(client), _socketFd() {}
+ClientSession::ClientSession(ChatSystem &client, QObject *parent) : QObject(parent), _instance(client), _socketFd() {}
+
+// qt methods
+
+// itilities
+bool ClientSession::checkLoginPsswordQt(std::string login, std::string password) {
+
+  auto passHash = picosha2::hash256_hex_string(password);
+
+  return checkUserPasswordCl(login, passHash);
+}
+
+bool ClientSession::registerClientOnDeviceQt(std::string login) { return registerClientToSystemCl(login); }
+
+bool ClientSession::inputNewLoginValidationQt(std::string inputData, std::size_t dataLengthMin,
+                                              std::size_t dataLengthMax) {
+
+  // проверяем только на англ буквы и цифры
+  if (!engAndFiguresCheck(inputData))
+    return false;
+  else
+    return true;
+}
+
+bool ClientSession::inputNewPasswordValidationQt(std::string inputData, std::size_t dataLengthMin,
+                                                 std::size_t dataLengthMax) {
+
+  // проверяем только на англ буквы и цифры
+  if (!engAndFiguresCheck(inputData))
+    return false;
+
+  if (!checkNewLoginPasswordForLimits(inputData, dataLengthMin, dataLengthMax, true))
+    return false;
+  else
+    return true;
+}
 
 // threads
 void ClientSession::startConnectionThread() {
@@ -48,14 +81,15 @@ void ClientSession::startConnectionThread() {
   if (_connectionMonitor)
     return;
 
-  _connectionMonitor = new ConnectionMonitor(nullptr);
+  _connectionMonitor = new ConnectionMonitor(this);
   _connectionMonitor->moveToThread(&_netThread);
 
   QObject::connect(&_netThread, &QThread::started, _connectionMonitor, &ConnectionMonitor::run);
   QObject::connect(&_netThread, &QThread::finished, _connectionMonitor, &QObject::deleteLater);
 
-  QObject::connect(_connectionMonitor, &ConnectionMonitor::connectionStateChanged, qApp,
-                   [this](bool online, ServerConnectionMode mode) { this->onConnectionStateChanged(online, mode); });
+  QObject::connect(_connectionMonitor, &ConnectionMonitor::connectionStateChanged, this,
+                   &ClientSession::onConnectionStateChanged, Qt::QueuedConnection);
+
   _netThread.start();
 }
 
@@ -64,7 +98,7 @@ void ClientSession::stopConnectionThread() {
   if (!_connectionMonitor)
     return;
 
-  QMetaObject::invokeMethod(_connectionMonitor, "stop", Qt::QueuedConnection);
+  _connectionMonitor->stop();
   _netThread.quit();
   _netThread.wait();
   _connectionMonitor = nullptr;
@@ -74,11 +108,13 @@ void ClientSession::onConnectionStateChanged(bool online, ServerConnectionMode m
   _statusOnline.store(online, std::memory_order_release);
   getInstance().setIsServerStatus(online);
 
-  if (!online)
-    exc_qt::ErrorBus::i().error("Потеряно соединение с сервером", "ClientSession");
+  //   if (!online)
+  //     exc_qt::ErrorBus::i().error("Потеряно соединение с сервером", "ClientSession");
 }
 
 // getters
+
+ConnectionMonitor *ClientSession::getConnectionMonitor() { return _connectionMonitor; }
 
 ServerConnectionConfig &ClientSession::getserverConnectionConfigCl() { return _serverConnectionConfig; }
 
@@ -308,7 +344,7 @@ bool ClientSession::findServerAddress(ServerConnectionConfig &serverConnectionCo
 
       addr.sin_addr.s_addr = inet_addr(serverConnectionConfig.addressLocalHost.c_str());
 
-      int result = connect(socketTmp, (sockaddr *)&addr, sizeof(addr));
+      int result = ::connect(socketTmp, (sockaddr *)&addr, sizeof(addr));
 
       if (result == 0) {
         serverConnectionConfig.found = true;
@@ -379,7 +415,7 @@ int ClientSession::createConnection(ServerConnectionConfig &serverConnectionConf
     if (socketTmp == -1)
       throw exc_qt::CreateSocketTypeException();
     else {
-      if (connect(socketTmp, (sockaddr *)&serveraddress, sizeof(serveraddress)) < 0)
+      if (::connect(socketTmp, (sockaddr *)&serveraddress, sizeof(serveraddress)) < 0)
         throw exc_qt::ConnectionToServerException();
       else
         _socketFd = socketTmp;
@@ -449,16 +485,13 @@ bool ClientSession::discoverServerOnLAN(ServerConnectionConfig &serverConnection
 //
 PacketListDTO ClientSession::getDatafromServer(const std::vector<std::uint8_t> &packetListSend) {
 
+  PacketListDTO packetListDTOresult;
+  packetListDTOresult.packets.clear();
+
   try {
 
     if (!_statusOnline.load(std::memory_order_acquire))
       throw exc_qt::ConnectionToServerException();
-
-    PacketListDTO packetListDTOresult;
-    packetListDTOresult.packets.clear();
-
-    // if (!checkResponceServer())
-    //   return packetListDTOresult;
 
     // проверка
     // for (std::uint8_t b : packetListSend) {
@@ -468,7 +501,7 @@ PacketListDTO ClientSession::getDatafromServer(const std::vector<std::uint8_t> &
 
     // 1. Добавляем 4 байта длины в начало
     std::vector<std::uint8_t> packetWithSize;
-    uint32_t len = htonl(packetListSend.size());
+    uint32_t len = htonl(static_cast<uint32_t>(packetListSend.size()));
 
     packetWithSize.resize(4 + packetListSend.size());
     std::memcpy(packetWithSize.data(), &len, 4); // первые 4 байта — длина
@@ -551,78 +584,115 @@ PacketListDTO ClientSession::getDatafromServer(const std::vector<std::uint8_t> &
         _statusOnline.store(false, std::memory_order_release);
         throw exc_qt::SendDataException();
       };
+    }
 
-      // 4. Приём заголовка длины (4 байта)
-      len = 0;
+    // 4. Приём заголовка длины (4 байта)
+    len = 0;
+    std::vector<PacketDTO> responcePacketListDTOVector;
+    try {
+
       std::uint8_t lenBuf[4];
       std::size_t total = 0;
       while (total < 4) {
-        ssize_t r = recv(_socketFd, lenBuf + total, 4 - total, 0);
-        if (r <= 0)
+        ssize_t r = ::recv(_socketFd, lenBuf + total, 4 - total, 0);
+
+        if (r > 0) {
+          total += static_cast<std::size_t>(r);
+          continue;
+        }
+
+        if (r == 0) {
+          _statusOnline.store(false, std::memory_order_release);
+          throw exc_qt::ConnectionToServerException();
+        }
+
+        if (r < 0) {
+          if (errno == EAGAIN || errno == EWOULDBLOCK)
+            continue;
+          if (errno == EINTR) {
+            continue;
+          }
+          _statusOnline.store(false, std::memory_order_release);
           throw exc_qt::ReceiveDataException();
-        total += r;
+        }
       }
 
       std::memcpy(&len, lenBuf, 4);
       len = ntohl(len);
+      std::vector<std::uint8_t> buffer(len);
 
       // 5. Приём тела
-      std::vector<std::uint8_t> buffer(len);
       ssize_t bytesReceived = 0;
 
       while (bytesReceived < len) {
-        ssize_t bytes = recv(_socketFd, buffer.data() + bytesReceived, len - bytesReceived, 0);
-        if (bytes <= 0)
+        ssize_t bytes = ::recv(_socketFd, buffer.data() + bytesReceived, len - bytesReceived, 0);
+
+        if (bytes > 0) {
+          bytesReceived += bytes;
+          continue;
+        }
+
+        if (bytes == 0) {
+          _statusOnline.store(false, std::memory_order_release);
+          throw exc_qt::ConnectionToServerException();
+        }
+
+        if (bytes < 0) {
+          if (errno == EAGAIN || errno == EWOULDBLOCK)
+            continue;
+          if (errno == EINTR) {
+            continue;
+          }
+          _statusOnline.store(false, std::memory_order_release);
           throw exc_qt::ReceiveDataException();
+        }
 
         bytesReceived += bytes;
-      }
-
-      // проверка
-      // std::cout << "[DEBUG] buffer.size() = " << buffer.size() << std::endl;
-      // for (std::size_t i = 0; i < buffer.size(); ++i)
-      //   std::cout << std::hex << static_cast<int>(buffer[i]) << " ";
-      // std::cout << std::dec << std::endl;
-
-      // проверка
-      // std::cerr << "[DEBUG] Получено от сервера: " << bytesReceived << " байт" << std::endl;
-      // for (std::size_t i = 0; i < buffer.size(); ++i) {
-      //   std::cerr << static_cast<int>(buffer[i]) << " ";
-      // }
-      // std::cerr << std::endl;
-
-      std::vector<PacketDTO> responcePacketListDTOVector;
+      } // while
       responcePacketListDTOVector = deSerializePacketList(buffer);
-
-      for (const auto &pct : responcePacketListDTOVector)
-        packetListDTOresult.packets.push_back(pct);
-
-      // for (const auto &packet : packetListDTOresult.packets) {
-      //   std::cerr << "[CLIENT DEBUG] Получен пакет requestType = " << static_cast<int>(packet.requestType) <<
-      //   std::endl;
-      // }
-
-      if (packetListDTOresult.packets.empty())
-        throw exc_qt::ReceiveDataException();
     } // try
+    catch (...) {
+      throw;
+    }
+
+    // проверка
+    // std::cout << "[DEBUG] buffer.size() = " << buffer.size() << std::endl;
+    // for (std::size_t i = 0; i < buffer.size(); ++i)
+    //   std::cout << std::hex << static_cast<int>(buffer[i]) << " ";
+    // std::cout << std::dec << std::endl;
+
+    // проверка
+    // std::cerr << "[DEBUG] Получено от сервера: " << bytesReceived << " байт" << std::endl;
+    // for (std::size_t i = 0; i < buffer.size(); ++i) {
+    //   std::cerr << static_cast<int>(buffer[i]) << " ";
+    // }
+    // std::cerr << std::endl;
+
+    for (const auto &pct : responcePacketListDTOVector)
+      packetListDTOresult.packets.push_back(pct);
+
+    // for (const auto &packet : packetListDTOresult.packets) {
+    //   std::cerr << "[CLIENT DEBUG] Получен пакет requestType = " << static_cast<int>(packet.requestType) <<
+    //   std::endl;
+    // }
+
+    if (packetListDTOresult.packets.empty())
+      throw exc_qt::ReceiveDataException();
   } // try
   catch (const exc_qt::ConnectionToServerException &ex) {
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
                                      QStringLiteral("Клиент. Потеряно соединение с сервером."));
-    throw;
-    // return packetListDTOresult;
+    return packetListDTOresult;
   } catch (const exc_qt::SendDataException &ex) {
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()), QStringLiteral("Клиент getDatafromServer: ."));
-    throw;
-    // packetListDTOresult.packets.clear();
-    // return packetListDTOresult;
+    packetListDTOresult.packets.clear();
+    return packetListDTOresult;
   } catch (const exc_qt::ReceiveDataException &ex) {
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()), QStringLiteral("Клиент getDatafromServer: ."));
-    throw;
-    // packetListDTOresult.packets.clear();
-    // return packetListDTOresult;
+    packetListDTOresult.packets.clear();
+    return packetListDTOresult;
   }
-  //   return packetListDTOresult;
+  return packetListDTOresult;
 }
 //
 //
@@ -632,6 +702,13 @@ PacketListDTO ClientSession::processingRequestToServer(std::vector<PacketDTO> &p
   PacketListDTO packetListDTOForSend;
   PacketListDTO packetListDTOresult;
   packetListDTOresult.packets.clear();
+
+  // ГАРД: офлайн/битый сокет → мгновенный отказ без сети
+  if (!_statusOnline.load(std::memory_order_acquire) || _socketFd < 0) {
+    emit exc_qt::ErrorBus::i().error(QStringLiteral("Нет соединения с сервером"),
+                                     QStringLiteral("Клиент processingRequestToServer"));
+    return packetListDTOresult; // пустой ответ
+  }
 
   try {
     // добавляем хэдер
@@ -668,7 +745,6 @@ PacketListDTO ClientSession::processingRequestToServer(std::vector<PacketDTO> &p
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
                                      QStringLiteral("Клиент processingRequestToServer: "));
     packetListDTOresult.packets.clear();
-    throw;
   }
   return packetListDTOresult;
 }
@@ -682,13 +758,19 @@ bool ClientSession::initServerConnection() {
 
   this->getInstance().setIsServerStatus(false);
 
-  // ищем сервер и создаем соединение
-  if (findServerAddress(getserverConnectionConfigCl(), getserverConnectionModeCl())) {
-
-    createConnection(getserverConnectionConfigCl(), getserverConnectionModeCl());
-  } else
+  if (!findServerAddress(getserverConnectionConfigCl(), getserverConnectionModeCl())) {
     getserverConnectionModeCl() = ServerConnectionMode::Offline;
+    return false;
+  }
 
+  const int fd = createConnection(getserverConnectionConfigCl(), getserverConnectionModeCl());
+
+  if (fd < 0) {
+    getserverConnectionModeCl() = ServerConnectionMode::Offline;
+    return false;
+  }
+  _socketFd = fd;
+  this->getInstance().setIsServerStatus(true);
   return true;
 }
 

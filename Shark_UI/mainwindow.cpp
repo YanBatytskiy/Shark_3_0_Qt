@@ -4,7 +4,7 @@
 
 int MainWindow::kInstanceCount = 0;
 
-MainWindow::MainWindow(std::shared_ptr<QtSession> sessionPtr, QWidget *parent)
+MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
 
   ui->setupUi(this);
@@ -22,7 +22,7 @@ MainWindow::~MainWindow() {
     qApp->exit(0);
 }
 
-MainWindow *MainWindow::createSession(std::shared_ptr<QtSession> sessionPtr) {
+MainWindow *MainWindow::createSession(std::shared_ptr<ClientSession> sessionPtr) {
 
   chooseLogRegScreen s(sessionPtr);
   auto result = s.exec();

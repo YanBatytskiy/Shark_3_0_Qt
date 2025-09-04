@@ -1,8 +1,10 @@
 #ifndef LOGINSCREEN_H
 #define LOGINSCREEN_H
 
-#include "qt_session/qt_session.h"
+#include "client_session.h"
 #include <QDialog>
+
+class ConnectionMonitor;
 
 namespace Ui {
 class loginScreen;
@@ -13,11 +15,14 @@ class loginScreen : public QDialog {
 public:
   explicit loginScreen(QWidget *parent = nullptr);
   ~loginScreen();
-  void setDatabase(std::shared_ptr<QtSession> sessionPtr);
+  void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
 
 signals:
   void registrationRequested();
   void rejected();
+
+public slots:
+  void onConnectionStatusChanged(bool connectionStatus, ServerConnectionMode mode);
 
 private slots:
   void on_registerModeButton_clicked();
@@ -26,7 +31,7 @@ private slots:
 
 private:
   Ui::loginScreen *ui;
-  std::shared_ptr<QtSession> _sessionPtr;
+  std::shared_ptr<ClientSession> _sessionPtr;
 };
 
 #endif // LOGINSCREEN_H

@@ -2,15 +2,16 @@
 #include "chat_system/chat_system.h"
 #include "dto_struct.h"
 #include "message/message.h"
+#include <cstdint>
 #include <memory>
 #include <optional>
-#include <cstdint>
 
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 
 #include <QThread>
 #include <qthread.h>
+#include <qtmetamacros.h>
 
 class ConnectionMonitor;
 
@@ -27,7 +28,8 @@ struct ServerConnectionConfig {
   bool found = false;
 };
 
-class ClientSession {
+class ClientSession : public QObject {
+  Q_OBJECT
 private:
   ChatSystem &_instance; // link to server
   int _socketFd;
@@ -43,7 +45,26 @@ public slots:
 
 public:
   // constructors
-  ClientSession(ChatSystem &client);
+  ClientSession(ChatSystem &client, QObject *parent = nullptr);
+  ClientSession(const ClientSession &) = delete;
+  ClientSession &operator=(const ClientSession &) = delete;
+  ClientSession(ClientSession &&) = delete;
+  ClientSession &operator=(ClientSession &&) = delete;
+
+  ~ClientSession() {
+    stopConnectionThread(); // quit(); wait();
+  }
+
+//qt methods
+  // utilities
+  bool checkLoginPsswordQt(std::string login, std::string password);
+
+  bool registerClientOnDeviceQt(std::string login);
+
+  bool inputNewLoginValidationQt(std::string inputData, std::size_t dataLengthMin, std::size_t dataLengthMax);
+
+  bool inputNewPasswordValidationQt(std::string inputData, std::size_t dataLengthMin, std::size_t dataLengthMax);
+
 
   // threads
 
@@ -51,6 +72,9 @@ public:
   void stopConnectionThread();
 
   // getters
+
+  ConnectionMonitor *getConnectionMonitor();
+
   ServerConnectionConfig &getserverConnectionConfigCl();
 
   const ServerConnectionConfig &getserverConnectionConfigCl() const;
@@ -82,7 +106,7 @@ public:
 
   // transport
 
-//   void reidentifyClientAfterConnection();
+  //   void reidentifyClientAfterConnection();
 
   bool findServerAddress(ServerConnectionConfig &serverConnectionConfig, ServerConnectionMode &serverConnectionMode);
 
@@ -98,7 +122,7 @@ public:
   //
   // utilities
 
- bool initServerConnection();
+  bool initServerConnection();
 
   void resetSessionData();
 
@@ -106,7 +130,7 @@ public:
 
   bool registerClientToSystemCl(const std::string &login);
 
-  bool createUserCl( std::shared_ptr<User> &user);
+  bool createUserCl(std::shared_ptr<User> &user);
 
   bool createNewChatCl(std::shared_ptr<Chat> &chat);
 
