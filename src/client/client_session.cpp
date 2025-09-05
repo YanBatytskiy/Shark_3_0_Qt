@@ -777,12 +777,8 @@ bool ClientSession::registerClientToSystemCl(const std::string &login) {
 
   const auto isOnClientDevice = _instance.findUserByLogin(login);
 
-  // if (isOnClientDevice != nullptr) {
-  //   _instance.setActiveUser(isOnClientDevice);
-  //   packetDTO.requestType = RequestType::RqFrClientSynchroUser;
-  // } else {
   packetDTO.requestType = RequestType::RqFrClientRegisterUser;
-  // }
+
   std::vector<PacketDTO> packetDTOListSend;
   packetDTOListSend.push_back(packetDTO);
 

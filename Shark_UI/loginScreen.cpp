@@ -9,7 +9,10 @@ loginScreen::loginScreen(QWidget *parent) : QDialog(parent), ui(new Ui::loginScr
 
 loginScreen::~loginScreen() { delete ui; }
 
-void loginScreen::setDatabase(std::shared_ptr<ClientSession> sessionPtr) { _sessionPtr = sessionPtr;
+void loginScreen::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
+
+  _sessionPtr = sessionPtr;
+
   connect(_sessionPtr.get(), &ClientSession::serverStatusChanged, this, &loginScreen::onConnectionStatusChanged, Qt::QueuedConnection);
 
   struct utsname utsname;
@@ -124,9 +127,11 @@ void loginScreen::on_loginButtonBox_accepted() {
 emit exc_qt::ErrorBus::i().error(tr("Login or Password is wrong"), "login");    return;
 
   }
-    QMessageBox::information(this, tr("Sucsess"), tr("ok!!!"));
-    _sessionPtr->registerClientOnDeviceQt(ui->loginEdit->text().toStdString());
-    return;
+    // QMessageBox::information(this, tr("Sucsess"), tr("ok!!!"));
+    // return;
+
+  emit accepted(ui->loginEdit->text());
+
   }
     catch (const std::exception&) {
     return;

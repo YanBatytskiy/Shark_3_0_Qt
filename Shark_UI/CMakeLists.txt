@@ -11,6 +11,7 @@ endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -34,6 +35,7 @@ qt_add_executable(Shark_ui
   exception_sql.h
   exception_valid.h
   nw_connection_monitor.h nw_connection_monitor.cpp
+  model_chat.h model_chat.cpp
 
 )
 
@@ -50,6 +52,7 @@ target_link_libraries(Shark_ui PRIVATE
   core
   dto
 )
+target_link_libraries(Shark_ui PRIVATE Qt6::Core)
 target_link_libraries(Shark_ui PRIVATE Qt6::Core)
 
 target_include_directories(Shark_ui PRIVATE

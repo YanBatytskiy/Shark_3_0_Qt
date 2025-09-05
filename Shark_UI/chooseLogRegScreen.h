@@ -20,6 +20,7 @@ public:
 
 public slots:
   void onRejectedRequested();
+  void onLoggedIn(QString login);
 
 private:
   Ui::chooseLogRegScreen *ui;

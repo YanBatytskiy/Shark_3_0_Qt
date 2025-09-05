@@ -12,6 +12,7 @@ chooseLogRegScreen::chooseLogRegScreen(std::shared_ptr<ClientSession> sessionPtr
 
   connect(ui->loginPage, &loginScreen::registrationRequested, this, &chooseLogRegScreen::setRegistrationForm);
   connect(ui->loginPage, &loginScreen::rejected, this, &chooseLogRegScreen::onRejectedRequested);
+  connect(ui->loginPage, &loginScreen::accepted, this, &chooseLogRegScreen::onLoggedIn);
 
   connect(ui->regPage, &registerScreen::loginRequested, this, &chooseLogRegScreen::setLoginForm);
   connect(ui->regPage, &registerScreen::rejected, this, &chooseLogRegScreen::onRejectedRequested);
@@ -29,3 +30,9 @@ void chooseLogRegScreen::onRejectedRequested() {
     _sessionPtr->stopConnectionThread(); // ← остановка фонового соединения
   }
   reject(); }
+
+void chooseLogRegScreen::onLoggedIn(QString login)
+{
+  _sessionPtr->registerClientOnDeviceQt(login.toStdString());
+  accept();
+}

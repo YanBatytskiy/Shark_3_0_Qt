@@ -19,6 +19,7 @@ public:
 
 signals:
   void registrationRequested();
+  void accepted(QString login);
   void rejected();
 
 public slots:

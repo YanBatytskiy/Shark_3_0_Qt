@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <memory>
 #include "client_session.h"
+#include "model_chat.h"
 
 
 QT_BEGIN_NAMESPACE
@@ -24,10 +25,16 @@ public:
 signals:
   void systemDataChanged(const QString &data);
 
+public slots:
+  void onConnectionStatusChanged(bool connectionStatus, ServerConnectionMode mode);
+
+private slots:
+  void on_exitAction_triggered();
 
 private:
   Ui::MainWindow *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
+  ChatModel* _chatModel;
 
 };
 #endif // MAINWINDOW_H
