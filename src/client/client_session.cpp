@@ -75,6 +75,51 @@ bool ClientSession::inputNewPasswordValidationQt(std::string inputData, std::siz
     return true;
 }
 
+std::optional<std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>> ClientSession::getChatListQt() {
+
+  if (!this->getActiveUserCl())
+    return std::nullopt;
+  if (!this->getActiveUserCl()->getUserChatList())
+    return std::nullopt;
+
+  auto chats = this->getActiveUserCl()->getUserChatList()->getChatFromList();
+
+  // контейнер для сортировки чатов <время последнего сообщения, chatDTO
+  // отсортирован в обратном порядке
+  std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>> result;
+  result.clear();
+
+  if (chats.size() == 0) {
+    return result;
+  }
+
+  for (const auto &chat : chats) {
+
+    auto chat_ptr = chat.lock();
+
+    if (chat_ptr) {
+
+      auto chatDTO = FillForSendOneChatDTOFromClient(chat_ptr);
+
+      if (!chatDTO.has_value())
+        continue;
+
+      const auto &messages = chat_ptr->getMessages();
+      std::int64_t lastMessageTimeStamp;
+
+      if (messages.empty())
+        lastMessageTimeStamp = 0;
+      else
+        lastMessageTimeStamp = messages.rbegin()->first;
+
+      result.insert({lastMessageTimeStamp, chatDTO.value()});
+
+    } // if chatPtr
+  } // for
+
+  return result;
+}
+
 // threads
 void ClientSession::startConnectionThread() {
 
@@ -106,7 +151,7 @@ void ClientSession::stopConnectionThread() {
 
 void ClientSession::onConnectionStateChanged(bool online, ServerConnectionMode mode) {
   _statusOnline.store(online, std::memory_order_release);
-   _serverConnectionMode = mode;
+  _serverConnectionMode = mode;
   emit serverStatusChanged(online, mode);
 }
 
@@ -1421,11 +1466,17 @@ std::optional<ChatDTO> ClientSession::FillForSendOneChatDTOFromClient(const std:
 
   // взяли chatId
   chatDTO.chatId = chat_ptr->getChatId();
+
+  if (!_instance.getActiveUser())
+    return std::nullopt;
   chatDTO.senderLogin = _instance.getActiveUser()->getLogin();
 
   try {
     // получаем список участников
     auto participants = chat_ptr->getParticipants();
+
+    if (participants.empty())
+      return std::nullopt;
 
     // перебираем участников
     for (const auto &participant : participants) {
@@ -1462,14 +1513,16 @@ std::optional<ChatDTO> ClientSession::FillForSendOneChatDTOFromClient(const std:
 
       } // if user_ptr
       else
-        throw exc_qt::UserNotFoundException();
+        // throw exc_qt::UserNotFoundException();
+        continue;
     } // for participants
   }
   // try
   catch (const exc_qt::UserNotFoundException &ex) {
-    std::cerr << "Клиент: FillForSendOneChatDTOFromClient. " << ex.what() << std::endl;
-    return std::nullopt;
+    // std::cerr << "Клиент: FillForSendOneChatDTOFromClient. " << ex.what() << std::endl;
+    // return std::nullopt;
   }
+  if (chatDTO.participants.empty()) return std::nullopt;
   return chatDTO;
 }
 //

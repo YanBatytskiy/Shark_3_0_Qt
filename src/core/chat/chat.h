@@ -2,13 +2,13 @@
 
 #include "message/message.h"
 #include "user/user.h"
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <cstdint>
 /**
  * @struct Participant
  * @brief Represents a participant in a chat.
@@ -33,8 +33,12 @@ private:
   // multimap автоматически сортирует по ключу (времени)
   // допускает несколько сообщений с одинаковым временем
   std::multimap<int64_t, std::shared_ptr<Message>> _messages;
-  std::set<std::size_t> _messageIdMap;           // global list of messageId
-  std::size_t _nextMessageId = 1;                ///< Next available sequential message ID.
+
+  // global list of messageId
+  std::set<std::size_t> _messageIdMap;
+
+  // Next available sequential message ID.
+  std::size_t _nextMessageId = 1;
 
   // userLogin - MessageId
   std::unordered_map<std::string, std::size_t> _lastReadMessageMap;

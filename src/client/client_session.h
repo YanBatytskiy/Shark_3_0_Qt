@@ -70,6 +70,10 @@ public:
 
   bool inputNewPasswordValidationQt(std::string inputData, std::size_t dataLengthMin, std::size_t dataLengthMax);
 
+  std::optional<std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>> getChatListQt();
+
+
+
   // threads
 
   void startConnectionThread();

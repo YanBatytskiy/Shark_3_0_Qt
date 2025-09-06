@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <memory>
 #include "client_session.h"
-#include "model_chat.h"
+#include "model_chat_list.h"
 
 
 QT_BEGIN_NAMESPACE
@@ -21,6 +21,7 @@ public:
   ~MainWindow();
   static MainWindow *createSession(std::shared_ptr<ClientSession> sessionPtr);
   static int kInstanceCount;
+  void fillChatListModelWithData();
 
 signals:
   void systemDataChanged(const QString &data);
@@ -34,7 +35,7 @@ private slots:
 private:
   Ui::MainWindow *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
-  ChatModel* _chatModel;
+  ChatListModel* _ChatListModel;
 
 };
 #endif // MAINWINDOW_H

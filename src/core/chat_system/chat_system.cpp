@@ -115,7 +115,7 @@ bool ChatSystem::addChatToInstance(const std::shared_ptr<Chat> &chat_ptr) {
   bool result = true;
 
   // чтобы сделать откат
-  std::vector<std::shared_ptr<User>> addParticipantsList;
+  std::vector<std::shared_ptr<User>> addParticipantsChatList;
 
   try {
     if (_isServerStatus) {
@@ -127,7 +127,7 @@ bool ChatSystem::addChatToInstance(const std::shared_ptr<Chat> &chat_ptr) {
 
           if (userChatList) {
             userChatList->addChatToChatList(chat_ptr);
-            addParticipantsList.push_back(user_ptr);
+            addParticipantsChatList.push_back(user_ptr);
           } else
             throw exc::ChatListNotFoundException(user_ptr->getLogin());
         } // if user_ptr
@@ -151,13 +151,13 @@ bool ChatSystem::addChatToInstance(const std::shared_ptr<Chat> &chat_ptr) {
     _chats.push_back(chat_ptr);
     _chatIdChatMap.insert({chatId, chat_ptr});
   } else {
-    for (const auto &participant : addParticipantsList) {
+    for (const auto &participant : addParticipantsChatList) {
 
       auto userChatList = participant->getUserChatList();
 
       userChatList->deleteChatFromList(chat_ptr);
     }
-    addParticipantsList.clear();
+    addParticipantsChatList.clear();
   }
   return result;
 }
