@@ -7,22 +7,31 @@
 
 namespace {
 constexpr int kPaddingX = 12;
-constexpr int kPaddingY = 8;
+constexpr int kPaddingY = 6;
 constexpr int kLineSpacing = 2;
+constexpr int kBadgeH     = 18;   // высота бейджа
+constexpr int kBadgeHPad  = 5;    // внутренний горизонтальный паддинг бейджа
+constexpr int kBadgeMinW  = 22;   // минимальная ширина бейджа}
+
+// Палитра
+const QColor kBg      ("#FFFACD"); // обычный фон
+const QColor kHoverBg ("#F5F7FA"); // фон под мышью
+const QColor kSelBg   ("#40A7E3"); // фон выделения
+const QColor kSep     ("#E6E9EF"); // разделитель снизу
+const QColor kText1   ("#22262A"); // первая строка
+const QColor kText2   ("#6B7C93"); // вторая строка
+const QColor kSelText ("#FFFFFF"); // текст на выделении
+
 }
 
 QSize ChatListItemDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
   Q_UNUSED(index);
-  const QFont f1 = option.font;                 // первая строка
-  QFont f2 = option.font;                       // вторая строка
-  const QFontMetrics fm1(f1);
-  const QFontMetrics fm2(f2);
-  const int line1 = fm1.height();
-  const int line2 = fm2.height();
-  const int h = kPaddingY + line1 + kLineSpacing + line2 + kPaddingY;
-  const int w = option.rect.width();            // ширина от option.rect
-  return {w, h};
+
+  QFont f1 = option.font;
+  QFont f2 = option.font; f2.setPointSizeF(f2.pointSizeF() - 1);
+  const int h = kPaddingY + QFontMetrics(f1).height() + kLineSpacing + QFontMetrics(f2).height() + kPaddingY;
+  return { option.rect.width(), h };
 }
 
 void ChatListItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
@@ -34,32 +43,61 @@ void ChatListItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
   const bool isMuted              = index.data(Qt::UserRole + 4).toBool();   // IsMutedRole
   const std::int64_t timeStamp    = index.data(Qt::UserRole + 5).toLongLong();     // LastTimeRole
 
+  const bool selected = option.state & QStyle::State_Selected;
+  const bool hover    = option.state & QStyle::State_MouseOver;
+
   QStyleOptionViewItem opt(option);
   opt.text.clear();
-  QApplication::style()->drawControl(QStyle::CE_ItemViewItem, &opt, painter, nullptr);
-
-
-  QRect contentRect = option.rect.adjusted(kPaddingX, kPaddingY, -kPaddingX, -kPaddingY);
-
-  const QFont baseFont = option.font;
-  const QFontMetrics baseMetrics(baseFont);
+  // QApplication::style()->drawControl(QStyle::CE_ItemViewItem, &opt, painter, nullptr);
 
   painter->save();
-  painter->setFont(baseFont);
-  painter->setPen(option.palette.color(QPalette::Text));
+  painter->setRenderHint(QPainter::TextAntialiasing, true);
 
-  // Первая строка: список участников
-  const QString participantsLine1 = baseMetrics.elidedText(participantsText,Qt::ElideRight, contentRect.width());
-  painter->drawText(contentRect, Qt::AlignLeft | Qt::AlignVCenter, participantsLine1);
+  // фон
+  if (selected)
+    painter->fillRect(option.rect, kSelBg);
+  else if (hover)
+    painter->fillRect(option.rect, kHoverBg);
+  else
+    painter->fillRect(option.rect, kBg);
 
-         // Вторая строка
-  const int secondLineY = contentRect.y() + baseMetrics.height() + kLineSpacing;
-  QRect secondLineRect(contentRect.x(), secondLineY, contentRect.width(), baseMetrics.height());
+  // рабочая область
+  QRect contentRect = option.rect.adjusted(kPaddingX, kPaddingY, -kPaddingX, -kPaddingY);
 
-  const QString secondLine = baseMetrics.elidedText(infoLine, Qt::ElideRight, secondLineRect.width());
-  painter->drawText(secondLineRect, Qt::AlignLeft | Qt::AlignVCenter, secondLine);
+  // строки
+  QFont fontLine1 = option.font;
+  QFont fontLine2 = option.font;
+  fontLine2.setPointSizeF(fontLine2.pointSizeF() - 1);
 
-  painter->restore();
-}
+  QColor colorLine1 = selected ? kSelText : kText1;
+  QColor colorLine2 = selected ? kSelText.lighter(120) : kText2;
+
+
+  const int h1 = QFontMetrics(fontLine1).height();
+  QString line1 = QFontMetrics(fontLine1).elidedText(participantsText,
+                                                     Qt::ElideRight,
+                                                     contentRect.width());
+
+  painter->setFont(fontLine1);
+  painter->setPen(colorLine1);
+  painter->drawText(QRect(contentRect.left(), contentRect.top(),
+                          contentRect.width(), h1),
+                    Qt::AlignLeft | Qt::AlignVCenter, line1);
+
+  const int y2 = contentRect.top() + h1 + kLineSpacing;
+  QString line2 = QFontMetrics(fontLine2).elidedText(infoLine,
+                                                     Qt::ElideRight,
+                                                     contentRect.width());
+  painter->setFont(fontLine2);
+  painter->setPen(colorLine2);
+  painter->drawText(QRect(contentRect.left(), y2,
+                          contentRect.width(), QFontMetrics(fontLine2).height()),
+                    Qt::AlignLeft | Qt::AlignVCenter, line2);
+
+         // разделитель
+  painter->setPen(QPen(kSep));
+  painter->drawLine(option.rect.bottomLeft(), option.rect.bottomRight());
+
+  painter->restore();}
 
 ChatListItemDelegate::ChatListItemDelegate() {}

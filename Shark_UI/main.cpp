@@ -6,7 +6,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include "chat_system/chat_system.h"
-#include "client/client_session.h"
+#include "client/client_session.h"#FFFFFF
 #include "errorbus.h"
 #include <QMessageBox>
 #include <QObject>

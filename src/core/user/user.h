@@ -14,12 +14,18 @@ struct UserData {
   std::string _userName;     ///< User's display name.
   std::string _email;        ///< User's email.
   std::string _phone;        ///< User's phone.
+  std::string _disable_reason;
+  bool _is_active;
+  std::size_t _disabled_at;
+  std::size_t _ban_until;
 
   UserData() = default;
 
   UserData(const std::string &login, const std::string &name, const std::string &passwordHash, const std::string &email,
-           const std::string &phone)
-      : _login(login), _passwordHash(passwordHash), _userName(name), _email(email), _phone(phone){};
+           const std::string &phone, const std::string &disable_reason, bool is_active, const std::size_t disabled_at,
+           const std::size_t ban_until)
+      : _login(login), _passwordHash(passwordHash), _userName(name), _email(email), _phone(phone),
+        _disable_reason(disable_reason), _is_active(is_active), _disabled_at(disabled_at), _ban_until(ban_until){};
 };
 
 /**
@@ -98,6 +104,7 @@ public:
 
   /**
    * @brief Sets the user's display name.
+
    * @param userName The new display name string.
    */
   void setUserName(const std::string &userName);

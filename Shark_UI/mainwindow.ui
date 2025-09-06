@@ -154,8 +154,24 @@ border-radius: 8px;</string>
        <layout class="QHBoxLayout" name="horizontalLayout_3">
         <item>
          <widget class="QLineEdit" name="findLineEdit">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="toolTipDuration">
+           <number>-5</number>
+          </property>
           <property name="text">
-           <string>поиск</string>
+           <string>under construction</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="globalAddressBookCheckBox">
+          <property name="text">
+           <string>глобальный поиск</string>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
           </property>
          </widget>
         </item>
@@ -177,6 +193,9 @@ border-radius: 8px;</string>
         </item>
         <item>
          <widget class="QPushButton" name="findPushButton">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="sizePolicy">
            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -202,7 +221,7 @@ border-radius: 8px;</string>
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
         <property name="elideMode">
          <enum>Qt::TextElideMode::ElideNone</enum>
@@ -213,7 +232,11 @@ border-radius: 8px;</string>
          </attribute>
          <layout class="QVBoxLayout" name="verticalLayout_2">
           <item>
-           <widget class="QListView" name="chatListView"/>
+           <widget class="QListView" name="chatListView">
+            <property name="mouseTracking">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
@@ -230,6 +253,13 @@ border-radius: 8px;</string>
          <layout class="QHBoxLayout" name="horizontalLayout_7">
           <item>
            <layout class="QVBoxLayout" name="verticalLayout">
+            <item>
+             <widget class="QLabel" name="addressBookLabel">
+              <property name="text">
+               <string>TextLabel</string>
+              </property>
+             </widget>
+            </item>
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_5">
               <item>
@@ -250,16 +280,6 @@ border-radius: 8px;</string>
                </widget>
               </item>
               <item>
-               <widget class="QPushButton" name="createNewChatPushButton">
-                <property name="styleSheet">
-                 <string notr="true">background-color: rgb(249, 240, 107);</string>
-                </property>
-                <property name="text">
-                 <string>создать чат</string>
-                </property>
-               </widget>
-              </item>
-              <item>
                <spacer name="horizontalSpacer_2">
                 <property name="orientation">
                  <enum>Qt::Orientation::Horizontal</enum>
@@ -271,6 +291,16 @@ border-radius: 8px;</string>
                  </size>
                 </property>
                </spacer>
+              </item>
+              <item>
+               <widget class="QPushButton" name="createNewChatPushButton">
+                <property name="styleSheet">
+                 <string notr="true">background-color: rgb(249, 240, 107);</string>
+                </property>
+                <property name="text">
+                 <string>создать чат</string>
+                </property>
+               </widget>
               </item>
              </layout>
             </item>

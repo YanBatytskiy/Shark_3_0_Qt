@@ -13,6 +13,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -38,6 +39,7 @@ qt_add_executable(Shark_ui
   nw_connection_monitor.h nw_connection_monitor.cpp
   model_chat_list.h model_chat_list.cpp
   model_chat_list_itemdelegate.h model_chat_list_itemdelegate.cpp
+  model_user_listl.h model_user_list.cpp
 
 )
 
@@ -54,6 +56,7 @@ target_link_libraries(Shark_ui PRIVATE
   core
   dto
 )
+target_link_libraries(Shark_ui PRIVATE Qt6::Core)
 target_link_libraries(Shark_ui PRIVATE Qt6::Core)
 target_link_libraries(Shark_ui PRIVATE Qt6::Core)
 target_link_libraries(Shark_ui PRIVATE Qt6::Core)

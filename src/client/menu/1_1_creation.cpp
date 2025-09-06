@@ -106,7 +106,7 @@ void userCreation(ClientSession &clientSession) {
     return;
 
   auto newUser = std::make_shared<User>(
-      UserData(newLogin, newName, passwordHash, "...@gmail.com", "+111"));
+      UserData(newLogin, newName, passwordHash, "...@gmail.com", "+111","",true,0,0));
 
   clientSession.createUserCl(newUser);
 

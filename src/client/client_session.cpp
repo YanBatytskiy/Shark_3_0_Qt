@@ -1190,7 +1190,7 @@ bool ClientSession::sendLastReadMessageFromClient(const std::shared_ptr<Chat> &c
 void ClientSession::setActiveUserDTOFromSrv(const UserDTO &userDTO) const {
 
   auto user_ptr = std::make_shared<User>(
-      UserData(userDTO.login, userDTO.userName, userDTO.passwordhash, userDTO.email, userDTO.phone));
+      UserData(userDTO.login, userDTO.userName, userDTO.passwordhash, userDTO.email, userDTO.phone, userDTO.disable_reason,userDTO.is_active,userDTO.disabled_at,userDTO.ban_until));
   user_ptr->createChatList(std::make_shared<UserChatList>(user_ptr));
 
   if (!_instance.findUserByLogin(userDTO.login))
@@ -1203,7 +1203,7 @@ void ClientSession::setActiveUserDTOFromSrv(const UserDTO &userDTO) const {
 //
 void ClientSession::setUserDTOFromSrv(const UserDTO &userDTO) const {
 
-  auto user_ptr = std::make_shared<User>(UserData(userDTO.login, userDTO.userName, "-1", userDTO.email, userDTO.phone));
+  auto user_ptr = std::make_shared<User>(UserData(userDTO.login, userDTO.userName, "-1", userDTO.email, userDTO.phone, userDTO.disable_reason,userDTO.is_active,userDTO.disabled_at,userDTO.ban_until));
   user_ptr->createChatList();
 
   if (!_instance.findUserByLogin(userDTO.login))
@@ -1367,7 +1367,7 @@ bool ClientSession::checkAndAddParticipantToSystem(const std::vector<std::string
                                     .getStructDTOClass();
 
           auto newUser_ptr = std::make_shared<User>(
-              UserData(userDTO.login, userDTO.userName, "-1", userDTO.email, userDTO.phone));
+              UserData(userDTO.login, userDTO.userName, "-1", userDTO.email, userDTO.phone,userDTO.disable_reason,userDTO.is_active,userDTO.disabled_at,userDTO.ban_until));
 
           _instance.addUserToSystem(newUser_ptr);
           std::cout << "В систему добавлен участник чата. Имя/Логин: " << newUser_ptr->getUserName() << " / "
@@ -1384,7 +1384,7 @@ bool ClientSession::checkAndAddParticipantToSystem(const std::vector<std::string
         const auto &userLoginDTO = static_cast<const StructDTOClass<UserLoginDTO> &>(*packetDTO.structDTOPtr)
                                        .getStructDTOClass();
 
-        auto newUser_ptr = std::make_shared<User>(UserData(userLoginDTO.login, "Unknown", "-1", "Unknown", "Unknown"));
+        auto newUser_ptr = std::make_shared<User>(UserData(userLoginDTO.login, "Unknown", "-1", "Unknown", "Unknown","",true,0,0));
 
         _instance.addUserToSystem(newUser_ptr);
       }

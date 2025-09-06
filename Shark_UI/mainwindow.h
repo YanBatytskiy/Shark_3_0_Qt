@@ -32,6 +32,8 @@ public slots:
 private slots:
   void on_exitAction_triggered();
 
+  void on_chatUserTabWidget_currentChanged(int index);
+
 private:
   Ui::MainWindow *ui;
   std::shared_ptr<ClientSession> _sessionPtr;

@@ -17,41 +17,39 @@ void showInitForTest() {
   // const std::string initUserPassword[] = {"User01", "User02", "User03",
   // "User04", "User05",
   //                                         "User06", "User07", "User08"};
-  const std::string initUserPassword[] = {"1", "1", "1", "1",
-                                          "1", "1", "1", "1"};
+  const std::string initUserPassword[] = {"1", "1", "1", "1", "1", "1", "1", "1"};
 
   // const std::string initUserLogin[] = {"alex1980", "elena1980", "serg1980",
   // "vit1980",
   //                                      "mar1980",  "fed1980",   "vera1980",
   //                                      "yak1980"};
 
-  const std::string initUserLogin[] = {"a", "e", "s",   "v",
-                                       "m", "f", "ver", "y"};
+  const std::string initUserLogin[] = {"a", "e", "s", "v", "m", "f", "ver", "y"};
   // Создание пользователей
   std::string passwordHash = picosha2::hash256_hex_string(initUserPassword[0]);
-  auto Alex2104_ptr = std::make_shared<User>(UserData(
-      initUserLogin[0], "Sasha", passwordHash, "...@gmail.com", "+111"));
+  auto Alex2104_ptr = std::make_shared<User>(
+      UserData(initUserLogin[0], "Sasha", passwordHash, "...@gmail.com", "+111", "", true, 0, 0));
   passwordHash = picosha2::hash256_hex_string(initUserPassword[1]);
-  auto Elena1510_ptr = std::make_shared<User>(UserData(
-      initUserLogin[1], "Elena", passwordHash, "...@gmail.com", "+111"));
+  auto Elena1510_ptr = std::make_shared<User>(
+      UserData(initUserLogin[1], "Elena", passwordHash, "...@gmail.com", "+111", "", true, 0, 0));
   passwordHash = picosha2::hash256_hex_string(initUserPassword[2]);
-  auto Serg0101_ptr = std::make_shared<User>(UserData(
-      initUserLogin[2], "Sergei", passwordHash, "...@gmail.com", "+111"));
+  auto Serg0101_ptr = std::make_shared<User>(
+      UserData(initUserLogin[2], "Sergei", passwordHash, "...@gmail.com", "+111", "", true, 0, 0));
   passwordHash = picosha2::hash256_hex_string(initUserPassword[3]);
-  auto Vit2504_ptr = std::make_shared<User>(UserData(
-      initUserLogin[3], "Vitaliy", passwordHash, "...@gmail.com", "+111"));
+  auto Vit2504_ptr = std::make_shared<User>(
+      UserData(initUserLogin[3], "Vitaliy", passwordHash, "...@gmail.com", "+111", "", true, 0, 0));
   passwordHash = picosha2::hash256_hex_string(initUserPassword[4]);
-  auto mar1980_ptr = std::make_shared<User>(UserData(
-      initUserLogin[4], "Mariya", passwordHash, "...@gmail.com", "+111"));
+  auto mar1980_ptr = std::make_shared<User>(
+      UserData(initUserLogin[4], "Mariya", passwordHash, "...@gmail.com", "+111", "", true, 0, 0));
   passwordHash = picosha2::hash256_hex_string(initUserPassword[5]);
-  auto fed1980_ptr = std::make_shared<User>(UserData(
-      initUserLogin[5], "Fedor", passwordHash, "...@gmail.com", "+111"));
+  auto fed1980_ptr = std::make_shared<User>(
+      UserData(initUserLogin[5], "Fedor", passwordHash, "...@gmail.com", "+111", "", true, 0, 0));
   passwordHash = picosha2::hash256_hex_string(initUserPassword[6]);
-  auto vera1980_ptr = std::make_shared<User>(UserData(
-      initUserLogin[6], "Vera", passwordHash, "...@gmail.com", "+111"));
+  auto vera1980_ptr = std::make_shared<User>(
+      UserData(initUserLogin[6], "Vera", passwordHash, "...@gmail.com", "+111", "", true, 0, 0));
   passwordHash = picosha2::hash256_hex_string(initUserPassword[7]);
-  auto yak1980_ptr = std::make_shared<User>(UserData(
-      initUserLogin[7], "Yakov", passwordHash, "...@gmail.com", "+111"));
+  auto yak1980_ptr = std::make_shared<User>(
+      UserData(initUserLogin[7], "Yakov", passwordHash, "...@gmail.com", "+111", "", true, 0, 0));
 
   Alex2104_ptr->showUserDataInit();
   std::cout << ", Password: " << initUserPassword[0] << std::endl;
@@ -125,8 +123,7 @@ bool userLoginInsystem(ClientSession &clientSession) {
   // Login validation
   while (true) {
     try {
-      userLogin = inputDataValidation("Введите логин или 0 для выхода:", 0, 0,
-                                      false, false);
+      userLogin = inputDataValidation("Введите логин или 0 для выхода:", 0, 0, false, false);
       if (userLogin == "0")
         return false;
 
@@ -142,8 +139,7 @@ bool userLoginInsystem(ClientSession &clientSession) {
   // Password validation
   while (true) {
     try {
-      userPassword = inputDataValidation(
-          "Введите пароль (или 0 для выхода):", 0, 0, true, false);
+      userPassword = inputDataValidation("Введите пароль (или 0 для выхода):", 0, 0, true, false);
       if (userPassword == "0")
         return false;
 
@@ -174,8 +170,7 @@ void loginMenuChoice(ClientSession &clientSession) { // вывод главно�
 
   while (true) {
     std::cout << std::endl;
-    std::cout << "Добрый день, пользователь "
-              << clientSession.getActiveUserCl()->getUserName() << std::endl;
+    std::cout << "Добрый день, пользователь " << clientSession.getActiveUserCl()->getUserName() << std::endl;
     std::cout << std::endl;
     std::cout << "Выберите пункт меню: " << std::endl;
     std::cout << "1 - Создать новый чат" << std::endl;

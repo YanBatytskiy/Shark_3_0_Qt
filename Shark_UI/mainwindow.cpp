@@ -12,27 +12,61 @@ MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr, QWidget *paren
     : QMainWindow(parent), ui(new Ui::MainWindow)  {
 
   ui->setupUi(this);
+  ui->chatUserTabWidget->setTabEnabled(0,true);
+  ui->chatUserTabWidget->setCurrentIndex(0);
+
+  qDebug() << "count" << ui->chatUserTabWidget->count()
+           << "idx" << ui->chatUserTabWidget->currentIndex()
+           << "tab0Enabled" << ui->chatUserTabWidget->isTabEnabled(0);
+
+  QObject::connect(ui->chatUserTabWidget, &QTabWidget::currentChanged,
+                   this, [](int i){ qDebug() << "currentChanged ->" << i; });
+
   kInstanceCount++;
 
   if (!sessionPtr) { qWarning() << "ClientSession is null"; return; }
   _sessionPtr = std::move(sessionPtr);
+
   connect(_sessionPtr.get(), &ClientSession::serverStatusChanged,
           this, &MainWindow::onConnectionStatusChanged,
           Qt::QueuedConnection);
 
-    ui->serverStatusLabelRound->setStyleSheet("background-color: green; border-radius: 8px;");
-    ui->serverStatusLabel->setText("server online");
+
+  ui->serverStatusLabelRound->setStyleSheet("background-color: green; border-radius: 8px;");
+  ui->serverStatusLabel->setText("server online");
 
   ui->loginLabel->setText(" Логин: " + QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin()));
   ui->nameLabel->setText("Имя: " + QString::fromStdString(_sessionPtr->getActiveUserCl()->getUserName()));
 
+//окно работы со списком чатов
   _ChatListModel = new ChatListModel(ui->chatListView);
   fillChatListModelWithData();
 
   ui->chatListView->setModel(_ChatListModel);
+
+//Назначает делегат отрисовки элементов списка.
   ui->chatListView->setItemDelegate(new ChatListItemDelegate(ui->chatListView));
-  ui->chatListView->setUniformItemSizes(false);
+
+//Отключает “одинаковую высоту для всех строк
+  ui->chatListView->setUniformItemSizes(false);               // высоту задаёт делегат
+
+//Убирает стандартный промежуток между строками
+  ui->chatListView->setSpacing(0);                            // разделитель рисуем сами
+
+  //Заставляет прокрутку работать по пикселям, а не по строкам.
   ui->chatListView->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+
+         // Даёт виджету события движения мыши даже без нажатия кнопок.
+  ui->chatListView->setMouseTracking(true);
+
+  ui->chatListView->setStyleSheet("QListView { background-color: #FFFFF0; }");
+
+  // окно работы с адресной книгой
+  ui->addressBookLabel->setText("Контакты из записной книжки");
+  ui->findLineEdit->setPlaceholderText("Under Construction");
+  ui->globalAddressBookCheckBox->setChecked(false);
+
+
 }
 
 MainWindow::~MainWindow() {
@@ -65,7 +99,8 @@ void MainWindow::fillChatListModelWithData()
     for (const auto& chat : listOfChat.value()) {
 
       QString participantsChatList;
-      QString infoText;
+      QString infoText;  void on_globalAddressBookCheckBox_checkStateChanged(const Qt::CheckState &arg1);
+
       int unreadCount;
       bool isMuted;
       std::int64_t lastTime;
@@ -80,6 +115,10 @@ void MainWindow::fillChatListModelWithData()
 
         //достаем логин и имя пользователя
         const auto& login = participant.login;
+
+        //пропускаем активного пользователя
+        if (login == _sessionPtr->getActiveUserCl()->getLogin()) continue;
+
         const auto &user = _sessionPtr->getInstance().findUserByLogin(login);
         const auto& userName = user->getUserName();
 
@@ -129,5 +168,25 @@ void MainWindow::on_exitAction_triggered()
 {
   this->close();
 
+}
+
+void MainWindow::on_chatUserTabWidget_currentChanged(int index)
+{
+  if (index == 1) {
+    ui->findLineEdit->setEnabled(true);
+    QPalette paletteLineEdit = ui->findLineEdit->palette();
+    paletteLineEdit.setColor(QPalette::PlaceholderText, QColor("9AA0A6"));
+    ui->findLineEdit->setPalette(paletteLineEdit);
+    ui->findLineEdit->setClearButtonEnabled(true);
+    ui->findLineEdit->clear();
+    ui->findLineEdit->setPlaceholderText("Поиск...");
+    ui->findPushButton->setEnabled(true);
+    ui->globalAddressBookCheckBox->setEnabled(true);
+  }
+  else {
+    ui->findLineEdit->setEnabled(false);
+    ui->findPushButton->setEnabled(false);
+    ui->globalAddressBookCheckBox->setEnabled(false);
+  }
 }
 
