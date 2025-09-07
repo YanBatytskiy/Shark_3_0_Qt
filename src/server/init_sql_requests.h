@@ -25,7 +25,7 @@ create table if not exists public.chats (
 	is_active boolean not null DEFAULT true,
 	disabled_at bigint,
 	ban_until bigint,
-	disable_reason text
+	disable_reason text not null DEFAULT ''
 );
 )";
 
@@ -67,14 +67,22 @@ create table if not exists public.chats (
 )";
 
   std::string t7 = R"(
-insert into public.users (login, name, email, phone) values ('a', 'Alex', '...@gmail.com','111');
-insert into public.users (login, name, email, phone) values ('e', 'Elena', '...@gmail.com','111');
-insert into public.users (login, name, email, phone) values ('s', 'Sergei', '...@gmail.com','111');
-insert into public.users (login, name, email, phone) values ('v', 'Vitaliy', '...@gmail.com','111');
-insert into public.users (login, name, email, phone) values ('m', 'Mariya', '...@gmail.com','111');
-insert into public.users (login, name, email, phone) values ('f', 'Fedor', '...@gmail.com','111');
-insert into public.users (login, name, email, phone) values ('ver', 'Vera', '...@gmail.com','111');
-insert into public.users (login, name, email, phone) values ('y', 'Yakov', '...@gmail.com','111');
+insert into public.users (login, name, email, phone, is_active,	disabled_at, ban_until, disable_reason) 
+values ('a', 'Alex', '...@gmail.com','111',true,0,0,'');
+insert into public.users (login, name, email, phone, is_active,	disabled_at, ban_until, disable_reason) 
+values ('e', 'Elena', '...@gmail.com','111',true,0,0,'');
+insert into public.users (login, name, email, phone, is_active,	disabled_at, ban_until, disable_reason) 
+values ('s', 'Sergei', '...@gmail.com','111',true,0,0,'');
+insert into public.users (login, name, email, phone, is_active,	disabled_at, ban_until, disable_reason) 
+values ('v', 'Vitaliy', '...@gmail.com','111',false,0,0,'');
+insert into public.users (login, name, email, phone, is_active,	disabled_at, ban_until, disable_reason) 
+values ('m', 'Mariya', '...@gmail.com','111',false,0,0,'');
+insert into public.users (login, name, email, phone, is_active,	disabled_at, ban_until, disable_reason) 
+values ('f', 'Fedor', '...@gmail.com','111',true,0,0,'');
+insert into public.users (login, name, email, phone, is_active,	disabled_at, ban_until, disable_reason) 
+values ('ver', 'Vera', '...@gmail.com','111',true,0,0,'');
+insert into public.users (login, name, email, phone, is_active,	disabled_at, ban_until, disable_reason) 
+values ('y', 'Yakov', '...@gmail.com','111',true,0,1759265999000,'');
 
 insert into public.users_passhash (user_id, password_hash)
 values 

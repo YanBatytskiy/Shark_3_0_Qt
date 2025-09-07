@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <cstdint>
 
 class UserChatList;
 
@@ -14,18 +15,18 @@ struct UserData {
   std::string _userName;     ///< User's display name.
   std::string _email;        ///< User's email.
   std::string _phone;        ///< User's phone.
-  std::string _disable_reason;
-  bool _is_active;
-  std::size_t _disabled_at;
-  std::size_t _ban_until;
+  std::string _disableReason;
+  bool _isActive;
+  std::int64_t _disabledAt;
+  std::int64_t _bunUntil;
 
   UserData() = default;
 
   UserData(const std::string &login, const std::string &name, const std::string &passwordHash, const std::string &email,
-           const std::string &phone, const std::string &disable_reason, bool is_active, const std::size_t disabled_at,
-           const std::size_t ban_until)
+           const std::string &phone, const std::string &disableReason, bool isActive, const std::size_t disabledAt,
+           const std::size_t banUntil)
       : _login(login), _passwordHash(passwordHash), _userName(name), _email(email), _phone(phone),
-        _disable_reason(disable_reason), _is_active(is_active), _disabled_at(disabled_at), _ban_until(ban_until){};
+        _disableReason(disableReason), _isActive(isActive), _disabledAt(disabledAt), _bunUntil(banUntil){};
 };
 
 /**
@@ -60,102 +61,43 @@ public:
   void createChatList();
   void createChatList(const std::shared_ptr<UserChatList> &userChatList);
 
-  /**
-   * @brief Gets the user's login.
-   * @return The user's login string.
-   */
   std::string getLogin() const;
 
-  /**
-   * @brief Gets the user's display name.
-   * @return The user's display name string.
-   */
   std::string getUserName() const;
 
-  /**
-   * @brief Gets the user's passwordHash.
-   * @return The user's passwordHash string.
-   */
   std::string getPasswordHash() const;
 
-  /**
-   * @brief Gets the user's email.
-   * @return The user's Email string.
-   */
   std::string getEmail() const;
 
-  /**
-   * @brief Gets the user's phone.
-   * @return The user's phone string.
-   */
   std::string getPhone() const;
 
-  /**
-   * @brief Gets the user's chat list.
-   * @return shared pointer to the user's chat list.
-   */
+  std::string getDisableReason() const;
+
+  bool getIsActive() const;
+
+  std::int64_t getDisabledAt() const;
+
+  std::int64_t getBunUntil() const;
+
   std::shared_ptr<UserChatList> getUserChatList() const;
 
-  /**
-   * @brief Sets the user's login.
-   * @param login The new login string.
-   */
   void setLogin(const std::string &login);
 
-  /**
-   * @brief Sets the user's display name.
-
-   * @param userName The new display name string.
-   */
   void setUserName(const std::string &userName);
 
-  /**
-   * @brief Sets the user's passwordHash.
-   * @param passwordHash The new passwordHash string.
-   */
   void setPassword(const std::string &passwordHash);
 
-  /**
-   * @brief Sets the user's email.
-   * @param email The new email string.
-   */
   void setEmail(const std::string &email);
 
-  /**
-   * @brief Sets the user's phone.
-   * @param phone The new phone string.
-   */
   void setPhone(const std::string &phone);
 
-  /**
-   * @brief Checks if the provided passwordHash matches the user's passwordHash.
-   * @param passwordHash The passwordHash to check.
-   * @return True if the passwordHash matches, false otherwise.
-   */
   bool checkPassword(const std::string &passwordHash) const;
 
-  /**
-   * @brief Checks if the provided login matches the user's login.
-   * @param login The login to check.
-   * @return True if the login matches, false otherwise.
-   */
   bool RqFrClientCheckLogin(const std::string &login) const;
 
-  /**
-   * @brief Prints the user's chat list.
-   * @param user shared pointer to the user whose chat list is to be printed.
-   */
   void printChatList(const std::shared_ptr<User> &user) const;
 
-  /**
-   * @brief Displays the user's data.
-   * @details Prints the user's login, name, and other relevant information.
-   */
   void showUserData() const;
 
-  /**
-   * @brief Displays the user's data for initsysten.
-   * @details Prints the user's name, login, and password.
-   */
   void showUserDataInit() const;
 };

@@ -6,7 +6,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include "chat_system/chat_system.h"
-#include "client/client_session.h"#FFFFFF
+#include "client/client_session.h"
 #include "errorbus.h"
 #include <QMessageBox>
 #include <QObject>
@@ -36,11 +36,9 @@ int main(int argc, char *argv[])
     sessionPtr->stopConnectionThread();
   });
 
-  auto w = MainWindow::createSession(sessionPtr); // или sessionPtr.get() — по сигнатуре
-
-  if (!w) return 0;
-
-  w->setAttribute(Qt::WA_DeleteOnClose);
-  w->show();
-  return app.exec();
+  if (auto w = MainWindow::createSession(sessionPtr)) {
+    w->show();                // главное окно не блокирует
+    return app.exec();        // один цикл событий на всё приложение
+  }
+  return 0;
 }

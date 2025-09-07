@@ -1,4 +1,4 @@
-#include "model_chat_list_itemdelegate.h"
+#include "model_chat_list_delegate.h"
 #include <QApplication>
 #include <QPainter>
 #include <QTextLayout>
@@ -9,9 +9,6 @@ namespace {
 constexpr int kPaddingX = 12;
 constexpr int kPaddingY = 6;
 constexpr int kLineSpacing = 2;
-constexpr int kBadgeH     = 18;   // высота бейджа
-constexpr int kBadgeHPad  = 5;    // внутренний горизонтальный паддинг бейджа
-constexpr int kBadgeMinW  = 22;   // минимальная ширина бейджа}
 
 // Палитра
 const QColor kBg      ("#FFFACD"); // обычный фон
@@ -48,7 +45,6 @@ void ChatListItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
 
   QStyleOptionViewItem opt(option);
   opt.text.clear();
-  // QApplication::style()->drawControl(QStyle::CE_ItemViewItem, &opt, painter, nullptr);
 
   painter->save();
   painter->setRenderHint(QPainter::TextAntialiasing, true);

@@ -2,9 +2,11 @@
 #include "chooseLogRegScreen.h"
 #include "ui_mainwindow.h"
 #include "model_chat_list.h"
+#include "model_user_list.h"
 #include "system/date_time_utils.h"
 #include <QTimeZone>
-#include "model_chat_list_itemdelegate.h"
+#include "model_chat_list_delegate.h"
+#include "model_user_list_delegate.h"
 
 int MainWindow::kInstanceCount = 0;
 
@@ -15,12 +17,8 @@ MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr, QWidget *paren
   ui->chatUserTabWidget->setTabEnabled(0,true);
   ui->chatUserTabWidget->setCurrentIndex(0);
 
-  qDebug() << "count" << ui->chatUserTabWidget->count()
-           << "idx" << ui->chatUserTabWidget->currentIndex()
-           << "tab0Enabled" << ui->chatUserTabWidget->isTabEnabled(0);
-
-  QObject::connect(ui->chatUserTabWidget, &QTabWidget::currentChanged,
-                   this, [](int i){ qDebug() << "currentChanged ->" << i; });
+  // QObject::connect(ui->chatUserTabWidget, &QTabWidget::currentChanged,
+  //                  this, [](int i){ qDebug() << "currentChanged ->" << i; });
 
   kInstanceCount++;
 
@@ -62,10 +60,32 @@ MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr, QWidget *paren
   ui->chatListView->setStyleSheet("QListView { background-color: #FFFFF0; }");
 
   // окно работы с адресной книгой
+  _userListModel = new UserListModel(ui->userListView);
+  fillUserListModelWithData();
+
+  ui->userListView->setModel(_userListModel);
+
+  //Назначает делегат отрисовки элементов списка.
+  ui->userListView->setItemDelegate(new UserListItemDelegate(ui->userListView));
+
+  //Отключает “одинаковую высоту для всех строк
+  ui->userListView->setUniformItemSizes(false);               // высоту задаёт делегат
+
+  //Убирает стандартный промежуток между строками
+  ui->userListView->setSpacing(0);                            // разделитель рисуем сами
+
+         //Заставляет прокрутку работать по пикселям, а не по строкам.
+  ui->userListView->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+
+         // Даёт виджету события движения мыши даже без нажатия кнопок.
+  ui->userListView->setMouseTracking(true);
+
+  ui->userListView->setStyleSheet("QListView { background-color: #FFFFF0; }");
+
+
   ui->addressBookLabel->setText("Контакты из записной книжки");
   ui->findLineEdit->setPlaceholderText("Under Construction");
   ui->globalAddressBookCheckBox->setChecked(false);
-
 
 }
 
@@ -78,15 +98,15 @@ MainWindow::~MainWindow() {
 
 MainWindow *MainWindow::createSession(std::shared_ptr<ClientSession> sessionPtr) {
 
-  chooseLogRegScreen s(sessionPtr);
-  auto result = s.exec();
+    chooseLogRegScreen s(sessionPtr);
+    auto result = s.exec();
 
-  if (result == QDialog::Rejected)
-    return nullptr;
+    if (result == QDialog::Rejected)
+      return nullptr;
 
-  auto w = new MainWindow(sessionPtr);
-  w->setAttribute(Qt::WA_DeleteOnClose);
-  return w;
+    auto w = new MainWindow(sessionPtr);
+    w->setAttribute(Qt::WA_DeleteOnClose);
+    return w;
 }
 
 void MainWindow::fillChatListModelWithData()
@@ -99,7 +119,8 @@ void MainWindow::fillChatListModelWithData()
     for (const auto& chat : listOfChat.value()) {
 
       QString participantsChatList;
-      QString infoText;  void on_globalAddressBookCheckBox_checkStateChanged(const Qt::CheckState &arg1);
+      QString infoText;
+      // void on_globalAddressBookCheckBox_checkStateChanged(const Qt::CheckState &arg1);
 
       int unreadCount;
       bool isMuted;
@@ -151,6 +172,32 @@ void MainWindow::fillChatListModelWithData()
   else return;
 }
 
+void MainWindow::fillUserListModelWithData() {
+
+  const auto users = _sessionPtr->getInstance().getUsers();
+
+  if (users.size()) {
+
+    for (const auto& user_ptr : users) {
+
+      if (user_ptr != nullptr) {
+        const QString login = QString::fromStdString(user_ptr->getLogin());
+        const QString name = QString::fromStdString(user_ptr->getUserName());
+        const QString email = QString::fromStdString(user_ptr->getEmail());
+        const QString phone  = QString::fromStdString(user_ptr->getPhone());
+        const QString disableReason = QString::fromStdString(user_ptr->getUserName());
+        bool isActive = user_ptr->getIsActive();
+        const std::int64_t disableAt = user_ptr->getDisabledAt();
+        const std::int64_t bunUntil = user_ptr->getBunUntil();
+
+        _userListModel->fillUserItem(login, name,email, phone, disableReason,isActive, disableAt, bunUntil);
+      } // if user_ptr
+    } // for users
+
+  } // if users
+
+}
+
 void MainWindow::onConnectionStatusChanged(bool connectionStatus, ServerConnectionMode mode)
 {
   if (connectionStatus){
@@ -166,6 +213,7 @@ void MainWindow::onConnectionStatusChanged(bool connectionStatus, ServerConnecti
 
 void MainWindow::on_exitAction_triggered()
 {
+  _sessionPtr->resetSessionData();
   this->close();
 
 }
@@ -173,20 +221,29 @@ void MainWindow::on_exitAction_triggered()
 void MainWindow::on_chatUserTabWidget_currentChanged(int index)
 {
   if (index == 1) {
-    ui->findLineEdit->setEnabled(true);
+    ui->globalAddressBookCheckBox->setEnabled(true);
+
+    ui->findPushButton->setEnabled(true);
+
     QPalette paletteLineEdit = ui->findLineEdit->palette();
-    paletteLineEdit.setColor(QPalette::PlaceholderText, QColor("9AA0A6"));
+    paletteLineEdit.setColor(QPalette::PlaceholderText, QColor("#000000"));
     ui->findLineEdit->setPalette(paletteLineEdit);
+
+    ui->findLineEdit->setEnabled(true);
     ui->findLineEdit->setClearButtonEnabled(true);
     ui->findLineEdit->clear();
     ui->findLineEdit->setPlaceholderText("Поиск...");
-    ui->findPushButton->setEnabled(true);
-    ui->globalAddressBookCheckBox->setEnabled(true);
   }
   else {
-    ui->findLineEdit->setEnabled(false);
-    ui->findPushButton->setEnabled(false);
     ui->globalAddressBookCheckBox->setEnabled(false);
+
+    ui->findPushButton->setEnabled(false);
+
+    QPalette paletteLineEdit = ui->findLineEdit->palette();
+    paletteLineEdit.setColor(QPalette::PlaceholderText, QColor("#9AA0A6"));
+    ui->findLineEdit->setPalette(paletteLineEdit);
+    ui->findLineEdit->setEnabled(false);
+    ui->findLineEdit->setPlaceholderText("under construction");
   }
 }
 

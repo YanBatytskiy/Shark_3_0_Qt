@@ -1,12 +1,10 @@
-#ifndef MODEL_CHAT_LIST_ITEMDELEGATE_H
-#define MODEL_CHAT_LIST_ITEMDELEGATE_H
+#ifndef MODEL_USER_LIST_DELEGATE_H
+#define MODEL_USER_LIST_DELEGATE_H
 
 #include <QObject>
 #include <QStyledItemDelegate>
-#include <QDateTime>
 
-class ChatListItemDelegate final : public QStyledItemDelegate {
-  Q_OBJECT
+class UserListItemDelegate final : public QStyledItemDelegate {
 public:
 
   using QStyledItemDelegate::QStyledItemDelegate;
@@ -15,7 +13,8 @@ public:
 
   void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
 
-  ChatListItemDelegate();
+  UserListItemDelegate();
+
 };
 
-#endif // MODEL_CHAT_LIST_ITEMDELEGATE_H
+#endif // MODEL_USER_LIST_DELEGATE_H
