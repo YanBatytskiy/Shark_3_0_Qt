@@ -10,11 +10,6 @@ if(NOT TARGET dto)
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
-find_package(Qt6 REQUIRED COMPONENTS Core)
-find_package(Qt6 REQUIRED COMPONENTS Core)
-find_package(Qt6 REQUIRED COMPONENTS Core)
-find_package(Qt6 REQUIRED COMPONENTS Core)
-find_package(Qt6 REQUIRED COMPONENTS Core)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -28,8 +23,6 @@ qt_add_executable(Shark_ui
   mainwindow.ui
   loginScreen.h loginScreen.cpp loginScreen.ui
   registerScreen.h registerScreen.cpp registerScreen.ui
-  chooseLogRegScreen.h chooseLogRegScreen.cpp chooseLogRegScreen.ui
-
   chatuserdatascreen.h chatuserdatascreen.cpp chatuserdatascreen.ui
   errorbus.h
   exception_router.h
@@ -42,6 +35,8 @@ qt_add_executable(Shark_ui
   model_chat_list_delegate.h model_chat_list_delegate.cpp
   model_user_list.h model_user_list.cpp
   model_user_list_delegate.h model_user_list_delegate.cpp
+  workWindow.h workWindow.cpp workWindow.ui
+  images/resources.qrc
 
 )
 
@@ -58,10 +53,6 @@ target_link_libraries(Shark_ui PRIVATE
   core
   dto
 )
-target_link_libraries(Shark_ui PRIVATE Qt6::Core)
-target_link_libraries(Shark_ui PRIVATE Qt6::Core)
-target_link_libraries(Shark_ui PRIVATE Qt6::Core)
-target_link_libraries(Shark_ui PRIVATE Qt6::Core)
 target_link_libraries(Shark_ui PRIVATE Qt6::Core)
 
 target_include_directories(Shark_ui PRIVATE

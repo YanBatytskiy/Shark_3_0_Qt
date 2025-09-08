@@ -4,8 +4,6 @@
 #include <QMainWindow>
 #include <memory>
 #include "client_session.h"
-#include "model_chat_list.h"
-#include "model_user_list.h"
 
 
 QT_BEGIN_NAMESPACE
@@ -20,27 +18,23 @@ class MainWindow : public QMainWindow {
 public:
   MainWindow(std::shared_ptr<ClientSession> sessionPtr, QWidget *parent = nullptr);
   ~MainWindow();
-  static MainWindow *createSession(std::shared_ptr<ClientSession> sessionPtr);
-  static int kInstanceCount;
-  void fillChatListModelWithData();
-  void fillUserListModelWithData();
 
-signals:
-  void systemDataChanged(const QString &data);
+  void setLoginForm();
+  void setRegistrationForm();
+  void setworkForm();
+
 
 public slots:
-  void onConnectionStatusChanged(bool connectionStatus, ServerConnectionMode mode);
+  void onRejectedRequested();
+  void onLoggedIn(QString login);
 
 private slots:
   void on_exitAction_triggered();
 
-  void on_chatUserTabWidget_currentChanged(int index);
 
 private:
   Ui::MainWindow *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
-  ChatListModel* _ChatListModel;
-  UserListModel* _userListModel;
 
 };
 #endif // MAINWINDOW_H

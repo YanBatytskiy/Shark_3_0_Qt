@@ -4,7 +4,7 @@
 #include "errorbus.h"
 #include <sys/utsname.h>
 
-loginScreen::loginScreen(QWidget *parent) : QDialog(parent), ui(new Ui::loginScreen) { ui->setupUi(this);
+loginScreen::loginScreen(QWidget *parent) : QWidget(parent), ui(new Ui::loginScreen) { ui->setupUi(this);
 }
 
 loginScreen::~loginScreen() { delete ui; }
@@ -54,6 +54,13 @@ void loginScreen::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
 
 }
 
+void loginScreen::clearFields()
+{
+  ui->loginEdit->clear();
+  ui->passwordEdit->clear();
+  ui->loginEdit->setFocus();
+}
+
 void loginScreen::onConnectionStatusChanged(bool connectionStatus, ServerConnectionMode mode)
 {
 
@@ -100,42 +107,61 @@ void loginScreen::on_registerModeButton_clicked() {
     QMessageBox::warning(this, tr("No!"), tr("Сервер не доступен."));
   }
   else {
-    ui->loginEdit->clear();
-    ui->passwordEdit->clear();
-
+    clearFields();
     emit registrationRequested();
   }
 }
 
 void loginScreen::on_loginButtonBox_accepted() {
 
+    checkSignIn();
+
+}
+
+void loginScreen::on_loginButtonBox_rejected() { emit rejected(); }
+
+void loginScreen::checkSignIn()
+{
   try{
 
     if (ui->loginEdit->text().toStdString() == "" || ui->passwordEdit->text().toStdString() == "")
-    return;
+      return;
 
     if (!_sessionPtr->getIsServerOnline()) {
       QMessageBox::warning(this, tr("No!"), tr("Сервер не доступен."));
       return;
     }
 
+    auto result = _sessionPtr->checkLoginPsswordQt(ui->loginEdit->text().toStdString(),
+                                                   ui->passwordEdit->text().toStdString());
 
-  auto result = _sessionPtr->checkLoginPsswordQt(ui->loginEdit->text().toStdString(),
-                                                 ui->passwordEdit->text().toStdString());
+    if (!result) {
+      emit exc_qt::ErrorBus::i().error(tr("Login or Password is wrong"), "login");
+      return;
+    }
 
-  if (!result) {
-emit exc_qt::ErrorBus::i().error(tr("Login or Password is wrong"), "login");    return;
-
-  }
-    // QMessageBox::information(this, tr("Sucsess"), tr("ok!!!"));
-    // return;
-
-  emit accepted(ui->loginEdit->text());
+    emit accepted(ui->loginEdit->text());
 
   }
-    catch (const std::exception&) {
+  catch (const std::exception&) {
     return;
   }
+
 }
 
-void loginScreen::on_loginButtonBox_rejected() { emit rejected(); }
+
+
+void loginScreen::on_loginEdit_returnPressed()
+{
+  if (ui->loginEdit->text().toStdString() != "")
+  ui->passwordEdit->setFocus();
+}
+
+
+void loginScreen::on_passwordEdit_returnPressed()
+{
+  if (ui->loginEdit->text().toStdString() == "" || ui->passwordEdit->text().toStdString() == "")
+    return;
+  checkSignIn();
+}
+

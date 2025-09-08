@@ -1,13 +1,13 @@
 #ifndef CHATUSERDATASCREEN_H
 #define CHATUSERDATASCREEN_H
 
-#include <QDialog>
+#include <QWidget>
 
 namespace Ui {
 class chatListScreen;
 }
 
-class chatListScreen : public QDialog {
+class chatListScreen : public QWidget {
   Q_OBJECT
 
 public:

@@ -36,9 +36,14 @@ int main(int argc, char *argv[])
     sessionPtr->stopConnectionThread();
   });
 
-  if (auto w = MainWindow::createSession(sessionPtr)) {
-    w->show();                // главное окно не блокирует
-    return app.exec();        // один цикл событий на всё приложение
-  }
+
+  auto w = new MainWindow(sessionPtr);
+  w->show();
+  auto result = app.exec();
+
+  if (result == QDialog::Rejected)
+    return 0;
+
+  w->setAttribute(Qt::WA_DeleteOnClose);
   return 0;
 }

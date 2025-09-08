@@ -2,7 +2,7 @@
 #define LOGINSCREEN_H
 
 #include "client_session.h"
-#include <QDialog>
+#include <QWidget>
 
 class ConnectionMonitor;
 
@@ -10,12 +10,13 @@ namespace Ui {
 class loginScreen;
 }
 
-class loginScreen : public QDialog {
+class loginScreen : public QWidget {
   Q_OBJECT
 public:
   explicit loginScreen(QWidget *parent = nullptr);
   ~loginScreen();
   void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
+  void clearFields();
 
 signals:
   void registrationRequested();
@@ -29,6 +30,11 @@ private slots:
   void on_registerModeButton_clicked();
   void on_loginButtonBox_accepted();
   void on_loginButtonBox_rejected();
+
+  void checkSignIn();
+
+  void on_loginEdit_returnPressed();
+  void on_passwordEdit_returnPressed();
 
 private:
   Ui::loginScreen *ui;

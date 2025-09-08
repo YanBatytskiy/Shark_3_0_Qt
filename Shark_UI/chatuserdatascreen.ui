@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>chatListScreen</class>
- <widget class="QDialog" name="chatListScreen">
+ <widget class="QWidget" name="chatListScreen">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>757</width>
+    <height>740</height>
    </rect>
   </property>
   <property name="windowTitle">

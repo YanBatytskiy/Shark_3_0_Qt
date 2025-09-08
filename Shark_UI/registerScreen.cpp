@@ -3,12 +3,22 @@
 // #include "nw_connection_monitor.h"
 
 
-registerScreen::registerScreen(QWidget *parent) : QDialog(parent), ui(new Ui::registerScreen) { ui->setupUi(this); }
+registerScreen::registerScreen(QWidget *parent) : QWidget(parent), ui(new Ui::registerScreen) { ui->setupUi(this); }
 
 registerScreen::~registerScreen() { delete ui; }
 
 void registerScreen::setDatabase(std::shared_ptr<ClientSession> sessionPtr) { _sessionPtr = sessionPtr;
   connect(_sessionPtr.get(), &ClientSession::serverStatusChanged, this, &registerScreen::onConnectionStatusChanged, Qt::QueuedConnection);
+}
+
+void registerScreen::clearFields()
+{
+  ui->loginEdit->clear();
+  ui->nameEdit->clear();
+  ui->passwordEdit->clear();
+  ui->passwordConfirmEdit->clear();
+  ui->loginEdit->setFocus();
+
 }
 
 void registerScreen::onConnectionStatusChanged(bool connectionStatus, ServerConnectionMode mode)
@@ -43,6 +53,7 @@ void registerScreen::on_registerButtonBox_accepted()
 
 void registerScreen::on_registerButtonBox_rejected()
 {
+  clearFields();
   emit rejected();
 
 }

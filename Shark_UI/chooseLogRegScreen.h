@@ -15,12 +15,8 @@ public:
   explicit chooseLogRegScreen(std::shared_ptr<ClientSession> sessionPtr = nullptr, QWidget *parent = nullptr);
   ~chooseLogRegScreen();
 
-  void setLoginForm();
-  void setRegistrationForm();
 
 public slots:
-  void onRejectedRequested();
-  void onLoggedIn(QString login);
 
 private:
   Ui::chooseLogRegScreen *ui;

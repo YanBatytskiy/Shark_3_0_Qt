@@ -2,7 +2,7 @@
 #define REGISTERSCREEN_H
 
 #include "client_session.h"
-#include <QDialog>
+#include <QWidget>
 
 class ConnectionMonitor;
 
@@ -10,13 +10,14 @@ namespace Ui {
 class registerScreen;
 }
 
-class registerScreen : public QDialog {
+class registerScreen : public QWidget {
   Q_OBJECT
 
 public:
   explicit registerScreen(QWidget *parent = nullptr);
   ~registerScreen();
   void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
+  void clearFields();
 
 signals:
   void loginRequested();
