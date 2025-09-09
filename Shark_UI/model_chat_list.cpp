@@ -7,7 +7,9 @@ QHash<int, QByteArray> ChatListModel::roleNames() const {
           {InfoTextRole, "infoText"},
           {UnreadCountRole, "unreadCount"},
           {IsMutedRole, "isMuted"},
-          {LastTimeRole, "lastTime"}};
+          {LastTimeRole, "lastTime"},
+          {ChatIdRole, "chatIdTime"}
+  };
 }
 
 int ChatListModel::rowCount(const QModelIndex &parent) const
@@ -34,6 +36,7 @@ QVariant ChatListModel::data(const QModelIndex &index, int chatRole) const
   case UnreadCountRole:          return it.UnreadCount;
   case IsMutedRole:              return it.isMuted;
   case LastTimeRole:             return static_cast<qlonglong>(it.LastTime);
+  case ChatIdRole:             return static_cast<qlonglong>(it.ChatId);
   }
   return {};
 }
@@ -78,7 +81,18 @@ void ChatListModel::setLastTime(int row, std::int64_t timeValue)
   emit dataChanged(i, i, {LastTimeRole});
 }
 
-void ChatListModel::fillChatListItem(const QString& participantsChatList, const QString& infoText, const int& unreadCount, bool isMuted, std::int64_t lastTime)
+void ChatListModel::setChatId(int row, std::size_t Value)
+{
+  if (row <0 || row >=rowCount()) return;
+  _items[static_cast<size_t>(row )].LastTime = Value;
+  const QModelIndex i = index(row);
+  emit dataChanged(i, i, {ChatIdRole});
+
+}
+
+void ChatListModel::fillChatListItem(const QString& participantsChatList,
+                                     const QString& infoText, const int& unreadCount, bool isMuted,
+                                     std::int64_t lastTime, std::size_t chatId)
 {
   ChatListItem chatListItem;
   chatListItem.ParticipantsChatList = participantsChatList;
@@ -86,6 +100,7 @@ void ChatListModel::fillChatListItem(const QString& participantsChatList, const 
   chatListItem.UnreadCount = unreadCount;
   chatListItem.isMuted = isMuted;
   chatListItem.LastTime = lastTime;
+  chatListItem.ChatId = chatId;
 
   appendItem(chatListItem);
 

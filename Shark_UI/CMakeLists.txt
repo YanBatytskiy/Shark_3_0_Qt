@@ -37,6 +37,9 @@ qt_add_executable(Shark_ui
   model_user_list_delegate.h model_user_list_delegate.cpp
   workWindow.h workWindow.cpp workWindow.ui
   images/resources.qrc
+  model_chat_messages.h model_chat_messages.cpp
+  chat_list_view_screen.ui
+  chat_list_view_screen.h chat_list_view_screen.cpp
 
 )
 
@@ -44,6 +47,11 @@ qt_add_executable(Shark_ui
 target_include_directories(Shark_ui PRIVATE
   ${CMAKE_CURRENT_BINARY_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}/Shark_ui_autogen/include
+  ${CMAKE_CURRENT_SOURCE_DIR}                # Shark_UI/*
+  ${CMAKE_CURRENT_SOURCE_DIR}/../src         # src/*
+  ${CMAKE_CURRENT_SOURCE_DIR}/../src/client  # src/client/*
+  ${CMAKE_CURRENT_SOURCE_DIR}/../src/core    # src/core/*
+  ${CMAKE_CURRENT_SOURCE_DIR}/../src/dto     # src/dto/*
 )
 
 target_link_libraries(Shark_ui PRIVATE
@@ -52,13 +60,4 @@ target_link_libraries(Shark_ui PRIVATE
   clientlib
   core
   dto
-)
-target_link_libraries(Shark_ui PRIVATE Qt6::Core)
-
-target_include_directories(Shark_ui PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}                # Shark_UI/*
-  ${CMAKE_CURRENT_SOURCE_DIR}/../src         # src/*
-  ${CMAKE_CURRENT_SOURCE_DIR}/../src/client  # src/client/*
-  ${CMAKE_CURRENT_SOURCE_DIR}/../src/core    # src/core/*
-  ${CMAKE_CURRENT_SOURCE_DIR}/../src/dto     # src/dto/*
 )

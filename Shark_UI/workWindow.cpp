@@ -1,14 +1,36 @@
 #include "workWindow.h"
 #include "ui_workWindow.h"
+
+#include "chat_list_view_screen.h"
+
+#include <QTimeZone>
+
 #include "model_chat_list.h"
 #include "model_user_list.h"
+#include "model_chat_messages.h"
 #include "system/date_time_utils.h"
-#include <QTimeZone>
 #include "model_chat_list_delegate.h"
 #include "model_user_list_delegate.h"
 
-work_window::work_window(QWidget *parent) : QDialog(parent), ui(new Ui::work_window) {
+#include "message/message_content.h"
+#include "message/message_content_struct.h"
+
+
+work_window::work_window(QWidget *parent) : QWidget(parent), ui(new Ui::work_window) {
+
   ui->setupUi(this);
+  ui->leftPane->setMaximumWidth(QWIDGETSIZE_MAX);
+
+  // ui->splitter->setStretchFactor(0, 0); // слева не тянем
+  // ui->splitter->setStretchFactor(1, 1); // тянется только правая часть
+
+  // стартовые доли (пример под 1200px ширину: 360/840)
+  ui->splitter->setSizes({360, 840});
+  ui->splitter->setStyleSheet(
+      "QSplitter::handle{background:palette(mid);} "
+      "QSplitter::handle:horizontal{width:8px;}"
+      );
+
 }
 
 work_window::~work_window() { delete ui; }
@@ -30,7 +52,6 @@ void work_window::fillChatListModelWithData()
 
       QString participantsChatList;
       QString infoText;
-      // void on_globalAddressBookCheckBox_checkStateChanged(const Qt::CheckState &arg1);
 
       int unreadCount;
       bool isMuted;
@@ -38,7 +59,6 @@ void work_window::fillChatListModelWithData()
 
              // добавляем номер чата
       infoText = "Chat_Id = " + QString::number(chat.second.chatId);
-
              // собираем строку участников с логинами и именами
       participantsChatList = "Имя (Логин: ";
       bool first = true;
@@ -72,7 +92,7 @@ void work_window::fillChatListModelWithData()
 
       isMuted = false;
 
-      _ChatListModel->fillChatListItem(participantsChatList, infoText, unreadCount, isMuted, lastTime);
+      _ChatListModel->fillChatListItem(participantsChatList, infoText, unreadCount, isMuted, lastTime, chat.second.chatId);
 
     }// for listOfChat
 
@@ -108,6 +128,54 @@ void work_window::fillUserListModelWithData()
   } // if users
 }
 
+void work_window::fillMessageModelWithData()
+{
+  // взяли index выбранной строки в списке чатов
+  QModelIndex index = ui->chatListTab->currentIndex();
+
+  //если список пуст
+  if (!index.isValid()) return;
+
+  //достали chatId
+  QVariant value = index.data(ChatListModel::ChatIdRole);
+  std::size_t chatId = static_cast<size_t>(value.toLongLong());
+
+  const auto messages = _sessionPtr->getInstance().getChatById(chatId)->getMessages();
+
+  for (const auto& message: messages) {
+
+    if (message.second != nullptr) {
+
+      QString messageText = "";
+
+      const auto& content = message.second->getContent();
+      if (!content.empty()) {
+        const auto &textContent = std::dynamic_pointer_cast<MessageContent<TextContent>>(content[0]);
+
+        if (textContent)
+          messageText = QString::fromStdString(textContent->getMessageContent()._text);
+      }
+      const auto sender = message.second->getSender();
+      const auto sender_ptr = sender.lock();
+      QString senderLogin = "";
+      QString senderName = "";
+      if (!sender_ptr) {
+        senderLogin = "Удален";
+        senderName = "";
+      } else {
+        senderLogin = QString::fromStdString(sender_ptr->getLogin());
+        senderName = QString::fromStdString(sender_ptr->getUserName());
+      }
+      std::int64_t timeStamp = static_cast<int64_t>(message.first);
+      std::size_t messageId = static_cast<size_t>(message.second->getMessageId());
+
+      _MessageModel->fillMessageItem(messageText, senderLogin,
+                                     senderName, timeStamp, messageId);
+
+    } // if message
+  } // for messages
+}
+
 void work_window::onConnectionStatusChanged(bool connectionStatus, ServerConnectionMode mode)
 {
   if (connectionStatus){
@@ -138,27 +206,11 @@ void work_window::createSession()
   ui->nameLabel->setText("Имя: " + QString::fromStdString(_sessionPtr->getActiveUserCl()->getUserName()));
 
          //окно работы со списком чатов
-  _ChatListModel = new ChatListModel(ui->chatListView);
+  _ChatListModel = new ChatListModel(ui->chatListTab);
+
   fillChatListModelWithData();
+  ui->chatListTab->setModel(_ChatListModel);
 
-  ui->chatListView->setModel(_ChatListModel);
-
-         //Назначает делегат отрисовки элементов списка.
-  ui->chatListView->setItemDelegate(new ChatListItemDelegate(ui->chatListView));
-
-         //Отключает “одинаковую высоту для всех строк
-  ui->chatListView->setUniformItemSizes(false);               // высоту задаёт делегат
-
-         //Убирает стандартный промежуток между строками
-  ui->chatListView->setSpacing(0);                            // разделитель рисуем сами
-
-         //Заставляет прокрутку работать по пикселям, а не по строкам.
-  ui->chatListView->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
-
-         // Даёт виджету события движения мыши даже без нажатия кнопок.
-  ui->chatListView->setMouseTracking(true);
-
-  ui->chatListView->setStyleSheet("QListView { background-color: #FFFFF0; }");
 
          // окно работы с адресной книгой
   _userListModel = new UserListModel(ui->userListView);

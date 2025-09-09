@@ -17,17 +17,18 @@ private:
     int UnreadCount;
     bool isMuted = false;
     std::int64_t LastTime;
+    std::size_t ChatId;
   };
   std::vector<ChatListItem> _items;
 
 public:
-
-  enum ChatListRoles: int {
-    ParticipantsChatListRole = Qt::UserRole +1,
+  enum ChatListRoles : int {
+    ParticipantsChatListRole = Qt::UserRole + 1,
     InfoTextRole,
     UnreadCountRole,
     IsMutedRole,
-    LastTimeRole
+    LastTimeRole,
+    ChatIdRole
   };
 
   Q_ENUM(ChatListRoles)
@@ -45,8 +46,9 @@ public:
   void setUnreadCount(int row, int newValue);
   void setIsMuted(int row, bool newValue);
   void setLastTime(int row, std::int64_t timeValue);
+  void setChatId(int row, std::size_t Value);
 
-  void fillChatListItem(const QString& participantsChatList, const QString& infoText, const int& unreadCount, bool isMuted, std::int64_t lastTime);
+  void fillChatListItem(const QString& participantsChatList, const QString& infoText, const int& unreadCount, bool isMuted, std::int64_t lastTime, std::size_t chatId);
 
 signals:
 

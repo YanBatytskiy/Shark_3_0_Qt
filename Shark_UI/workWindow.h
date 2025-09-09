@@ -1,17 +1,18 @@
 #ifndef WORKWINDOW_H
 #define WORKWINDOW_H
 
-#include <QDialog>
+#include <QWidget>
 #include <memory>
 #include "client_session.h"
 #include "model_chat_list.h"
 #include "model_user_list.h"
+#include "model_chat_messages.h"
 
 namespace Ui {
 class work_window;
 }
 
-class work_window : public QDialog {
+class work_window : public QWidget {
   Q_OBJECT
 
 public:
@@ -21,6 +22,7 @@ public:
 
   void fillChatListModelWithData();
   void fillUserListModelWithData();
+  void fillMessageModelWithData();
 
 
 public slots:
@@ -37,6 +39,7 @@ private:
 
   ChatListModel* _ChatListModel;
   UserListModel* _userListModel;
+  MessageModel* _MessageModel;
 
 };
 
