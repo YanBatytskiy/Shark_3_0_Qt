@@ -3,7 +3,8 @@
 
 #include <QWidget>
 #include "client_session.h"
-#include "model_chat_list.h"
+// #include "model_chat_list.h"
+#include <QAbstractItemView>
 
 namespace Ui {
 class ChatListViewScreen;
@@ -20,13 +21,13 @@ public:
   QModelIndex currentIndex() const;
 
 signals:
-    void currentChatIdChanged(std::size_t chatId);
+    void currentChatIndexChanged(const QModelIndex& current, const QModelIndex& previous);
 
 private:
   Ui::ChatListViewScreen *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
 
-  ChatListModel* _ChatListModel;
+  // ChatListModel* _ChatListModel;
 
 };
 

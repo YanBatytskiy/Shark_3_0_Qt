@@ -2,6 +2,7 @@
 #include "ui_workWindow.h"
 
 #include "chat_list_view_screen.h"
+#include "chatmessagesscreen.h"
 
 #include <QTimeZone>
 
@@ -21,11 +22,8 @@ work_window::work_window(QWidget *parent) : QWidget(parent), ui(new Ui::work_win
   ui->setupUi(this);
   ui->leftPane->setMaximumWidth(QWIDGETSIZE_MAX);
 
-  // ui->splitter->setStretchFactor(0, 0); // слева не тянем
-  // ui->splitter->setStretchFactor(1, 1); // тянется только правая часть
-
   // стартовые доли (пример под 1200px ширину: 360/840)
-  ui->splitter->setSizes({360, 840});
+  ui->splitter->setSizes({360, 1040});
   ui->splitter->setStyleSheet(
       "QSplitter::handle{background:palette(mid);} "
       "QSplitter::handle:horizontal{width:8px;}"
@@ -194,6 +192,8 @@ void work_window::createSession()
   ui->chatUserTabWidget->setTabEnabled(0,true);
   ui->chatUserTabWidget->setCurrentIndex(0);
 
+  ui->chatUserDataStackedWidget->setCurrentIndex(0);
+
   connect(_sessionPtr.get(), &ClientSession::serverStatusChanged,
           this, &work_window::onConnectionStatusChanged,
           Qt::QueuedConnection);
@@ -211,6 +211,7 @@ void work_window::createSession()
   fillChatListModelWithData();
   ui->chatListTab->setModel(_ChatListModel);
 
+  connect(ui->chatListTab, &ChatListViewScreen::currentChatIndexChanged, ui->editChatPage, &chatMessagesScreen::onChatCurrentChanged);
 
          // окно работы с адресной книгой
   _userListModel = new UserListModel(ui->userListView);

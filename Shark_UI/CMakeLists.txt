@@ -10,6 +10,7 @@ if(NOT TARGET dto)
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -23,7 +24,7 @@ qt_add_executable(Shark_ui
   mainwindow.ui
   loginScreen.h loginScreen.cpp loginScreen.ui
   registerScreen.h registerScreen.cpp registerScreen.ui
-  chatuserdatascreen.h chatuserdatascreen.cpp chatuserdatascreen.ui
+
   errorbus.h
   exception_router.h
   exception_login.h
@@ -40,6 +41,8 @@ qt_add_executable(Shark_ui
   model_chat_messages.h model_chat_messages.cpp
   chat_list_view_screen.ui
   chat_list_view_screen.h chat_list_view_screen.cpp
+  chatmessagesscreen.h chatmessagesscreen.cpp chatmessagesscreen.ui
+  model_chat_mess_delegate.h model_chat_mess_delegate.cpp
 
 )
 
@@ -61,3 +64,4 @@ target_link_libraries(Shark_ui PRIVATE
   core
   dto
 )
+target_link_libraries(Shark_ui PRIVATE Qt6::Core)

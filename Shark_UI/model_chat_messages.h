@@ -42,6 +42,7 @@ public:
   void setSenderName(int row, const QString& value);
   void setTimeStamp(int row, std::int64_t value);
   void setMessageId(int row, std::size_t value);
+  void clear();
 
   void fillMessageItem(const QString &messageText, const QString &senderLogin,
                        const QString &senderName,

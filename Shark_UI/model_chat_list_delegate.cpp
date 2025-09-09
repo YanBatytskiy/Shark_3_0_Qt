@@ -26,7 +26,10 @@ QSize ChatListItemDelegate::sizeHint(const QStyleOptionViewItem &option, const Q
   Q_UNUSED(index);
 
   QFont f1 = option.font;
-  QFont f2 = option.font; f2.setPointSizeF(f2.pointSizeF() - 1);
+  QFont f2 = option.font;
+
+  //уменьшает размер второй строки
+  f2.setPointSizeF(f2.pointSizeF() - 1);
   const int h = kPaddingY + QFontMetrics(f1).height() + kLineSpacing + QFontMetrics(f2).height() + kPaddingY;
   return { option.rect.width(), h };
 }

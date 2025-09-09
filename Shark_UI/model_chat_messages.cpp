@@ -87,6 +87,13 @@ void MessageModel::setMessageId(int row, std::size_t value)
   emit dataChanged(i, i, {MessageIdRole});
 }
 
+void MessageModel::clear()
+{
+  beginResetModel();
+  _items.clear();
+  endResetModel();
+}
+
 void MessageModel::fillMessageItem(const QString &messageText,
                                    const QString &senderLogin,
                                    const QString &senderName,

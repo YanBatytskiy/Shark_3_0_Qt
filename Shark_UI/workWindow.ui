@@ -361,7 +361,7 @@ border-radius: 8px;</string>
       <property name="currentIndex">
        <number>0</number>
       </property>
-      <widget class="QWidget" name="editChatPage"/>
+      <widget class="chatMessagesScreen" name="editChatPage"/>
       <widget class="QWidget" name="userViewPage"/>
      </widget>
     </widget>
@@ -373,6 +373,12 @@ border-radius: 8px;</string>
    <class>ChatListViewScreen</class>
    <extends>QWidget</extends>
    <header>chat_list_view_screen.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>chatMessagesScreen</class>
+   <extends>QWidget</extends>
+   <header>chatmessagesscreen.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
