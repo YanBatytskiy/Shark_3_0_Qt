@@ -3,9 +3,9 @@
 #include "chat/chat.h"
 #include "client/client_session.h"
 #include "dto/dto_struct.h"
-#include "exception/login_exception.h"
-#include "exception/network_exception.h"
-#include "exception/validation_exception.h"
+#include "exceptions_cpp/login_exception.h"
+#include "exceptions_cpp/network_exception.h"
+#include "exceptions_cpp/validation_exception.h"
 #include "system/system_function.h"
 #include "user/user_chat_list.h"
 #include <algorithm>
@@ -225,9 +225,9 @@ bool LoginMenu_1NewChatChooseParticipants(
 
     if (user_ptr == nullptr) {
 
-    //   user_ptr = std::make_shared<User>(UserData(userDTOList.value()[0].login, userDTOList.value()[0].userName,
-    //                                              userDTOList.value()[0].passwordhash, userDTOList.value()[0].email,
-    //                                              userDTOList.value()[0].phone));
+      //   user_ptr = std::make_shared<User>(UserData(userDTOList.value()[0].login, userDTOList.value()[0].userName,
+      //                                              userDTOList.value()[0].passwordhash, userDTOList.value()[0].email,
+      //                                              userDTOList.value()[0].phone));
 
       clientSession.getInstance().addUserToSystem(user_ptr);
     }
@@ -262,7 +262,7 @@ bool LoginMenu_1NewChatChooseParticipants(
       if (user_ptr == nullptr) {
 
         // user_ptr = std::make_shared<User>(
-            // UserData(userDTO.login, userDTO.userName, userDTO.passwordhash, userDTO.email, userDTO.phone));
+        // UserData(userDTO.login, userDTO.userName, userDTO.passwordhash, userDTO.email, userDTO.phone));
 
         clientSession.getInstance().addUserToSystem(user_ptr);
       }

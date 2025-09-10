@@ -1,5 +1,5 @@
 #include "system_function.h"
-#include "exception/validation_exception.h"
+#include "exceptions_cpp/validation_exception.h"
 #include "message/message_content_struct.h"
 #include <algorithm>
 #include <cctype>
@@ -240,7 +240,7 @@ bool engAndFiguresCheck(const std::string &inputData) {
 }
 
 bool checkNewLoginPasswordForLimits(const std::string &inputData, std::size_t contentLengthMin,
-                                         std::size_t contentLengthMax, bool isPassword) {
+                                    std::size_t contentLengthMax, bool isPassword) {
 
   bool isCapital = false, isNumber = false;
   std::size_t utf8SymbolCount = 0;

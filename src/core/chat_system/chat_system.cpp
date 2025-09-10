@@ -1,8 +1,8 @@
 #include "chat_system.h"
 #include "chat/chat.h"
 #include "dto/dto_struct.h"
-#include "exception/login_exception.h"
-#include "exception/validation_exception.h"
+#include "exceptions_cpp/login_exception.h"
+#include "exceptions_cpp/validation_exception.h"
 #include "system/system_function.h"
 #include "user/user_chat_list.h"
 #include <cstdint>

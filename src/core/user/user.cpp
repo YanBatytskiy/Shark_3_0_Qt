@@ -1,5 +1,5 @@
 #include "user.h"
-#include "exception/validation_exception.h"
+#include "exceptions_cpp/validation_exception.h"
 #include "system/date_time_utils.h"
 #include "user_chat_list.h"
 #include <cstddef>

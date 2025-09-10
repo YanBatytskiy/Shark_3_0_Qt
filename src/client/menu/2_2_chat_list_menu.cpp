@@ -1,7 +1,7 @@
 #include "0_menu_system.h"
 #include "client/client_session.h"
-#include "exception/network_exception.h"
-#include "exception/validation_exception.h"
+#include "exceptions_cpp/network_exception.h"
+#include "exceptions_cpp/validation_exception.h"
 #include "system/system_function.h"
 #include "user/user_chat_list.h"
 #include <cstdint>

@@ -1,6 +1,6 @@
 #include "sql_server.h"
 #include "dto_struct.h"
-#include "exception/sql_exception.h"
+#include "exceptions_cpp/sql_exception.h"
 #include "message/message_content.h"
 #include "message/message_content_struct.h"
 #include "system/system_function.h"

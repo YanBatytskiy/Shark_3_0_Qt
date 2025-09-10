@@ -2,7 +2,7 @@
 #include "1_1_creation.h"
 #include "chat_system/chat_system.h"
 #include "client/client_session.h"
-#include "exception/validation_exception.h"
+#include "exceptions_cpp/validation_exception.h"
 #include "system/system_function.h"
 #include <iostream>
 

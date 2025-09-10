@@ -1,6 +1,6 @@
 #include "serialize.h"
 #include "dto/dto_struct.h"
-#include "exception/network_exception.h"
+#include "exceptions_cpp/network_exception.h"
 #include <cstdint>
 #include <cwchar>
 #include <iostream>

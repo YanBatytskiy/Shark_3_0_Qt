@@ -19,7 +19,7 @@
      <item>
       <widget class="QListView" name="ChatMessagesListView">
        <property name="styleSheet">
-        <string notr="true">border-image: url(:/sea_1.jpg) 0 0 0 0 stretch stretch;</string>
+        <string notr="true">border-image: url(:/images/sea_1.jpg) 0 0 0 0 stretch stretch;</string>
        </property>
       </widget>
      </item>

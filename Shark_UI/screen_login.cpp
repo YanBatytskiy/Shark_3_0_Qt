@@ -1,4 +1,4 @@
-#include "exception/errorbus.h"
+#include "exceptions_qt/errorbus.h"
 
 #include "screen_login.h"
 #include "ui_screen_login.h"
@@ -7,10 +7,7 @@
 
 #include <QMessageBox>
 
-ScreenLogin::ScreenLogin(QWidget *parent)
-    : QWidget(parent), ui(new Ui::ScreenLogin) {
-  ui->setupUi(this);
-}
+ScreenLogin::ScreenLogin(QWidget *parent) : QWidget(parent), ui(new Ui::ScreenLogin) { ui->setupUi(this); }
 
 ScreenLogin::~ScreenLogin() { delete ui; }
 
@@ -18,8 +15,8 @@ void ScreenLogin::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
 
   _sessionPtr = sessionPtr;
 
-  connect(_sessionPtr.get(), &ClientSession::serverStatusChanged, this,
-          &ScreenLogin::onConnectionStatusChanged, Qt::QueuedConnection);
+  connect(_sessionPtr.get(), &ClientSession::serverStatusChanged, this, &ScreenLogin::onConnectionStatusChanged,
+          Qt::QueuedConnection);
 
   struct utsname utsname;
   uname(&utsname);
@@ -47,14 +44,12 @@ void ScreenLogin::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
 
   if (mode == ServerConnectionMode::Localhost) {
     serverDataText += QString::fromStdString("\nLocalHost address: ");
-    serverDataText +=
-        QString::fromStdString(serverConnectionConfig.addressLocalHost);
+    serverDataText += QString::fromStdString(serverConnectionConfig.addressLocalHost);
     serverDataText += QString::fromStdString("\nPort: ");
     serverDataText += QString::number(serverConnectionConfig.port);
   } else if (mode == ServerConnectionMode::LocalNetwork) {
     serverDataText += QString::fromStdString("\nLocal Network Address: ");
-    serverDataText +=
-        QString::fromStdString(serverConnectionConfig.addressLocalNetwork);
+    serverDataText += QString::fromStdString(serverConnectionConfig.addressLocalNetwork);
     serverDataText += QString::fromStdString("\nPort: ");
     serverDataText += QString::number(serverConnectionConfig.port);
   };
@@ -68,8 +63,7 @@ void ScreenLogin::clearFields() {
   ui->loginEdit->setFocus();
 }
 
-void ScreenLogin::onConnectionStatusChanged(bool connectionStatus,
-                                            ServerConnectionMode mode) {
+void ScreenLogin::onConnectionStatusChanged(bool connectionStatus, ServerConnectionMode mode) {
 
   QString serverDataText;
 
@@ -86,14 +80,12 @@ void ScreenLogin::onConnectionStatusChanged(bool connectionStatus,
 
   if (mode == ServerConnectionMode::Localhost) {
     serverDataText += QString::fromStdString("\nLocalHost address: ");
-    serverDataText +=
-        QString::fromStdString(serverConnectionConfig.addressLocalHost);
+    serverDataText += QString::fromStdString(serverConnectionConfig.addressLocalHost);
     serverDataText += QString::fromStdString("\nPort: ");
     serverDataText += QString::number(serverConnectionConfig.port);
   } else if (mode == ServerConnectionMode::LocalNetwork) {
     serverDataText += QString::fromStdString("\nLocal Network Address: ");
-    serverDataText +=
-        QString::fromStdString(serverConnectionConfig.addressLocalNetwork);
+    serverDataText += QString::fromStdString(serverConnectionConfig.addressLocalNetwork);
     serverDataText += QString::fromStdString("\nPort: ");
     serverDataText += QString::number(serverConnectionConfig.port);
   };
@@ -101,12 +93,10 @@ void ScreenLogin::onConnectionStatusChanged(bool connectionStatus,
   ui->serverDataLabel->setText(serverDataText);
 
   if (connectionStatus) {
-    ui->serverStatusLabelRound->setStyleSheet(
-        "background-color: green; border-radius: 8px;");
+    ui->serverStatusLabelRound->setStyleSheet("background-color: green; border-radius: 8px;");
     ui->serverStatusLabel->setText("server online");
   } else {
-    ui->serverStatusLabelRound->setStyleSheet(
-        "background-color: red; border-radius: 8px;");
+    ui->serverStatusLabelRound->setStyleSheet("background-color: red; border-radius: 8px;");
     ui->serverStatusLabel->setText("server offline");
   }
 }
@@ -128,8 +118,7 @@ void ScreenLogin::on_loginButtonBox_rejected() { emit rejected(); }
 void ScreenLogin::checkSignIn() {
   try {
 
-    if (ui->loginEdit->text().toStdString() == "" ||
-        ui->passwordEdit->text().toStdString() == "")
+    if (ui->loginEdit->text().toStdString() == "" || ui->passwordEdit->text().toStdString() == "")
       return;
 
     if (!_sessionPtr->getIsServerOnline()) {
@@ -137,13 +126,11 @@ void ScreenLogin::checkSignIn() {
       return;
     }
 
-    auto result = _sessionPtr->checkLoginPsswordQt(
-        ui->loginEdit->text().toStdString(),
-        ui->passwordEdit->text().toStdString());
+    auto result = _sessionPtr->checkLoginPsswordQt(ui->loginEdit->text().toStdString(),
+                                                   ui->passwordEdit->text().toStdString());
 
     if (!result) {
-      emit exc_qt::ErrorBus::i().error(tr("Login or Password is wrong"),
-                                       "login");
+      emit exc_qt::ErrorBus::i().error(tr("Login or Password is wrong"), "login");
       return;
     }
 
@@ -160,8 +147,7 @@ void ScreenLogin::on_loginEdit_returnPressed() {
 }
 
 void ScreenLogin::on_passwordEdit_returnPressed() {
-  if (ui->loginEdit->text().toStdString() == "" ||
-      ui->passwordEdit->text().toStdString() == "")
+  if (ui->loginEdit->text().toStdString() == "" || ui->passwordEdit->text().toStdString() == "")
     return;
   checkSignIn();
 }

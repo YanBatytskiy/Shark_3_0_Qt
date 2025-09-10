@@ -1,13 +1,13 @@
 #pragma once
 
-#include "exception/network_exception.h" // подключаем твои исключения
+#include "exceptions_cpp/network_exception.h" // подключаем твои исключения
 #include <cerrno>
+#include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <vector>
-#include <cstdint>
 
 inline void safeSend(int socketFd, const std::vector<std::uint8_t> &data) {
   ssize_t bytesSent = send(socketFd, data.data(), data.size(), 0);
@@ -24,8 +24,7 @@ inline void safeSend(int socketFd, const std::vector<std::uint8_t> &data) {
     throw exc::SendDataException();
   }
 }
-inline std::vector<std::uint8_t> safeRecv(int socketFd,
-                                          std::size_t bufferSize) {
+inline std::vector<std::uint8_t> safeRecv(int socketFd, std::size_t bufferSize) {
   std::vector<std::uint8_t> buffer(bufferSize);
 
   ssize_t bytesReceived = recv(socketFd, buffer.data(), buffer.size(), 0);

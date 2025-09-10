@@ -1,6 +1,6 @@
 #include "chat/chat.h"
 #include "client/client_session.h"
-#include "exception/validation_exception.h"
+#include "exceptions_cpp/validation_exception.h"
 #include "message/message_content_struct.h"
 #include "system/date_time_utils.h"
 #include "system/system_function.h"

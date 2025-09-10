@@ -4,8 +4,8 @@
 #include "2_2_chat_list_menu.h"
 #include "2_4_user_profile.h"
 #include "client/client_session.h"
-#include "exception/login_exception.h"
-#include "exception/validation_exception.h"
+#include "exceptions_cpp/login_exception.h"
+#include "exceptions_cpp/validation_exception.h"
 #include "system/picosha2.h"
 #include "system/system_function.h"
 #include <cctype>

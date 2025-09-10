@@ -75,7 +75,7 @@
           <string/>
          </property>
          <property name="pixmap">
-          <pixmap resource="images/resources.qrc">:/shark_1.jpg</pixmap>
+          <pixmap resource="resources.qrc">:/images/shark_1.jpg</pixmap>
          </property>
          <property name="scaledContents">
           <bool>true</bool>
@@ -399,7 +399,7 @@ border-radius: 8px;</string>
   <tabstop>registerButtonBox</tabstop>
  </tabstops>
  <resources>
-  <include location="images/resources.qrc"/>
+  <include location="resources.qrc"/>
  </resources>
  <connections/>
 </ui>

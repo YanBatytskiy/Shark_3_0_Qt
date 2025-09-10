@@ -1,11 +1,11 @@
 #include "chat/chat.h"
-#include "exception/validation_exception.h"
+#include "exceptions_cpp/validation_exception.h"
 #include "user/user.h"
 #include <algorithm>
+#include <cstdint>
 #include <iostream>
 #include <iterator>
 #include <memory>
-#include <cstdint>
 
 // getters
 

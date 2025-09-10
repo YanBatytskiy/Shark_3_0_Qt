@@ -20,7 +20,7 @@ ChatBot/
 │ ├── core/
 │ │ ├── chat/
 │ │ ├── chat_system/
-│ │ ├── exception/
+│ │ ├── exceptions_cpp/
 │ │ ├── message/
 │ │ ├── system/
 │ │ └── user/
