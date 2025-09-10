@@ -19,11 +19,11 @@ qt_standard_project_setup()
 
 qt_add_executable(Shark_ui
   main.cpp
-  mainwindow.cpp
-  mainwindow.h
-  mainwindow.ui
-  loginScreen.h loginScreen.cpp loginScreen.ui
-  registerScreen.h registerScreen.cpp registerScreen.ui
+  screen_main_window.cpp
+  screen_main_window.h
+  screen_main_window.ui
+  screen_login.h screen_login.cpp screen_login.ui
+  screen_register.h screen_register.cpp screen_register.ui
 
   errorbus.h
   exception_router.h
@@ -36,12 +36,12 @@ qt_add_executable(Shark_ui
   model_chat_list_delegate.h model_chat_list_delegate.cpp
   model_user_list.h model_user_list.cpp
   model_user_list_delegate.h model_user_list_delegate.cpp
-  workWindow.h workWindow.cpp workWindow.ui
+  screen_main_work.h screen_main_work.cpp screen_main_work.ui
   images/resources.qrc
   model_chat_messages.h model_chat_messages.cpp
-  chat_list_view_screen.ui
-  chat_list_view_screen.h chat_list_view_screen.cpp
-  chatmessagesscreen.h chatmessagesscreen.cpp chatmessagesscreen.ui
+  screen_chat_list.ui
+  screen_chat_list.h screen_chat_list.cpp
+  screen_chatting.h screen_chatting.cpp screen_chatting.ui
   model_chat_mess_delegate.h model_chat_mess_delegate.cpp
 
 )

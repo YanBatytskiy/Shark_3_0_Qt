@@ -7,14 +7,14 @@
 class ConnectionMonitor;
 
 namespace Ui {
-class loginScreen;
+class ScreenLogin;
 }
 
-class loginScreen : public QWidget {
+class ScreenLogin : public QWidget {
   Q_OBJECT
 public:
-  explicit loginScreen(QWidget *parent = nullptr);
-  ~loginScreen();
+  explicit ScreenLogin(QWidget *parent = nullptr);
+  ~ScreenLogin();
   void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
   void clearFields();
 
@@ -24,7 +24,8 @@ signals:
   void rejected();
 
 public slots:
-  void onConnectionStatusChanged(bool connectionStatus, ServerConnectionMode mode);
+  void onConnectionStatusChanged(bool connectionStatus,
+                                 ServerConnectionMode mode);
 
 private slots:
   void on_registerModeButton_clicked();
@@ -37,7 +38,7 @@ private slots:
   void on_passwordEdit_returnPressed();
 
 private:
-  Ui::loginScreen *ui;
+  Ui::ScreenLogin *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
   QString _systemData;
 };

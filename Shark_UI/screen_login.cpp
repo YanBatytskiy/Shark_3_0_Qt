@@ -1,0 +1,167 @@
+#include "exception/errorbus.h"
+
+#include "screen_login.h"
+#include "ui_screen_login.h"
+
+#include <sys/utsname.h>
+
+#include <QMessageBox>
+
+ScreenLogin::ScreenLogin(QWidget *parent)
+    : QWidget(parent), ui(new Ui::ScreenLogin) {
+  ui->setupUi(this);
+}
+
+ScreenLogin::~ScreenLogin() { delete ui; }
+
+void ScreenLogin::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
+
+  _sessionPtr = sessionPtr;
+
+  connect(_sessionPtr.get(), &ClientSession::serverStatusChanged, this,
+          &ScreenLogin::onConnectionStatusChanged, Qt::QueuedConnection);
+
+  struct utsname utsname;
+  uname(&utsname);
+
+  _systemData = "OS name: " + QString::fromStdString(utsname.sysname) +
+                "\nOS Release: " + QString::fromStdString(utsname.release) +
+                "\nOS version: " + QString::fromStdString(utsname.version) +
+                "\nArchitecture: " + QString::fromStdString(utsname.machine) +
+                "\nHost name: " + QString::fromStdString(utsname.nodename);
+
+  QString serverDataText;
+
+  serverDataText = _systemData;
+
+  auto mode = _sessionPtr->getserverConnectionModeCl();
+
+  if (mode == ServerConnectionMode::Localhost)
+    serverDataText += "\n\nПодключено к серверу внутри рабочей станции.";
+  else if (mode == ServerConnectionMode::LocalNetwork)
+    serverDataText += "\n\nПодключено к серверу внути локальной сети.";
+  else if (mode == ServerConnectionMode::Offline)
+    serverDataText += "\n\nПодключение к серверу не удалось. Режим Offline.";
+
+  ServerConnectionConfig serverConnectionConfig;
+
+  if (mode == ServerConnectionMode::Localhost) {
+    serverDataText += QString::fromStdString("\nLocalHost address: ");
+    serverDataText +=
+        QString::fromStdString(serverConnectionConfig.addressLocalHost);
+    serverDataText += QString::fromStdString("\nPort: ");
+    serverDataText += QString::number(serverConnectionConfig.port);
+  } else if (mode == ServerConnectionMode::LocalNetwork) {
+    serverDataText += QString::fromStdString("\nLocal Network Address: ");
+    serverDataText +=
+        QString::fromStdString(serverConnectionConfig.addressLocalNetwork);
+    serverDataText += QString::fromStdString("\nPort: ");
+    serverDataText += QString::number(serverConnectionConfig.port);
+  };
+
+  ui->serverDataLabel->setText(serverDataText);
+}
+
+void ScreenLogin::clearFields() {
+  ui->loginEdit->clear();
+  ui->passwordEdit->clear();
+  ui->loginEdit->setFocus();
+}
+
+void ScreenLogin::onConnectionStatusChanged(bool connectionStatus,
+                                            ServerConnectionMode mode) {
+
+  QString serverDataText;
+
+  serverDataText = _systemData;
+
+  if (mode == ServerConnectionMode::Localhost)
+    serverDataText += "\n\nПодключено к серверу внутри рабочей станции.";
+  else if (mode == ServerConnectionMode::LocalNetwork)
+    serverDataText += "\n\nПодключено к серверу внути локальной сети.";
+  else if (mode == ServerConnectionMode::Offline)
+    serverDataText += "\n\nПодключение к серверу не удалось. Режим Offline.";
+
+  ServerConnectionConfig serverConnectionConfig;
+
+  if (mode == ServerConnectionMode::Localhost) {
+    serverDataText += QString::fromStdString("\nLocalHost address: ");
+    serverDataText +=
+        QString::fromStdString(serverConnectionConfig.addressLocalHost);
+    serverDataText += QString::fromStdString("\nPort: ");
+    serverDataText += QString::number(serverConnectionConfig.port);
+  } else if (mode == ServerConnectionMode::LocalNetwork) {
+    serverDataText += QString::fromStdString("\nLocal Network Address: ");
+    serverDataText +=
+        QString::fromStdString(serverConnectionConfig.addressLocalNetwork);
+    serverDataText += QString::fromStdString("\nPort: ");
+    serverDataText += QString::number(serverConnectionConfig.port);
+  };
+
+  ui->serverDataLabel->setText(serverDataText);
+
+  if (connectionStatus) {
+    ui->serverStatusLabelRound->setStyleSheet(
+        "background-color: green; border-radius: 8px;");
+    ui->serverStatusLabel->setText("server online");
+  } else {
+    ui->serverStatusLabelRound->setStyleSheet(
+        "background-color: red; border-radius: 8px;");
+    ui->serverStatusLabel->setText("server offline");
+  }
+}
+
+void ScreenLogin::on_registerModeButton_clicked() {
+
+  if (!_sessionPtr->getIsServerOnline()) {
+    QMessageBox::warning(this, tr("No!"), tr("Сервер не доступен."));
+  } else {
+    clearFields();
+    emit registrationRequested();
+  }
+}
+
+void ScreenLogin::on_loginButtonBox_accepted() { checkSignIn(); }
+
+void ScreenLogin::on_loginButtonBox_rejected() { emit rejected(); }
+
+void ScreenLogin::checkSignIn() {
+  try {
+
+    if (ui->loginEdit->text().toStdString() == "" ||
+        ui->passwordEdit->text().toStdString() == "")
+      return;
+
+    if (!_sessionPtr->getIsServerOnline()) {
+      QMessageBox::warning(this, tr("No!"), tr("Сервер не доступен."));
+      return;
+    }
+
+    auto result = _sessionPtr->checkLoginPsswordQt(
+        ui->loginEdit->text().toStdString(),
+        ui->passwordEdit->text().toStdString());
+
+    if (!result) {
+      emit exc_qt::ErrorBus::i().error(tr("Login or Password is wrong"),
+                                       "login");
+      return;
+    }
+
+    emit accepted(ui->loginEdit->text());
+
+  } catch (const std::exception &) {
+    return;
+  }
+}
+
+void ScreenLogin::on_loginEdit_returnPressed() {
+  if (ui->loginEdit->text().toStdString() != "")
+    ui->passwordEdit->setFocus();
+}
+
+void ScreenLogin::on_passwordEdit_returnPressed() {
+  if (ui->loginEdit->text().toStdString() == "" ||
+      ui->passwordEdit->text().toStdString() == "")
+    return;
+  checkSignIn();
+}

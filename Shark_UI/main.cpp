@@ -1,41 +1,35 @@
-#include "mainwindow.h"
-#include <QApplication>
-#include <memory>
-#include <QStyleFactory>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
 #include "chat_system/chat_system.h"
 #include "client/client_session.h"
 #include "errorbus.h"
+#include "screen_main_window.h"
+#include <QApplication>
 #include <QMessageBox>
 #include <QObject>
+#include <QStyleFactory>
+#include <arpa/inet.h>
+#include <memory>
+#include <netinet/in.h>
+#include <unistd.h>
 
-
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
 
   (void)exc_qt::ErrorBus::i();
 
-  QObject::connect(&exc_qt::ErrorBus::i(), &exc_qt::ErrorBus::error,
-                   &app,
-                   [](const QString& m, const QString& ctx){
+  QObject::connect(&exc_qt::ErrorBus::i(), &exc_qt::ErrorBus::error, &app,
+                   [](const QString &m, const QString &ctx) {
                      QMessageBox::critical(qApp->activeWindow(), "Ошибка",
                                            QString("[%1]\n%2").arg(ctx, m));
                    });
 
-
-  ChatSystem  clientSystem;
+  ChatSystem clientSystem;
 
   auto sessionPtr = std::make_shared<ClientSession>(clientSystem);
 
   sessionPtr->startConnectionThread();
 
-  QObject::connect(&app, &QCoreApplication::aboutToQuit, [&]{
-    sessionPtr->stopConnectionThread();
-  });
-
+  QObject::connect(&app, &QCoreApplication::aboutToQuit,
+                   [&] { sessionPtr->stopConnectionThread(); });
 
   auto w = new MainWindow(sessionPtr);
   w->show();

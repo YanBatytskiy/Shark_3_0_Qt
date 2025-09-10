@@ -2,20 +2,21 @@
 #define REGISTERSCREEN_H
 
 #include "client_session.h"
+
 #include <QWidget>
 
 class ConnectionMonitor;
 
 namespace Ui {
-class registerScreen;
+class ScreenRegister;
 }
 
-class registerScreen : public QWidget {
+class ScreenRegister : public QWidget {
   Q_OBJECT
 
 public:
-  explicit registerScreen(QWidget *parent = nullptr);
-  ~registerScreen();
+  explicit ScreenRegister(QWidget *parent = nullptr);
+  ~ScreenRegister();
   void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
   void clearFields();
 
@@ -24,8 +25,8 @@ signals:
   void rejected();
 
 public slots:
-  void onConnectionStatusChanged(bool connectionStatus, ServerConnectionMode mode);
-
+  void onConnectionStatusChanged(bool connectionStatus,
+                                 ServerConnectionMode mode);
 
 private slots:
   void on_toLoginButton_clicked();
@@ -33,9 +34,8 @@ private slots:
   void on_registerButtonBox_rejected();
 
 private:
-  Ui::registerScreen *ui;
+  Ui::ScreenRegister *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
-
 };
 
 #endif // REGISTERSCREEN_H

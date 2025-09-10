@@ -32,9 +32,9 @@
       <property name="currentIndex">
        <number>2</number>
       </property>
-      <widget class="loginScreen" name="loginPage"/>
-      <widget class="registerScreen" name="regPage"/>
-      <widget class="work_window" name="workPage"/>
+      <widget class="ScreenLogin" name="loginPage"/>
+      <widget class="ScreenRegister" name="regPage"/>
+      <widget class="ScreenMainWork" name="workPage"/>
      </widget>
     </item>
    </layout>
@@ -72,21 +72,21 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>loginScreen</class>
+   <class>ScreenLogin</class>
    <extends>QWidget</extends>
-   <header>loginScreen.h</header>
+   <header>screen_login.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>registerScreen</class>
+   <class>ScreenRegister</class>
    <extends>QWidget</extends>
-   <header>registerScreen.h</header>
+   <header>screen_register.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>work_window</class>
+   <class>ScreenMainWork</class>
    <extends>QWidget</extends>
-   <header>workWindow.h</header>
+   <header>screen_main_work.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

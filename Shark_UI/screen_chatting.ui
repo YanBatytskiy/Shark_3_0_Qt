@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>chatMessagesScreen</class>
- <widget class="QWidget" name="chatMessagesScreen">
+ <class>ScreenChatting</class>
+ <widget class="QWidget" name="ScreenChatting">
   <property name="geometry">
    <rect>
     <x>0</x>

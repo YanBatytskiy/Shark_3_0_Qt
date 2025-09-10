@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>work_window</class>
- <widget class="QWidget" name="work_window">
+ <class>ScreenMainWork</class>
+ <widget class="QWidget" name="ScreenMainWork">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -268,7 +268,7 @@ border-radius: 8px;</string>
            <property name="elideMode">
             <enum>Qt::TextElideMode::ElideNone</enum>
            </property>
-           <widget class="ChatListViewScreen" name="chatListTab">
+           <widget class="ScreenChatList" name="chatListTab">
             <attribute name="title">
              <string>Чаты</string>
             </attribute>
@@ -361,7 +361,7 @@ border-radius: 8px;</string>
       <property name="currentIndex">
        <number>0</number>
       </property>
-      <widget class="chatMessagesScreen" name="editChatPage"/>
+      <widget class="ScreenChatting" name="editChatPage"/>
       <widget class="QWidget" name="userViewPage"/>
      </widget>
     </widget>
@@ -370,15 +370,15 @@ border-radius: 8px;</string>
  </widget>
  <customwidgets>
   <customwidget>
-   <class>ChatListViewScreen</class>
+   <class>ScreenChatList</class>
    <extends>QWidget</extends>
-   <header>chat_list_view_screen.h</header>
+   <header>screen_chat_list.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>chatMessagesScreen</class>
+   <class>ScreenChatting</class>
    <extends>QWidget</extends>
-   <header>chatmessagesscreen.h</header>
+   <header>screen_chatting.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
