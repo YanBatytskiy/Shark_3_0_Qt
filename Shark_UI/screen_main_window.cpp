@@ -31,6 +31,8 @@ MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr,
   connect(ui->regPage, &ScreenRegister::rejected, this,
           &MainWindow::onRejectedRequested);
 
+  ui->menubar->setVisible(false);
+
   setLoginForm();
 }
 
@@ -70,4 +72,21 @@ void MainWindow::onLoggedIn(QString login) {
 void MainWindow::on_exitAction_triggered() {
   _sessionPtr->resetSessionData();
   setLoginForm();
+}
+
+void MainWindow::on_mainWindowstackedWidget_currentChanged(int arg1)
+{
+  QWidget *loginPage =
+      ui->mainWindowstackedWidget->findChild<QWidget *>("loginPage");
+  QWidget *regPage = ui->mainWindowstackedWidget->findChild<QWidget *>("regPage");
+  QWidget *workPage = ui->mainWindowstackedWidget->findChild<QWidget *>("workPage");
+
+  if (ui->mainWindowstackedWidget->currentWidget() == loginPage ||
+      ui->mainWindowstackedWidget->currentWidget() == regPage) {
+    ui->menubar->setVisible(false);
+  }
+
+  else ui->menubar->setVisible(true);
+
+
 }

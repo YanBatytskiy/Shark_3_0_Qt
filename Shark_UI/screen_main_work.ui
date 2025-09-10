@@ -284,59 +284,106 @@ border-radius: 8px;</string>
             <attribute name="title">
              <string>Пользователи</string>
             </attribute>
-            <layout class="QHBoxLayout" name="horizontalLayout_7">
+            <layout class="QVBoxLayout" name="verticalLayout">
              <item>
-              <layout class="QVBoxLayout" name="verticalLayout">
+              <widget class="QLabel" name="addressBookLabel">
+               <property name="text">
+                <string>TextLabel</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_5">
                <item>
-                <widget class="QLabel" name="addressBookLabel">
+                <widget class="QListView" name="userListView"/>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_6">
+               <item>
+                <widget class="QPushButton" name="banPushButton">
                  <property name="text">
-                  <string>TextLabel</string>
+                  <string>Бан до...</string>
                  </property>
                 </widget>
                </item>
                <item>
-                <layout class="QHBoxLayout" name="horizontalLayout_5">
-                 <item>
-                  <widget class="QListView" name="userListView"/>
-                 </item>
-                </layout>
+                <spacer name="horizontalSpacer_6">
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>18</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
                </item>
                <item>
-                <layout class="QHBoxLayout" name="horizontalLayout_4">
-                 <item>
-                  <widget class="QPushButton" name="addUserToChatPushButton">
-                   <property name="styleSheet">
-                    <string notr="true">background-color: rgb(143, 240, 164);</string>
-                   </property>
-                   <property name="text">
-                    <string>Добавить получателя</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <spacer name="horizontalSpacer_2">
-                   <property name="orientation">
-                    <enum>Qt::Orientation::Horizontal</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>40</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                 <item>
-                  <widget class="QPushButton" name="createNewChatPushButton">
-                   <property name="styleSheet">
-                    <string notr="true">background-color: rgb(249, 240, 107);</string>
-                   </property>
-                   <property name="text">
-                    <string>создать чат</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
+                <widget class="QPushButton" name="blockPushButton">
+                 <property name="text">
+                  <string>Заблокировать</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <spacer name="horizontalSpacer_7">
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>15</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <widget class="QPushButton" name="unblockPushButton">
+                 <property name="text">
+                  <string>Разблокировать</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_4">
+               <item>
+                <widget class="QPushButton" name="addUserToChatPushButton">
+                 <property name="styleSheet">
+                  <string notr="true">background-color: rgb(143, 240, 164);</string>
+                 </property>
+                 <property name="text">
+                  <string>Добавить получателя</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <spacer name="horizontalSpacer_2">
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <widget class="QPushButton" name="createNewChatPushButton">
+                 <property name="styleSheet">
+                  <string notr="true">background-color: rgb(249, 240, 107);</string>
+                 </property>
+                 <property name="text">
+                  <string>создать чат</string>
+                 </property>
+                </widget>
                </item>
               </layout>
              </item>
@@ -359,7 +406,7 @@ border-radius: 8px;</string>
        <enum>QFrame::Shape::Box</enum>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="ScreenChatting" name="editChatPage"/>
       <widget class="QWidget" name="userViewPage"/>

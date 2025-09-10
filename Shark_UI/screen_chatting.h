@@ -17,12 +17,15 @@ public:
   explicit ScreenChatting(QWidget *parent = nullptr);
   ~ScreenChatting();
   void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
-  void setModel(QAbstractItemModel *messageModel);
+  void setModel(MessageModel *messageModel);
   QModelIndex currentIndex() const;
 
 public slots:
   void onChatCurrentChanged(const QModelIndex &current,
                             const QModelIndex &previous);
+
+signals:
+  void ChatListIdChanged(std::size_t chatId);
 
 private:
   Ui::ScreenChatting *ui;

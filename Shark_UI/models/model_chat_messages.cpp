@@ -21,7 +21,7 @@ QVariant MessageModel::data(const QModelIndex &index, int messageRole) const
   if (!index.isValid() || index.row() < 0 || index.row() >= rowCount()) return {};
   const MessageItem& it = _items[static_cast<size_t>(index.row())];
 
-  switch (MessageTextRole) {
+  switch (messageRole) {
   case MessageTextRole :  return it.MessageText;
   case SenderLoginRole :  return it.SenderLogin;
   case SenderNameRole :  return it.SenderName;

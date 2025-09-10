@@ -11,7 +11,8 @@
 ScreenChatting::ScreenChatting(QWidget *parent)
     : QWidget(parent), ui(new Ui::ScreenChatting) {
   ui->setupUi(this);
-  // Назначает делегат отрисовки элементов списка.
+
+         // Назначает делегат отрисовки элементов списка.
   ui->ChatMessagesListView->setItemDelegate(
       new model_chat_mess_delegate(ui->ChatMessagesListView));
 
@@ -32,9 +33,9 @@ void ScreenChatting::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
   _sessionPtr = sessionPtr;
 }
 
-void ScreenChatting::setModel(QAbstractItemModel *messageModel) {
+void ScreenChatting::setModel(MessageModel *messageModel) {
   ui->ChatMessagesListView->setModel(messageModel);
-  _messageModel = qobject_cast<MessageModel *>(messageModel);
+  _messageModel = messageModel;
 }
 
 QModelIndex ScreenChatting::currentIndex() const {
@@ -50,44 +51,8 @@ void ScreenChatting::onChatCurrentChanged(const QModelIndex &current,
 
   Q_UNUSED(previous);
 
-  if (!current.isValid()) {
-    _currentChatId = 0;
-    return;
-  }
-
   _currentChatId =
       static_cast<size_t>(current.data(ChatListModel::ChatIdRole).toLongLong());
 
-  // очистить старые сообщения
-  _messageModel->clear();
-
-  // достать новые
-  const auto messages =
-      _sessionPtr->getInstance().getChatById(_currentChatId)->getMessages();
-  for (const auto &message : messages) {
-    if (!message.second)
-      continue;
-
-    QString messageText;
-    const auto &content = message.second->getContent();
-    if (!content.empty()) {
-      const auto textContent =
-          std::dynamic_pointer_cast<MessageContent<TextContent>>(content[0]);
-      if (textContent)
-        messageText =
-            QString::fromStdString(textContent->getMessageContent()._text);
-    }
-
-    const auto senderPtr = message.second->getSender().lock();
-    QString senderLogin =
-        senderPtr ? QString::fromStdString(senderPtr->getLogin()) : "Удален";
-    QString senderName =
-        senderPtr ? QString::fromStdString(senderPtr->getUserName()) : "";
-
-    std::int64_t timeStamp = static_cast<int64_t>(message.first);
-    std::size_t messageId = static_cast<size_t>(message.second->getMessageId());
-
-    _messageModel->fillMessageItem(messageText, senderLogin, senderName,
-                                   timeStamp, messageId);
-  }
+  emit ChatListIdChanged(_currentChatId);
 }

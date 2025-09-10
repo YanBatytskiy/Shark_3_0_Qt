@@ -33,7 +33,7 @@ void ScreenChatList::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
   _sessionPtr = sessionPtr;
 }
 
-void ScreenChatList::setModel(QAbstractItemModel *chatListModel) {
+void ScreenChatList::setModel(ChatListModel *chatListModel) {
   ui->chatListView->setModel(chatListModel);
 
   auto selectMode = ui->chatListView->selectionModel();

@@ -3,7 +3,7 @@
 
 #include "client_session.h"
 #include <QWidget>
-// #include "model_chat_list.h"
+#include "model_chat_list.h"
 #include <QAbstractItemView>
 
 namespace Ui {
@@ -16,7 +16,7 @@ public:
   explicit ScreenChatList(QWidget *parent = nullptr);
   ~ScreenChatList();
   void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
-  void setModel(QAbstractItemModel *chatListModel);
+  void setModel(ChatListModel *chatListModel);
 
   QModelIndex currentIndex() const;
 

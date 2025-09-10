@@ -32,6 +32,8 @@ private slots:
   void on_exitAction_triggered();
 
 
+  void on_mainWindowstackedWidget_currentChanged(int arg1);
+
 private:
   Ui::MainWindow *ui;
   std::shared_ptr<ClientSession> _sessionPtr;

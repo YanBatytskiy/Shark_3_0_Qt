@@ -19,10 +19,11 @@ ScreenMainWork::ScreenMainWork(QWidget *parent)
     : QWidget(parent), ui(new Ui::ScreenMainWork) {
 
   ui->setupUi(this);
+
   ui->leftPane->setMaximumWidth(QWIDGETSIZE_MAX);
 
   // стартовые доли (пример под 1200px ширину: 360/840)
-  ui->splitter->setSizes({360, 1040});
+  ui->splitter->setSizes({420, 840});
   ui->splitter->setStyleSheet("QSplitter::handle{background:palette(mid);} "
                               "QSplitter::handle:horizontal{width:8px;}");
 }
@@ -30,6 +31,7 @@ ScreenMainWork::ScreenMainWork(QWidget *parent)
 ScreenMainWork::~ScreenMainWork() { delete ui; }
 
 void ScreenMainWork::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
+
   _sessionPtr = sessionPtr;
   connect(_sessionPtr.get(), &ClientSession::serverStatusChanged, this,
           &ScreenMainWork::onConnectionStatusChanged, Qt::QueuedConnection);
@@ -130,17 +132,9 @@ void ScreenMainWork::fillUserListModelWithData() {
   } // if users
 }
 
-void ScreenMainWork::fillMessageModelWithData() {
-  // взяли index выбранной строки в списке чатов
-  QModelIndex index = ui->chatListTab->currentIndex();
+void ScreenMainWork::fillMessageModelWithData(std::size_t chatId) {
 
-  // если список пуст
-  if (!index.isValid())
-    return;
-
-  // достали chatId
-  QVariant value = index.data(ChatListModel::ChatIdRole);
-  std::size_t chatId = static_cast<size_t>(value.toLongLong());
+  _MessageModel->clear();
 
   const auto messages =
       _sessionPtr->getInstance().getChatById(chatId)->getMessages();
@@ -196,9 +190,9 @@ void ScreenMainWork::onConnectionStatusChanged(bool connectionStatus,
 }
 
 void ScreenMainWork::createSession() {
+
   ui->chatUserTabWidget->setTabEnabled(0, true);
   ui->chatUserTabWidget->setCurrentIndex(0);
-
   ui->chatUserDataStackedWidget->setCurrentIndex(0);
 
   connect(_sessionPtr.get(), &ClientSession::serverStatusChanged, this,
@@ -221,11 +215,31 @@ void ScreenMainWork::createSession() {
   fillChatListModelWithData();
   ui->chatListTab->setModel(_ChatListModel);
 
+  //работа с сообщениями чата
+  _MessageModel = new MessageModel(ui->editChatPage);
+  ui->editChatPage->setModel(_MessageModel);
+
+  const auto& ind = ui->chatListTab->currentIndex();
+
+  if (ind.isValid()) {
+    const auto& currentChatId =
+        static_cast<size_t>(ind.data(ChatListModel::ChatIdRole).toLongLong());
+
+    fillMessageModelWithData(currentChatId);
+  }
+
+  //связываем сигнал смены чата в списке чатов с методом вывода сообщений конкретного чата в форму
   connect(ui->chatListTab, &ScreenChatList::currentChatIndexChanged,
           ui->editChatPage, &ScreenChatting::onChatCurrentChanged);
 
+  //связь из окна редактирования чата c методом заполнения модели сообщений
+  connect(ui->editChatPage,&ScreenChatting::ChatListIdChanged,
+          this,&ScreenMainWork::fillMessageModelWithData,
+          Qt::UniqueConnection);
+
   // окно работы с адресной книгой
   _userListModel = new UserListModel(ui->userListView);
+
   fillUserListModelWithData();
 
   ui->userListView->setModel(_userListModel);
@@ -250,6 +264,8 @@ void ScreenMainWork::createSession() {
   ui->addressBookLabel->setText("Контакты из записной книжки");
   ui->findLineEdit->setPlaceholderText("Under Construction");
   ui->globalAddressBookCheckBox->setChecked(false);
+
+  ui->chatListTab->setFocus();
 }
 
 void ScreenMainWork::on_chatUserTabWidget_currentChanged(int index) {

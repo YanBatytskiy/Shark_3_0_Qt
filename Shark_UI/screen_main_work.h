@@ -24,7 +24,7 @@ public:
 
   void fillChatListModelWithData();
   void fillUserListModelWithData();
-  void fillMessageModelWithData();
+  void fillMessageModelWithData(std::size_t chatId);
 
 public slots:
   void onConnectionStatusChanged(bool connectionStatus,
