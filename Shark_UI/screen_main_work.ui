@@ -257,18 +257,24 @@ border-radius: 8px;</string>
          <item>
           <widget class="QTabWidget" name="chatUserTabWidget">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>1</number>
+            <number>0</number>
            </property>
            <property name="elideMode">
             <enum>Qt::TextElideMode::ElideNone</enum>
            </property>
            <widget class="ScreenChatList" name="chatListTab">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
             <attribute name="title">
              <string>Чаты</string>
             </attribute>
@@ -406,7 +412,7 @@ border-radius: 8px;</string>
      </widget>
      <widget class="QStackedWidget" name="chatUserDataStackedWidget">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
@@ -415,9 +421,16 @@ border-radius: 8px;</string>
        <enum>QFrame::Shape::Box</enum>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
-      <widget class="ScreenChatting" name="editChatPage"/>
+      <widget class="ScreenChatting" name="editChatPage">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
       <widget class="ScreenUserData" name="userViewPage"/>
      </widget>
     </widget>

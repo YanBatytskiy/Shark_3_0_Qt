@@ -5,6 +5,7 @@
 #include "models/model_chat_messages.h"
 #include <QAbstractItemView>
 #include <QWidget>
+#include <QTextEdit>
 
 namespace Ui {
 class ScreenChatting;
@@ -20,12 +21,18 @@ public:
   void setModel(MessageModel *messageModel);
   QModelIndex currentIndex() const;
 
+  QTextEdit* newMessageTextEditBlock() const;
+
 public slots:
   void onChatCurrentChanged(const QModelIndex &current,
                             const QModelIndex &previous);
 
 signals:
   void ChatListIdChanged(std::size_t chatId);
+  void sendMessageSignal(QString messageText);
+
+private slots:
+  void on_pushButton_clicked();
 
 private:
   Ui::ScreenChatting *ui;

@@ -142,7 +142,7 @@ public:
 
   bool createNewChatCl(std::shared_ptr<Chat> &chat);
 
-  bool createMessageCl(const Message &message, std::shared_ptr<Chat> &chat, const std::shared_ptr<User> &user);
+  std::size_t createMessageCl(const Message &message, std::shared_ptr<Chat> &chat, const std::shared_ptr<User> &user);
 
   // отправить на сервер lastReadMessage
   bool sendLastReadMessageFromClient(const std::shared_ptr<Chat> &chat_ptr, std::size_t messageId);

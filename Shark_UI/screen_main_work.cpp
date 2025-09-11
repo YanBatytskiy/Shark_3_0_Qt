@@ -4,6 +4,7 @@
 #include "screen_chatting.h"
 
 #include <QTimeZone>
+#include <QMessageBox>
 
 #include "model_chat_list.h"
 #include "model_chat_list_delegate.h"
@@ -20,10 +21,10 @@ ScreenMainWork::ScreenMainWork(QWidget *parent)
 
   ui->setupUi(this);
 
-  ui->leftPane->setMaximumWidth(QWIDGETSIZE_MAX);
+  // ui->leftPane->setMaximumWidth(QWIDGETSIZE_MAX);
 
   // стартовые доли (пример под 1200px ширину: 360/840)
-  ui->splitter->setSizes({420, 840});
+  // ui->splitter->setSizes({420, 840});
   ui->splitter->setStyleSheet("QSplitter::handle{background:palette(mid);} "
                               "QSplitter::handle:horizontal{width:8px;}");
 }
@@ -52,7 +53,22 @@ void ScreenMainWork::fillChatListModelWithData() {
       std::int64_t lastTime;
 
       // добавляем номер чата
-      infoText = "Chat_Id = " + QString::number(chat.second.chatId);
+      const auto chatIdStr = QString::number(chat.second.chatId);
+
+      // добавляем количество непрочитанных
+      unreadCount =
+          _sessionPtr->getInstance()
+              .getChatById(chat.second.chatId)
+              ->getUnreadMessageCount(_sessionPtr->getActiveUserCl());
+
+
+      // добавляем время последнего сообщения
+      lastTime = static_cast<std::int64_t>(chat.first);
+      const auto dateTimeStamp = formatTimeStampToString(chat.first, true);
+
+      infoText = _ChatListModel->buildInfoTextForRow(chatIdStr, QString::number(unreadCount), QString::fromStdString(dateTimeStamp));
+
+
       // собираем строку участников с логинами и именами
       participantsChatList = "Имя (Логин: ";
       bool first = true;
@@ -69,26 +85,14 @@ void ScreenMainWork::fillChatListModelWithData() {
         const auto &userName = user->getUserName();
 
         if (!first)
+          QString infoText;
           participantsChatList += ", ";
         participantsChatList += QString::fromStdString(userName) + " (" +
                                 QString::fromStdString(login) + ")";
         first = false;
       } // for
 
-      // добавляем количество непрочитанных
-      const auto &unreadMessCount =
-          _sessionPtr->getInstance()
-              .getChatById(chat.second.chatId)
-              ->getUnreadMessageCount(_sessionPtr->getActiveUserCl());
-      unreadCount = (unreadMessCount);
 
-      infoText += ", новых = " + QString::number(unreadCount);
-
-      // добавляем время последнего сообщения
-      const auto dateTimeStamp = formatTimeStampToString(chat.first, true);
-      infoText += ", последнее: " + QString::fromStdString(dateTimeStamp);
-
-      lastTime = static_cast<std::int64_t>(chat.first);
 
       isMuted = false;
 
@@ -269,10 +273,18 @@ void ScreenMainWork::setupScreenChatting()
   connect(ui->chatListTab, &ScreenChatList::currentChatIndexChanged,
           ui->editChatPage, &ScreenChatting::onChatCurrentChanged);
 
-         //связь из окна редактирования чата c методом заполнения модели сообщений
+  resetCountUnreadMessagesCommmand();
+
+         // связь из окна редактирования чата c методом заполнения модели сообщений
   connect(ui->editChatPage,&ScreenChatting::ChatListIdChanged,
           this,&ScreenMainWork::fillMessageModelWithData,
           Qt::UniqueConnection);
+
+  connect(ui->chatListTab, &ScreenChatList::currentChatIndexChanged,
+          this, &ScreenMainWork::resetCountUnreadMessagesCommmand);
+
+  connect(ui->editChatPage, &ScreenChatting::sendMessageSignal,
+          this, &ScreenMainWork::sendMessageCommmand,Qt::UniqueConnection);
 
 }
 
@@ -302,5 +314,97 @@ void ScreenMainWork::on_chatUserTabWidget_currentChanged(int index) {
     ui->findLineEdit->setEnabled(false);
     ui->findLineEdit->setPlaceholderText("under construction");
     ui->chatUserDataStackedWidget->setCurrentIndex(0);
+  }
+}
+
+void ScreenMainWork::sendMessageCommmand()
+{
+  const auto& idx = ui->chatListTab->currentIndex();
+
+//достали chatId
+  if (!idx.isValid()) return;
+
+  const auto& currentChatId =
+      static_cast<size_t>(idx.data(ChatListModel::ChatIdRole).toLongLong());
+
+//доастали указатель на чат
+  auto chat_ptr = _sessionPtr->getInstance().getChatById(currentChatId);
+
+// создали объект Message
+  std::vector<std::shared_ptr<User>> recipients;
+
+  for (const auto &participant : chat_ptr->getParticipants()) {
+    auto user_ptr = participant._user.lock();
+
+    if (user_ptr) {
+      if (user_ptr != _sessionPtr->getActiveUserCl())
+        recipients.push_back(user_ptr);
+    }
+  }
+
+  std::vector<std::shared_ptr<IMessageContent>> iMessageContent;
+
+  const auto newMessageText = ui->editChatPage->newMessageTextEditBlock()->toPlainText();
+  TextContent textContent = newMessageText.toStdString();
+
+  MessageContent<TextContent> messageContentText(textContent);
+  iMessageContent.push_back(std::make_shared<MessageContent<TextContent>>(messageContentText));
+
+  auto newMessageTimeStamp = getCurrentDateTimeInt();
+
+  Message newMessage(iMessageContent, _sessionPtr->getActiveUserCl(), newMessageTimeStamp, 0);
+
+  const auto& newMessageId = _sessionPtr->createMessageCl(newMessage, chat_ptr, _sessionPtr->getInstance().getActiveUser());
+
+  if (newMessageId == 0)
+    QMessageBox::warning(this, tr("Ошибка!"), tr("Невозможно отправить сообщение."));
+      else {
+    _MessageModel->fillMessageItem(
+        newMessageText,
+        QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin()),
+        QString::fromStdString(_sessionPtr->getActiveUserCl()->getUserName()),
+        newMessageTimeStamp,
+        newMessageId
+        );
+        ui->editChatPage->newMessageTextEditBlock()->setText("");
+
+// заменили в модели время последнего сообщения
+    _ChatListModel->setLastTime(idx.row(),newMessageTimeStamp);
+  }
+
+}
+
+void ScreenMainWork::resetCountUnreadMessagesCommmand()
+{
+// так как пользователь вошел в чат и все прочитал, сбрасываем количество новых сообщений
+
+
+         //взяли индекс строки
+const auto& idx = ui->chatListTab->currentIndex();
+
+  //достали chatId
+  if (!idx.isValid()) return;
+
+  const auto& currentChatId =
+      static_cast<size_t>(idx.data(ChatListModel::ChatIdRole).toLongLong());
+
+//доастали указатель на чат
+  const auto& chat_ptr = _sessionPtr->getInstance().getChatById(currentChatId);
+
+  //проверили, все ли сообщения прочитаны
+  const auto &lastMessageId = chat_ptr->getMessages().rbegin()->second->getMessageId();
+  const auto &lastReadMessageId = chat_ptr->getLastReadMessageId(_sessionPtr->getInstance().getActiveUser());
+
+  if (lastMessageId != lastReadMessageId) {
+    chat_ptr->setLastReadMessageId(_sessionPtr->getActiveUserCl(), lastMessageId);
+
+    //подали команду серверу на установку последнего прочитанного сообщения
+    _sessionPtr->sendLastReadMessageFromClient(chat_ptr, lastMessageId);
+
+  // заменили в модели количество непрочатанных и обновили элемент списка
+    _ChatListModel->setUnreadCount(idx.row(),0);
+
+    auto *view = ui->chatListTab->findChild<QAbstractItemView*>("ChatMessagesListView");
+    if (view) view->update(idx);
   }
 }

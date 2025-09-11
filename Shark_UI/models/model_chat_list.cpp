@@ -1,4 +1,5 @@
 #include "model_chat_list.h"
+#include "system/date_time_utils.h"
 
 ChatListModel::ChatListModel(QObject *parent) :QAbstractListModel(parent){}
 
@@ -60,10 +61,18 @@ void ChatListModel::setInfoText(int row, const QString &textValue)
 void ChatListModel::setUnreadCount(int row, int newValue)
 {
   if (row <0 || row >=rowCount()) return;
+
   _items[static_cast<size_t>(row)].UnreadCount = newValue;
+
   const QModelIndex i = index(row);
-  emit dataChanged(i, i, {UnreadCountRole});
-}
+
+  _items[row].InfoText = buildInfoTextForRow(QString::number(_items[row].ChatId),
+                                             QString::number(newValue),
+                                             QString::fromStdString(
+                                                 formatTimeStampToString(_items[row].LastTime, true)));
+
+
+emit dataChanged(i, i, {InfoTextRole, UnreadCountRole});}
 
 void ChatListModel::setIsMuted(int row, bool newValue)
 {
@@ -78,7 +87,13 @@ void ChatListModel::setLastTime(int row, std::int64_t timeValue)
   if (row <0 || row >=rowCount()) return;
   _items[static_cast<size_t>(row )].LastTime = timeValue;
   const QModelIndex i = index(row);
-  emit dataChanged(i, i, {LastTimeRole});
+
+  _items[row].InfoText = buildInfoTextForRow(QString::number(_items[row].ChatId),
+                                             QString::number(_items[row].UnreadCount),
+                                             QString::fromStdString(
+                                                 formatTimeStampToString(timeValue, true)));
+
+  emit dataChanged(i, i, {InfoTextRole, LastTimeRole});
 }
 
 void ChatListModel::setChatId(int row, std::size_t Value)
@@ -88,6 +103,16 @@ void ChatListModel::setChatId(int row, std::size_t Value)
   const QModelIndex i = index(row);
   emit dataChanged(i, i, {ChatIdRole});
 
+}
+
+QString ChatListModel::buildInfoTextForRow(const QString& chatIdStr, const QString& unreadCountStr, const QString& lastTimeStr )
+{
+  QString infoText;
+  infoText = "Chat_Id = " + chatIdStr;
+  infoText += ", новых = " + unreadCountStr;
+  infoText += ", последнее: " + lastTimeStr;
+
+  return infoText;
 }
 
 void ChatListModel::fillChatListItem(const QString& participantsChatList,

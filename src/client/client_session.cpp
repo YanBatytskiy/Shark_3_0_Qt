@@ -1055,7 +1055,7 @@ MessageDTO ClientSession::fillOneMessageDTOFromCl(const std::shared_ptr<Message>
 //
 //
 //
-bool ClientSession::createMessageCl(const Message &message, std::shared_ptr<Chat> &chat_ptr,
+std::size_t ClientSession::createMessageCl(const Message &message, std::shared_ptr<Chat> &chat_ptr,
                                     const std::shared_ptr<User> &user) {
 
   auto message_ptr = std::make_shared<Message>(message);
@@ -1076,6 +1076,8 @@ bool ClientSession::createMessageCl(const Message &message, std::shared_ptr<Chat
 
   responcePacketListDTO = processingRequestToServer(packetDTOListForSendVector, packetDTO.requestType);
 
+  std::size_t newMessageId = 0;
+      
   try {
 
     if (responcePacketListDTO.packets.empty())
@@ -1095,7 +1097,7 @@ bool ClientSession::createMessageCl(const Message &message, std::shared_ptr<Chat
     if (!packetDTO.reqResult)
       throw exc_qt::CreateMessageException();
     else {
-      auto newMessageId = parseGetlineToSizeT(packetDTO.anyString);
+      newMessageId = parseGetlineToSizeT(packetDTO.anyString);
 
       if (chat_ptr->getMessages().empty())
         throw exc_qt::CreateMessageException();
@@ -1106,22 +1108,21 @@ bool ClientSession::createMessageCl(const Message &message, std::shared_ptr<Chat
     }
   } catch (const exc_qt::EmptyPacketException &ex) {
     std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
-    return false;
+    return 0;
   } catch (const exc_qt::WrongPacketSizeException &ex) {
     std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
-    return false;
+    return 0;
   } catch (const exc_qt::WrongresponceTypeException &ex) {
     std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
-    return false;
-
+    return 0;
   } catch (const exc_qt::CreateMessageException &ex) {
     std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
-    return false;
+    return 0;
   } catch (const exc_qt::ValidationException &ex) {
     std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
-    return false;
+    return 0;
   }
-  return true;
+  return newMessageId;
 }
 //
 //

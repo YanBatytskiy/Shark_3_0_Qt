@@ -34,6 +34,8 @@ public slots:
 
 private slots:
   void on_chatUserTabWidget_currentChanged(int index);
+  void sendMessageCommmand();
+  void resetCountUnreadMessagesCommmand();
 
 private:
   Ui::ScreenMainWork *ui;

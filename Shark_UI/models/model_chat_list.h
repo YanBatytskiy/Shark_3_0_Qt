@@ -5,7 +5,7 @@
 #include <QDateTime>
 #include <QAbstractListModel>
 #include <vector>
-
+#include "dto_struct.h"
 
 class ChatListModel final : public QAbstractListModel{
   Q_OBJECT
@@ -47,6 +47,8 @@ public:
   void setIsMuted(int row, bool newValue);
   void setLastTime(int row, std::int64_t timeValue);
   void setChatId(int row, std::size_t Value);
+
+  static QString buildInfoTextForRow(const QString& chatIdStr, const QString& unreadCountStr, const QString& lastTimeStr);
 
   void fillChatListItem(const QString& participantsChatList, const QString& infoText, const int& unreadCount, bool isMuted, std::int64_t lastTime, std::size_t chatId);
 

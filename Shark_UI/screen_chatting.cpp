@@ -16,7 +16,7 @@ ScreenChatting::ScreenChatting(QWidget *parent)
   ui->setupUi(this);
 
 
-         // Назначает делегат отрисовки элементов списка.
+// Назначает делегат отрисовки элементов списка.
   ui->ChatMessagesListView->setItemDelegate(
       new model_chat_mess_delegate(ui->ChatMessagesListView));
 
@@ -49,6 +49,11 @@ QModelIndex ScreenChatting::currentIndex() const {
   return ui->ChatMessagesListView->currentIndex();
 }
 
+QTextEdit *ScreenChatting::newMessageTextEditBlock() const
+{
+return ui->newMessageTextEdit;
+}
+
 
 void ScreenChatting::onChatCurrentChanged(const QModelIndex &current, const QModelIndex &previous)
 {
@@ -64,3 +69,10 @@ void ScreenChatting::onChatCurrentChanged(const QModelIndex &current, const QMod
 
   emit ChatListIdChanged(_currentChatId);
 }
+
+void ScreenChatting::on_pushButton_clicked()
+{
+  if (ui->newMessageTextEdit->toPlainText() != "")
+    emit sendMessageSignal(ui->newMessageTextEdit->toPlainText());
+}
+
