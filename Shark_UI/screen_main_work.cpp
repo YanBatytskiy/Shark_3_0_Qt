@@ -216,26 +216,7 @@ void ScreenMainWork::createSession() {
   ui->chatListTab->setModel(_ChatListModel);
 
   //работа с сообщениями чата
-  _MessageModel = new MessageModel(ui->editChatPage);
-  ui->editChatPage->setModel(_MessageModel);
-
-  const auto& ind = ui->chatListTab->currentIndex();
-
-  if (ind.isValid()) {
-    const auto& currentChatId =
-        static_cast<size_t>(ind.data(ChatListModel::ChatIdRole).toLongLong());
-
-    fillMessageModelWithData(currentChatId);
-  }
-
-  //связываем сигнал смены чата в списке чатов с методом вывода сообщений конкретного чата в форму
-  connect(ui->chatListTab, &ScreenChatList::currentChatIndexChanged,
-          ui->editChatPage, &ScreenChatting::onChatCurrentChanged);
-
-  //связь из окна редактирования чата c методом заполнения модели сообщений
-  connect(ui->editChatPage,&ScreenChatting::ChatListIdChanged,
-          this,&ScreenMainWork::fillMessageModelWithData,
-          Qt::UniqueConnection);
+  setupScreenChatting();
 
   // окно работы с адресной книгой
   _userListModel = new UserListModel(ui->userListView);
@@ -268,6 +249,33 @@ void ScreenMainWork::createSession() {
   ui->chatListTab->setFocus();
 }
 
+void ScreenMainWork::setupScreenChatting()
+{
+  //работа с сообщениями чата
+
+  _MessageModel = new MessageModel(ui->editChatPage);
+
+  ui->editChatPage->setModel(_MessageModel);      // 1. привязали модель к виду
+
+  const auto& index = ui->chatListTab->currentIndex();
+
+  if (index.isValid()) {
+    const auto& currentChatId =
+        static_cast<size_t>(index.data(ChatListModel::ChatIdRole).toLongLong());
+
+    fillMessageModelWithData(currentChatId);
+  }
+      //связываем сигнал смены чата в списке чатов с методом вывода сообщений конкретного чата в форму
+  connect(ui->chatListTab, &ScreenChatList::currentChatIndexChanged,
+          ui->editChatPage, &ScreenChatting::onChatCurrentChanged);
+
+         //связь из окна редактирования чата c методом заполнения модели сообщений
+  connect(ui->editChatPage,&ScreenChatting::ChatListIdChanged,
+          this,&ScreenMainWork::fillMessageModelWithData,
+          Qt::UniqueConnection);
+
+}
+
 void ScreenMainWork::on_chatUserTabWidget_currentChanged(int index) {
   if (index == 1) {
     ui->globalAddressBookCheckBox->setEnabled(true);
@@ -282,6 +290,7 @@ void ScreenMainWork::on_chatUserTabWidget_currentChanged(int index) {
     ui->findLineEdit->setClearButtonEnabled(true);
     ui->findLineEdit->clear();
     ui->findLineEdit->setPlaceholderText("Поиск...");
+    ui->chatUserDataStackedWidget->setCurrentIndex(1);
   } else {
     ui->globalAddressBookCheckBox->setEnabled(false);
 
@@ -292,5 +301,6 @@ void ScreenMainWork::on_chatUserTabWidget_currentChanged(int index) {
     ui->findLineEdit->setPalette(paletteLineEdit);
     ui->findLineEdit->setEnabled(false);
     ui->findLineEdit->setPlaceholderText("under construction");
+    ui->chatUserDataStackedWidget->setCurrentIndex(0);
   }
 }

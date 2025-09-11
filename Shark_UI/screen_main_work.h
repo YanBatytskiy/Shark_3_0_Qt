@@ -30,6 +30,7 @@ public slots:
   void onConnectionStatusChanged(bool connectionStatus,
                                  ServerConnectionMode mode);
   void createSession();
+  void setupScreenChatting();
 
 private slots:
   void on_chatUserTabWidget_currentChanged(int index);

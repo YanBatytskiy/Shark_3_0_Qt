@@ -19,6 +19,9 @@
   <property name="windowTitle">
    <string>Вход пользователя</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="4" column="1">
     <spacer name="verticalSpacer_8">
@@ -100,6 +103,12 @@ border-radius: 8px;</string>
        </item>
        <item>
         <widget class="QLabel" name="serverStatusLabel">
+         <property name="autoFillBackground">
+          <bool>false</bool>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background: transparent;</string>
+         </property>
          <property name="text">
           <string>server offline</string>
          </property>
@@ -172,6 +181,9 @@ border-radius: 8px;</string>
       <layout class="QFormLayout" name="formLayout">
        <item row="0" column="0">
         <widget class="QLabel" name="label">
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
          <property name="text">
           <string>Имя пользователя:</string>
          </property>
@@ -191,10 +203,16 @@ border-radius: 8px;</string>
          <property name="whatsThis">
           <string extracomment="whatthis"/>
          </property>
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
         </widget>
        </item>
        <item row="1" column="0">
         <widget class="QLabel" name="label_2">
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
          <property name="text">
           <string>Пароль:</string>
          </property>
@@ -202,6 +220,9 @@ border-radius: 8px;</string>
        </item>
        <item row="1" column="1">
         <widget class="QLineEdit" name="passwordEdit">
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
          <property name="echoMode">
           <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
          </property>
@@ -234,6 +255,9 @@ border-radius: 8px;</string>
          </property>
          <property name="autoFillBackground">
           <bool>false</bool>
+         </property>
+         <property name="styleSheet">
+          <string notr="true"/>
          </property>
          <property name="standardButtons">
           <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
@@ -297,6 +321,9 @@ border-radius: 8px;</string>
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background: transparent;</string>
        </property>
        <property name="text">
         <string>дата</string>

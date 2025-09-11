@@ -4,8 +4,7 @@
 #include <QTextLayout>
 #include <QFontMetrics>
 #include "system/date_time_utils.h"
-
-// model_chat_mess_delegate::model_chat_mess_delegate(QObject *parent) : QStyledItemDelegate{parent} {}
+#include <QPainterPath>
 
 namespace {
 constexpr int kPaddingX = 12;
@@ -13,7 +12,7 @@ constexpr int kPaddingY = 6;
 constexpr int kLineSpacing = 2;
 
 // Палитра
-const QColor kBg      ("DEDDDA"); // обычный фон
+const QColor kBg      ("#FFFFF0"); // обычный фон
 const QColor kSep     ("#E6E9EF"); // разделитель снизу
 const QColor kText1   ("#800020"); //  строка c именем
 const QColor kText2   ("#000000"); //  строка с текстом
@@ -23,72 +22,110 @@ QSize model_chat_mess_delegate::sizeHint(const QStyleOptionViewItem &option, con
 {
   Q_UNUSED(index);
 
-  // QFont f1 = option.font;
+  const QString messageText  = index.data(Qt::UserRole + 1).toString();
+  const QString senderLogin  = index.data(Qt::UserRole + 2).toString();
+  const QString senderName   = index.data(Qt::UserRole + 3).toString();
+  const std::int64_t timeStamp = index.data(Qt::UserRole + 4).toLongLong();
 
-  const int h = kPaddingY + QFontMetrics(option.font).height() +
-                kLineSpacing + QFontMetrics(option.font).height() +
-                kPaddingY;
-  return {option.rect.width(), h};
+  const auto dateTimeStamp = formatTimeStampToString(timeStamp, true);
+  const QString firstLine = senderName + " (" + senderLogin + ")          " + QString::fromStdString(dateTimeStamp);
+
+  QFont font1 = option.font;
+  QFont font2 = option.font;
+
+  const int leftMargin     = 10;
+  const int rightMargin    = 8;
+  const int topPadding     = 8;
+  const int bottomPadding  = 8;
+  const int lineSpacing    = 2;
+
+  const int viewWidth       = option.widget ? option.widget->width() : option.rect.width();
+  const int maxBlockWidth   = static_cast<int>(0.8 * viewWidth);
+const int contentMaxWidth  = qMax(0, maxBlockWidth - leftMargin - rightMargin - 2*kPaddingX);
+
+  const int firstLineWidth = QFontMetrics(font1).horizontalAdvance(firstLine);
+
+  QTextLayout bodyLayout;
+  int height2 = 0, width2eff = 0;
+  layoutBody(messageText, font2, contentMaxWidth, height2, width2eff, bodyLayout);
+
+  const int contentWidth = qMin(qMax(firstLineWidth, width2eff), contentMaxWidth);
+  const int totalHeight  = topPadding + QFontMetrics(font1).height() + lineSpacing + height2 + bottomPadding;
+
+return QSize(leftMargin + contentWidth + rightMargin + 2*kPaddingX, totalHeight);
 }
+
 
 void model_chat_mess_delegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
   // 1) Забираем данные строго из ролей модели
-  const QString messageText  = index.data(Qt::UserRole + 1).toString();
-  const QString senderLogin  = index.data(Qt::UserRole + 2).toString();
-  const QString senderName  = index.data(Qt::UserRole + 3).toString();
-  const std::int64_t timeStamp  = index.data(Qt::UserRole + 4).toLongLong();
-  const std::size_t messageId  = index.data(Qt::UserRole + 5).toLongLong();
+  const QString messageText   = index.data(Qt::UserRole + 1).toString();
+  const QString senderLogin   = index.data(Qt::UserRole + 2).toString();
+  const QString senderName    = index.data(Qt::UserRole + 3).toString();
+  const std::int64_t timeStamp = index.data(Qt::UserRole + 4).toLongLong();
+  const std::size_t messageId = index.data(Qt::UserRole + 5).toLongLong();
 
   const auto dateTimeStamp = formatTimeStampToString(timeStamp, true);
-  const QString firstLine = senderName + " ("+ senderLogin +")          " + QString::fromStdString(dateTimeStamp);
+  const QString firstLine = senderName + " (" + senderLogin + ")          " + QString::fromStdString(dateTimeStamp);
 
   QStyleOptionViewItem opt(option);
-  opt.text.clear();
+  initStyleOption(&opt, index);
 
-  painter->save();
-  painter->setRenderHint(QPainter::TextAntialiasing, true);
+  const int leftMargin    = 10;   // отступ блока от левого края
+  const int rightMargin   = 8;
+  const int topPadding    = 8;    // внутренние отступы внутри блока
+  const int bottomPadding = 8;
+  const int lineSpacing   = 2;
+  const int cornerRadius  = 8;
 
-  painter->fillRect(option.rect, kBg);
+  QFont font1 = opt.font;
+  QFont font2 = opt.font;
 
-  // рабочая область
-  QRect contentRect = option.rect.adjusted(kPaddingX, kPaddingY, -kPaddingX, -kPaddingY);
+  const int viewWidth       = option.widget ? option.widget->width() : option.rect.width();
+  const int maxBlockWidth   = static_cast<int>(0.8 * viewWidth);
+  const int contentMaxWidth  = qMax(0, maxBlockWidth - leftMargin - rightMargin - 2*kPaddingX);
 
-  // строки
-  QFont fontLine1 = option.font;
-  QFont fontLine2 = option.font;
+         // Раскладка второй строки для размеров и вывода
+  QTextLayout bodyLayout;
+  int height2 = 0, width2eff = 0;
+  layoutBody(messageText, font2, contentMaxWidth, height2, width2eff, bodyLayout);
 
-  QColor colorLine1 = kText1;
-  QColor colorLine2 = kText2;
+  const int firstLineWidth = QFontMetrics(font1).horizontalAdvance(firstLine);
+  const int contentWidth   = qMin(qMax(firstLineWidth, width2eff), contentMaxWidth);
 
-  const int h1 = QFontMetrics(fontLine1).height();
-  QString line1 = QFontMetrics(fontLine1).elidedText(firstLine,
-                                                     Qt::ElideRight,
-                                                     contentRect.width());
+  const int blockWidth = contentWidth + 2 * kPaddingX;
+  const int blockHeight = topPadding + QFontMetrics(font1).height() + lineSpacing + height2 + bottomPadding;
 
-  painter->setFont(fontLine1);
-  painter->setPen(colorLine1);
-  painter->drawText(QRect(contentRect.left(), contentRect.top(),
-                          contentRect.width(), h1),
-                    Qt::AlignLeft | Qt::AlignVCenter, line1);
+  const int originX = opt.rect.left() + leftMargin; // блок начинается с отступом 10
+  const int originY = opt.rect.top();
 
-  const int h2 = QFontMetrics(fontLine2).height();
-  QString line2 = QFontMetrics(fontLine2).elidedText(messageText,
-                                                     Qt::ElideRight,
-                                                     contentRect.width());
+painter->save();
+  painter->setRenderHint(QPainter::Antialiasing, true);
+painter->setRenderHint(QPainter::TextAntialiasing, true);
 
-  painter->setFont(fontLine2);
-  painter->setPen(colorLine2);
-  const int y2 = contentRect.top() + h1 + kLineSpacing;
-  painter->drawText(QRect(contentRect.left(), y2,
-                          contentRect.width(), h2),
-                    Qt::AlignLeft | Qt::AlignVCenter, line2);
+  // НЕ заполняем весь item — фон между блоками остаётся виден
+QRectF blockRect(originX, originY + 0.5, blockWidth, blockHeight - 1);
+QPainterPath blockPath;
+blockPath.addRoundedRect(blockRect, cornerRadius, cornerRadius);
+painter->fillPath(blockPath, kBg); // сам блок
+painter->setPen(QPen(kSep));
+painter->drawPath(blockPath); // обводка блока
 
-         // разделитель
-  painter->setPen(QPen(kSep));
-  painter->drawLine(option.rect.bottomLeft(), option.rect.bottomRight());
+// Первая строка — одна строка без переносов внутри блока
+painter->setFont(font1);
+painter->setPen(kText1);
+const int firstLineHeight = QFontMetrics(font1).height();
+painter->drawText(QRect(originX + kPaddingX, originY + topPadding, contentWidth,
+                        firstLineHeight), // ширина = contentWidth
+                  Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, firstLine);
 
-  painter->restore();
+// Вторая строка — многострочно через QTextLayout с переносами по словам
+painter->setFont(font2);
+painter->setPen(kText2);
+const QPointF bodyOrigin(originX + kPaddingX, originY + topPadding + firstLineHeight + lineSpacing);
+bodyLayout.draw(painter, bodyOrigin);
+
+painter->restore();
 }
 
 model_chat_mess_delegate::model_chat_mess_delegate() {}

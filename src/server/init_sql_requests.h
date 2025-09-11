@@ -391,7 +391,7 @@ inline std::multimap<int, std::string> createChatSecondSQL() {
 
   message5_insert as (
     insert into public.messages (chat_id, sender_id, message_text, time_stamp)
-    select chat_created.chat_id, user_sergei.user_id, 'В кино!', 1743514380000
+    select chat_created.chat_id, user_sergei.user_id, 'Пойдем мы с тобою за тридевять земель, в тридесятое царство, искать там мудрость и счастье, чтобы испытать силу свою и судьбу проверить, а что ждёт впереди — лишь дорога покажет', 1743514380000
     from chat_created cross join user_sergei
     returning id as message_id
   ),

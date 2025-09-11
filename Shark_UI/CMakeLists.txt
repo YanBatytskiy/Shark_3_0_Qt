@@ -10,6 +10,7 @@ if(NOT TARGET dto)
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -44,6 +45,8 @@ qt_add_executable(Shark_ui
 
   nw_connection_monitor.h  nw_connection_monitor.cpp
   resources.qrc
+  screen_user_data.h screen_user_data.cpp screen_user_data.ui
+
 )
 
 # Инклуды проекта
@@ -66,3 +69,4 @@ target_link_libraries(Shark_ui PRIVATE
   core
   dto
 )
+target_link_libraries(Shark_ui PRIVATE Qt6::Core Qt6::Widgets)

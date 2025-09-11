@@ -263,7 +263,7 @@ border-radius: 8px;</string>
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>1</number>
            </property>
            <property name="elideMode">
             <enum>Qt::TextElideMode::ElideNone</enum>
@@ -303,6 +303,9 @@ border-radius: 8px;</string>
               <layout class="QHBoxLayout" name="horizontalLayout_6">
                <item>
                 <widget class="QPushButton" name="banPushButton">
+                 <property name="styleSheet">
+                  <string notr="true">background-color: rgb(237, 51, 59);</string>
+                 </property>
                  <property name="text">
                   <string>Бан до...</string>
                  </property>
@@ -323,6 +326,9 @@ border-radius: 8px;</string>
                </item>
                <item>
                 <widget class="QPushButton" name="blockPushButton">
+                 <property name="styleSheet">
+                  <string notr="true">background-color: rgb(237, 51, 59);</string>
+                 </property>
                  <property name="text">
                   <string>Заблокировать</string>
                  </property>
@@ -343,6 +349,9 @@ border-radius: 8px;</string>
                </item>
                <item>
                 <widget class="QPushButton" name="unblockPushButton">
+                 <property name="styleSheet">
+                  <string notr="true">background-color: rgb(51, 209, 122);</string>
+                 </property>
                  <property name="text">
                   <string>Разблокировать</string>
                  </property>
@@ -355,7 +364,7 @@ border-radius: 8px;</string>
                <item>
                 <widget class="QPushButton" name="addUserToChatPushButton">
                  <property name="styleSheet">
-                  <string notr="true">background-color: rgb(143, 240, 164);</string>
+                  <string notr="true">background-color: rgb(164, 190, 255);</string>
                  </property>
                  <property name="text">
                   <string>Добавить получателя</string>
@@ -409,7 +418,7 @@ border-radius: 8px;</string>
        <number>1</number>
       </property>
       <widget class="ScreenChatting" name="editChatPage"/>
-      <widget class="QWidget" name="userViewPage"/>
+      <widget class="ScreenUserData" name="userViewPage"/>
      </widget>
     </widget>
    </item>
@@ -426,6 +435,12 @@ border-radius: 8px;</string>
    <class>ScreenChatting</class>
    <extends>QWidget</extends>
    <header>screen_chatting.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ScreenUserData</class>
+   <extends>QWidget</extends>
+   <header>screen_user_data.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

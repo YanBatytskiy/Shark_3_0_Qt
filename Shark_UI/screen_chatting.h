@@ -30,8 +30,9 @@ signals:
 private:
   Ui::ScreenChatting *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
-  MessageModel *_messageModel;
+  MessageModel *_messageModel{nullptr};
   size_t _currentChatId{0};
+
 };
 
 #endif // CHATMESSAGESSCREEN_H
