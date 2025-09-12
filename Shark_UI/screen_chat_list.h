@@ -17,12 +17,20 @@ public:
   ~ScreenChatList();
   void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
   void setModel(ChatListModel *chatListModel);
+  QItemSelectionModel* getSelectionModel() const;
 
   QModelIndex currentIndex() const;
+
+public slots:
+  void onUserListIndexChanged(const QModelIndex &current,
+                            const QModelIndex &previous);
+
 
 signals:
   void currentChatIndexChanged(const QModelIndex &current,
                                const QModelIndex &previous);
+
+  void UserListIdChanged(std::string login);
 
 private:
   Ui::ScreenChatList *ui;

@@ -25,14 +25,24 @@ QSize ChatListItemDelegate::sizeHint(const QStyleOptionViewItem &option, const Q
 {
   Q_UNUSED(index);
 
+  const QString participantsText  = index.data(Qt::UserRole + 1).toString(); // ParticipantsTextRole
+  const QString infoLine          = index.data(Qt::UserRole + 2).toString(); // InfoTextRole
+
   QFont f1 = option.font;
   QFont f2 = option.font;
 
-  //уменьшает размер второй строки
-  f2.setPointSizeF(f2.pointSizeF() - 1);
-  const int h = kPaddingY + QFontMetrics(f1).height() + kLineSpacing + QFontMetrics(f2).height() + kPaddingY;
-  return { option.rect.width(), h };
-}
+  f2.setPointSizeF(f2.pointSizeF() - 1);      // уменьшили ДО метрик
+
+  const QFontMetrics fm1(f1);
+  const QFontMetrics fm2(f2);
+
+  const int h = kPaddingY + fm1.height() + kLineSpacing + fm2.height() + kPaddingY;
+
+  const int w_full = kPaddingX*2 +
+                     std::max(fm1.horizontalAdvance(participantsText),
+                              fm2.horizontalAdvance(infoLine));
+
+  return { w_full, h };}
 
 void ChatListItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
@@ -73,9 +83,11 @@ void ChatListItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
 
 
   const int h1 = QFontMetrics(fontLine1).height();
-  QString line1 = QFontMetrics(fontLine1).elidedText(participantsText,
-                                                     Qt::ElideRight,
-                                                     contentRect.width());
+  // QString line1 = QFontMetrics(fontLine1).elidedText(participantsText,
+  //                                                    Qt::ElideRight,
+  //                                                    contentRect.width());
+
+  const QString line1 = participantsText;
 
   painter->setFont(fontLine1);
   painter->setPen(colorLine1);
@@ -84,9 +96,13 @@ void ChatListItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
                     Qt::AlignLeft | Qt::AlignVCenter, line1);
 
   const int y2 = contentRect.top() + h1 + kLineSpacing;
-  QString line2 = QFontMetrics(fontLine2).elidedText(infoLine,
-                                                     Qt::ElideRight,
-                                                     contentRect.width());
+
+  // QString line2 = QFontMetrics(fontLine2).elidedText(infoLine,
+  //                                                    Qt::ElideRight,
+  //                                                    contentRect.width());
+
+  const QString line2 = infoLine;
+
   painter->setFont(fontLine2);
   painter->setPen(colorLine2);
   painter->drawText(QRect(contentRect.left(), y2,

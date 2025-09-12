@@ -105,6 +105,14 @@ void ChatListModel::setChatId(int row, std::size_t Value)
 
 }
 
+void ChatListModel::clear()
+{
+  beginResetModel();
+  _items.clear();
+  endResetModel();
+
+}
+
 QString ChatListModel::buildInfoTextForRow(const QString& chatIdStr, const QString& unreadCountStr, const QString& lastTimeStr )
 {
   QString infoText;

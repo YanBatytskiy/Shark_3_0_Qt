@@ -22,20 +22,27 @@ public:
   ~ScreenMainWork();
   void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
 
-  void fillChatListModelWithData();
+  void fillChatListModelWithData(bool allChats);
+
   void fillUserListModelWithData();
   void fillMessageModelWithData(std::size_t chatId);
+  void createSession();
+
+  void setupUserList();
+  void setupScreenChatting();
+
+  void sendMessageCommmand();
+  void resetCountUnreadMessagesCommmand();
+
+signals:
+  void currentUserIndexChanged(const QModelIndex &current);
 
 public slots:
   void onConnectionStatusChanged(bool connectionStatus,
                                  ServerConnectionMode mode);
-  void createSession();
-  void setupScreenChatting();
 
 private slots:
   void on_chatUserTabWidget_currentChanged(int index);
-  void sendMessageCommmand();
-  void resetCountUnreadMessagesCommmand();
 
 private:
   Ui::ScreenMainWork *ui;

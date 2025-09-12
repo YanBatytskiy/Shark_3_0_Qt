@@ -1,5 +1,5 @@
 #include "models/model_chat_list_delegate.h"
-
+#include "model_user_list.h"
 #include "screen_chat_list.h"
 #include "ui_screen_chat_list.h"
 
@@ -18,11 +18,14 @@ ScreenChatList::ScreenChatList(QWidget *parent)
   // Убирает стандартный промежуток между строками
   ui->chatListView->setSpacing(0); // разделитель рисуем сами
 
-  // Заставляет прокрутку работать по пикселям, а не по строкам.
-  ui->chatListView->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
-
   // Даёт виджету события движения мыши даже без нажатия кнопок.
   ui->chatListView->setMouseTracking(true);
+
+  ui->chatListView->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+  ui->chatListView->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
+  ui->chatListView->setWordWrap(false);
+  ui->chatListView->setTextElideMode(Qt::ElideNone);
+
 
   ui->chatListView->setStyleSheet("QListView { background-color: #FFFFF0; }");
 }
@@ -46,6 +49,28 @@ void ScreenChatList::setModel(ChatListModel *chatListModel) {
   }
 }
 
+QItemSelectionModel *ScreenChatList::getSelectionModel() const
+{
+return ui->chatListView->selectionModel();
+}
+
 QModelIndex ScreenChatList::currentIndex() const {
   return ui->chatListView->currentIndex();
+}
+
+void ScreenChatList::onUserListIndexChanged(const QModelIndex &current, const QModelIndex &previous)
+{
+
+  std::string login;
+
+  if (!current.isValid()) {
+emit UserListIdChanged(std::string{});
+    return;
+  }
+
+  Q_UNUSED(previous);
+
+login = current.data(UserListModel::LoginRole).toString().toStdString();
+
+  emit UserListIdChanged(login);
 }

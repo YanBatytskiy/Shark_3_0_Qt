@@ -2,6 +2,7 @@
 #define SCREEN_USER_DATA_H
 
 #include <QWidget>
+#include "client_session.h"
 
 namespace Ui {
 class ScreenUserData;
@@ -13,9 +14,14 @@ class ScreenUserData : public QWidget {
 public:
   explicit ScreenUserData(QWidget *parent = nullptr);
   ~ScreenUserData();
+  void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
+
+  void setUserDataToLabels(const QModelIndex& index);
 
 private:
   Ui::ScreenUserData *ui;
+  std::shared_ptr<ClientSession> _sessionPtr;
+
 };
 
 #endif // SCREEN_USER_DATA_H

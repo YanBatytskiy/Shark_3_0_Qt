@@ -5,6 +5,7 @@
 
 #include <QTimeZone>
 #include <QMessageBox>
+#include <QItemSelectionModel>
 
 #include "model_chat_list.h"
 #include "model_chat_list_delegate.h"
@@ -20,11 +21,6 @@ ScreenMainWork::ScreenMainWork(QWidget *parent)
     : QWidget(parent), ui(new Ui::ScreenMainWork) {
 
   ui->setupUi(this);
-
-  // ui->leftPane->setMaximumWidth(QWIDGETSIZE_MAX);
-
-  // стартовые доли (пример под 1200px ширину: 360/840)
-  // ui->splitter->setSizes({420, 840});
   ui->splitter->setStyleSheet("QSplitter::handle{background:palette(mid);} "
                               "QSplitter::handle:horizontal{width:8px;}");
 }
@@ -38,10 +34,21 @@ void ScreenMainWork::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
           &ScreenMainWork::onConnectionStatusChanged, Qt::QueuedConnection);
 }
 
-void ScreenMainWork::fillChatListModelWithData() {
+void ScreenMainWork::fillChatListModelWithData(bool allChats) {
+
+  _ChatListModel->clear();
+
   const auto listOfChat = _sessionPtr->getChatListQt();
 
   if (listOfChat.has_value()) {
+
+    const QModelIndex& index = ui->userListView->currentIndex();
+
+    std::string contactLogin;
+
+    if (index.isValid()) {
+      contactLogin = index.data(UserListModel::LoginRole).toString().toStdString();
+    } else contactLogin.clear();
 
     for (const auto &chat : listOfChat.value()) {
 
@@ -72,6 +79,7 @@ void ScreenMainWork::fillChatListModelWithData() {
       // собираем строку участников с логинами и именами
       participantsChatList = "Имя (Логин: ";
       bool first = true;
+      bool isContactLogin = false;
       for (const auto &participant : chat.second.participants) {
 
         // достаем логин и имя пользователя
@@ -81,18 +89,23 @@ void ScreenMainWork::fillChatListModelWithData() {
         if (login == _sessionPtr->getActiveUserCl()->getLogin())
           continue;
 
+        // определяем наличие выбранного контакта в списке участников чата
+        if (!allChats && login == contactLogin) isContactLogin = true;
+
+
         const auto &user = _sessionPtr->getInstance().findUserByLogin(login);
         const auto &userName = user->getUserName();
 
         if (!first)
-          QString infoText;
           participantsChatList += ", ";
+
         participantsChatList += QString::fromStdString(userName) + " (" +
                                 QString::fromStdString(login) + ")";
         first = false;
       } // for
 
 
+      if (!allChats && !isContactLogin) continue;
 
       isMuted = false;
 
@@ -117,20 +130,20 @@ void ScreenMainWork::fillUserListModelWithData() {
 
     for (const auto &user_ptr : users) {
 
-      if (user_ptr != nullptr) {
-        const QString login = QString::fromStdString(user_ptr->getLogin());
-        const QString name = QString::fromStdString(user_ptr->getUserName());
-        const QString email = QString::fromStdString(user_ptr->getEmail());
-        const QString phone = QString::fromStdString(user_ptr->getPhone());
-        const QString disableReason =
-            QString::fromStdString(user_ptr->getUserName());
-        bool isActive = user_ptr->getIsActive();
-        const std::int64_t disableAt = user_ptr->getDisabledAt();
-        const std::int64_t bunUntil = user_ptr->getBunUntil();
+      if (user_ptr != nullptr)
+        if (user_ptr->getLogin() != _sessionPtr->getActiveUserCl()->getLogin())
+        {
+          const QString login = QString::fromStdString(user_ptr->getLogin());
+          const QString name = QString::fromStdString(user_ptr->getUserName());
+          const QString email = QString::fromStdString(user_ptr->getEmail());
+          const QString phone = QString::fromStdString(user_ptr->getPhone());
+          const QString disableReason = QString::fromStdString(user_ptr->getUserName());
+          bool isActive = user_ptr->getIsActive();
+          const std::int64_t disableAt = user_ptr->getDisabledAt();
+          const std::int64_t bunUntil = user_ptr->getBunUntil();
 
-        _userListModel->fillUserItem(login, name, email, phone, disableReason,
-                                     isActive, disableAt, bunUntil);
-      } // if user_ptr
+          _userListModel->fillUserItem(login, name, email, phone, disableReason, isActive, disableAt, bunUntil);
+        } // if user_ptr
     } // for users
 
   } // if users
@@ -216,32 +229,44 @@ void ScreenMainWork::createSession() {
   // окно работы со списком чатов
   _ChatListModel = new ChatListModel(ui->chatListTab);
 
-  fillChatListModelWithData();
+  fillChatListModelWithData(true);
   ui->chatListTab->setModel(_ChatListModel);
 
-  //работа с сообщениями чата
+// окно работы с адресной книгой
+  setupUserList();
+
+         //работа с сообщениями чата
   setupScreenChatting();
 
-  // окно работы с адресной книгой
+
+  ui->chatListTab->setFocus();
+}
+
+void ScreenMainWork::setupUserList()
+{
+// окно работы с адресной книгой
   _userListModel = new UserListModel(ui->userListView);
 
   fillUserListModelWithData();
 
   ui->userListView->setModel(_userListModel);
 
-  // Назначает делегат отрисовки элементов списка.
+  //подкючили модель ко второму виджету для отображения списка чатов конкретного контакта
+  ui->userViewPage->findChild<ScreenChatList*>("chatListForUserDataWidget")->setModel(_ChatListModel);
+
+         // Назначает делегат отрисовки элементов списка.
   ui->userListView->setItemDelegate(new UserListItemDelegate(ui->userListView));
 
-  // Отключает “одинаковую высоту для всех строк
+         // Отключает “одинаковую высоту для всех строк
   ui->userListView->setUniformItemSizes(false); // высоту задаёт делегат
 
-  // Убирает стандартный промежуток между строками
+         // Убирает стандартный промежуток между строками
   ui->userListView->setSpacing(0); // разделитель рисуем сами
 
-  // Заставляет прокрутку работать по пикселям, а не по строкам.
+         // Заставляет прокрутку работать по пикселям, а не по строкам.
   ui->userListView->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
 
-  // Даёт виджету события движения мыши даже без нажатия кнопок.
+         // Даёт виджету события движения мыши даже без нажатия кнопок.
   ui->userListView->setMouseTracking(true);
 
   ui->userListView->setStyleSheet("QListView { background-color: #FFFFF0; }");
@@ -250,18 +275,46 @@ void ScreenMainWork::createSession() {
   ui->findLineEdit->setPlaceholderText("Under Construction");
   ui->globalAddressBookCheckBox->setChecked(false);
 
-  ui->chatListTab->setFocus();
+  connect(this, &ScreenMainWork::currentUserIndexChanged, ui->userViewPage, &ScreenUserData::setUserDataToLabels);
+
+  //устанавливаем сигналы изменения индекса чата
+
+  auto selectMode = ui->userListView->selectionModel();
+
+  QObject::connect(selectMode, &QItemSelectionModel::currentChanged,
+                   ui->userViewPage, &ScreenUserData::setUserDataToLabels);
+
+
+  auto chatListInUser =
+      ui->userViewPage->findChild<ScreenChatList*>("chatListForUserDataWidget");
+
+
+  QObject::connect(selectMode, &QItemSelectionModel::currentChanged,
+                   chatListInUser, &ScreenChatList::onUserListIndexChanged);
+
+  QObject::connect(chatListInUser, &ScreenChatList::UserListIdChanged,
+                   this, [this](auto){ fillChatListModelWithData(false); });
+
 }
+
+
+
 
 void ScreenMainWork::setupScreenChatting()
 {
   //работа с сообщениями чата
 
+//создаем модель сообщений
   _MessageModel = new MessageModel(ui->editChatPage);
 
-  ui->editChatPage->setModel(_MessageModel);      // 1. привязали модель к виду
 
-  const auto& index = ui->chatListTab->currentIndex();
+//работаем с окном со всеми чатами пользователя
+
+ // привязали модель к виду на странице со всеми чатами
+  ui->editChatPage->setModel(_MessageModel);
+
+// заполнили модель данными конкретного чата
+  const auto &index = ui->chatListTab->currentIndex();
 
   if (index.isValid()) {
     const auto& currentChatId =
@@ -269,29 +322,77 @@ void ScreenMainWork::setupScreenChatting()
 
     fillMessageModelWithData(currentChatId);
   }
-      //связываем сигнал смены чата в списке чатов с методом вывода сообщений конкретного чата в форму
-  connect(ui->chatListTab, &ScreenChatList::currentChatIndexChanged,
-          ui->editChatPage, &ScreenChatting::onChatCurrentChanged);
 
+  //связываем сигнал смены чата в списке чатов с методом вывода сообщений конкретного чата в форму
+  connect(ui->chatListTab, &ScreenChatList::currentChatIndexChanged,
+          ui->editChatPage, &ScreenChatting::onChatCurrentChanged,Qt::UniqueConnection);
+
+  //сбрасываем количество непрочитанных у первого чата в списке
   resetCountUnreadMessagesCommmand();
 
-         // связь из окна редактирования чата c методом заполнения модели сообщений
+  // связь из окна редактирования чата c методом заполнения модели сообщений
   connect(ui->editChatPage,&ScreenChatting::ChatListIdChanged,
           this,&ScreenMainWork::fillMessageModelWithData,
           Qt::UniqueConnection);
 
+//связь с сигналом очистки непрочитанных
   connect(ui->chatListTab, &ScreenChatList::currentChatIndexChanged,
-          this, &ScreenMainWork::resetCountUnreadMessagesCommmand);
+          this, &ScreenMainWork::resetCountUnreadMessagesCommmand, Qt::UniqueConnection);
 
+  //связываем сигнал от экрана редактирования сообщения с методом отправки сообщения
   connect(ui->editChatPage, &ScreenChatting::sendMessageSignal,
           this, &ScreenMainWork::sendMessageCommmand,Qt::UniqueConnection);
 
-}
 
+
+//работаем с окном с чатами конкретного контакта
+
+
+
+//устанавливаем сигналы изменения индекса чата
+
+// экран «чаты контакта»
+  const auto chatListInUser = ui->userViewPage->findChild<ScreenChatList *>("chatListForUserDataWidget");
+  if (!chatListInUser) return;
+
+// указатель на объект содержащий окно сообщний в режиме чата отдельного контакта адресной книги
+  auto MessageChattingInUser = ui->userViewPage->findChild<ScreenChatting *>("screenChattingInUserDataWidget");
+   if (!MessageChattingInUser) return;
+
+          // привязали модель ко второму виджету для отображения списка чатов конкретного контакта
+   MessageChattingInUser->setModel(_MessageModel);
+
+  auto selectMode = chatListInUser->getSelectionModel();
+   if (!selectMode)
+    return;
+
+          // связь: список чатов контакта -> окно сообщений контакта
+   connect(chatListInUser, &ScreenChatList::currentChatIndexChanged, MessageChattingInUser,
+           &ScreenChatting::onChatCurrentChanged);
+
+          // связь: окно сообщений контакта -> подгрузка сообщений выбранного чата
+   connect(
+       MessageChattingInUser, &ScreenChatting::ChatListIdChanged, this,
+       [this](std::size_t chatId) { fillMessageModelWithData(chatId); });
+
+   connect(chatListInUser, &ScreenChatList::UserListIdChanged,
+           this, [this](auto){ fillChatListModelWithData(false); });
+
+          // связь с сигналом очистки непрочитанных
+   connect(chatListInUser, &ScreenChatList::currentChatIndexChanged, this,
+           &ScreenMainWork::resetCountUnreadMessagesCommmand, Qt::UniqueConnection);
+
+          // связываем сигнал от экрана редактирования сообщения с методом отправки сообщения
+   connect(MessageChattingInUser,
+           &ScreenChatting::sendMessageSignal,
+           this,
+           &ScreenMainWork::sendMessageCommmand,
+           Qt::UniqueConnection);
+}
 void ScreenMainWork::on_chatUserTabWidget_currentChanged(int index) {
   if (index == 1) {
+    // userData
     ui->globalAddressBookCheckBox->setEnabled(true);
-
     ui->findPushButton->setEnabled(true);
 
     QPalette paletteLineEdit = ui->findLineEdit->palette();
@@ -303,9 +404,15 @@ void ScreenMainWork::on_chatUserTabWidget_currentChanged(int index) {
     ui->findLineEdit->clear();
     ui->findLineEdit->setPlaceholderText("Поиск...");
     ui->chatUserDataStackedWidget->setCurrentIndex(1);
-  } else {
-    ui->globalAddressBookCheckBox->setEnabled(false);
 
+    const auto& userIdx = ui->userListView->currentIndex();
+
+    if (userIdx.isValid()) {
+      emit currentUserIndexChanged(userIdx);
+    }
+  } else {
+    // chatList
+    ui->globalAddressBookCheckBox->setEnabled(false);
     ui->findPushButton->setEnabled(false);
 
     QPalette paletteLineEdit = ui->findLineEdit->palette();
@@ -314,64 +421,90 @@ void ScreenMainWork::on_chatUserTabWidget_currentChanged(int index) {
     ui->findLineEdit->setEnabled(false);
     ui->findLineEdit->setPlaceholderText("under construction");
     ui->chatUserDataStackedWidget->setCurrentIndex(0);
+
+    fillChatListModelWithData(true);
+
+    auto *lv = ui->chatListTab->findChild<QListView*>("chatListView");
+
+    if (lv) {
+      if (auto *m = lv->model(); m && m->rowCount() > 0) {
+        const QModelIndex first = m->index(0, 0);
+        lv->setCurrentIndex(first);
+      }
+    }
   }
 }
 
 void ScreenMainWork::sendMessageCommmand()
 {
-  const auto& idx = ui->chatListTab->currentIndex();
+  // выбираем актуальный индекс чата по источнику сигнала
+  QModelIndex idx;
+  if (auto s = qobject_cast<ScreenChatting*>(sender());
+      s && s != ui->editChatPage) {
+    auto cl = ui->userViewPage->findChild<ScreenChatList*>("chatListForUserDataWidget",
+                                                            Qt::FindChildrenRecursively);
+    idx = cl ? cl->currentIndex() : QModelIndex();
+  } else {
+    idx = ui->chatListTab->currentIndex();
+  }
 
-//достали chatId
   if (!idx.isValid()) return;
 
   const auto& currentChatId =
       static_cast<size_t>(idx.data(ChatListModel::ChatIdRole).toLongLong());
 
-//доастали указатель на чат
   auto chat_ptr = _sessionPtr->getInstance().getChatById(currentChatId);
 
-// создали объект Message
   std::vector<std::shared_ptr<User>> recipients;
-
   for (const auto &participant : chat_ptr->getParticipants()) {
     auto user_ptr = participant._user.lock();
-
-    if (user_ptr) {
-      if (user_ptr != _sessionPtr->getActiveUserCl())
-        recipients.push_back(user_ptr);
-    }
+    if (user_ptr && user_ptr != _sessionPtr->getActiveUserCl())
+      recipients.push_back(user_ptr);
   }
 
+         // берём текст из того редактора, где нажали кнопку
+  QString newMessageText;
+  if (auto s = qobject_cast<ScreenChatting*>(sender()); s) {
+    if (auto ed = s->newMessageTextEditBlock())
+      newMessageText = ed->toPlainText();
+  } else {
+    newMessageText = ui->editChatPage->newMessageTextEditBlock()->toPlainText();
+  }
+  if (newMessageText.trimmed().isEmpty()) return;
+
   std::vector<std::shared_ptr<IMessageContent>> iMessageContent;
-
-  const auto newMessageText = ui->editChatPage->newMessageTextEditBlock()->toPlainText();
   TextContent textContent = newMessageText.toStdString();
-
   MessageContent<TextContent> messageContentText(textContent);
   iMessageContent.push_back(std::make_shared<MessageContent<TextContent>>(messageContentText));
 
   auto newMessageTimeStamp = getCurrentDateTimeInt();
-
   Message newMessage(iMessageContent, _sessionPtr->getActiveUserCl(), newMessageTimeStamp, 0);
 
-  const auto& newMessageId = _sessionPtr->createMessageCl(newMessage, chat_ptr, _sessionPtr->getInstance().getActiveUser());
+  const auto& newMessageId =
+      _sessionPtr->createMessageCl(newMessage, chat_ptr, _sessionPtr->getInstance().getActiveUser());
 
-  if (newMessageId == 0)
+  if (newMessageId == 0) {
     QMessageBox::warning(this, tr("Ошибка!"), tr("Невозможно отправить сообщение."));
-      else {
-    _MessageModel->fillMessageItem(
-        newMessageText,
-        QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin()),
-        QString::fromStdString(_sessionPtr->getActiveUserCl()->getUserName()),
-        newMessageTimeStamp,
-        newMessageId
-        );
-        ui->editChatPage->newMessageTextEditBlock()->setText("");
-
-// заменили в модели время последнего сообщения
-    _ChatListModel->setLastTime(idx.row(),newMessageTimeStamp);
+    return;
   }
 
+  _MessageModel->fillMessageItem(
+      newMessageText,
+      QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin()),
+      QString::fromStdString(_sessionPtr->getActiveUserCl()->getUserName()),
+      newMessageTimeStamp,
+      newMessageId
+      );
+
+         // чистим редактор-источник
+  if (auto s = qobject_cast<ScreenChatting*>(sender()); s) {
+    if (auto ed = s->newMessageTextEditBlock()) ed->setText("");
+  } else {
+    ui->editChatPage->newMessageTextEditBlock()->setText("");
+  }
+
+         // заменили в модели время последнего сообщения
+  _ChatListModel->setLastTime(idx.row(), newMessageTimeStamp);
 }
 
 void ScreenMainWork::resetCountUnreadMessagesCommmand()
@@ -403,8 +536,5 @@ const auto& idx = ui->chatListTab->currentIndex();
 
   // заменили в модели количество непрочатанных и обновили элемент списка
     _ChatListModel->setUnreadCount(idx.row(),0);
-
-    auto *view = ui->chatListTab->findChild<QAbstractItemView*>("ChatMessagesListView");
-    if (view) view->update(idx);
   }
 }

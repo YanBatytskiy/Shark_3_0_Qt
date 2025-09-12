@@ -46,6 +46,7 @@ qt_add_executable(Shark_ui
   nw_connection_monitor.h  nw_connection_monitor.cpp
   resources.qrc
   screen_user_data.h screen_user_data.cpp screen_user_data.ui
+  screen_user_profile.h screen_user_profile.cpp screen_user_profile.ui
 
 )
 

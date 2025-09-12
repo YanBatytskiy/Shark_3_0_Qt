@@ -30,11 +30,12 @@
     <item>
      <widget class="QStackedWidget" name="mainWindowstackedWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="ScreenLogin" name="loginPage"/>
       <widget class="ScreenRegister" name="regPage"/>
       <widget class="ScreenMainWork" name="workPage"/>
+      <widget class="ScreenUserProfile" name="profilePage"/>
      </widget>
     </item>
    </layout>
@@ -87,6 +88,12 @@
    <class>ScreenMainWork</class>
    <extends>QWidget</extends>
    <header>screen_main_work.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ScreenUserProfile</class>
+   <extends>QWidget</extends>
+   <header>screen_user_profile.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

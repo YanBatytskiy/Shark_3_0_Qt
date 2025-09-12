@@ -47,6 +47,8 @@ public:
   void setIsMuted(int row, bool newValue);
   void setLastTime(int row, std::int64_t timeValue);
   void setChatId(int row, std::size_t Value);
+  void clear();
+
 
   static QString buildInfoTextForRow(const QString& chatIdStr, const QString& unreadCountStr, const QString& lastTimeStr);
 

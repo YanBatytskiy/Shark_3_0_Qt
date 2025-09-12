@@ -24,8 +24,20 @@
     <layout class="QVBoxLayout" name="verticalLayout_2" stretch="1">
      <item>
       <widget class="QListView" name="ChatMessagesListView">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="styleSheet">
         <string notr="true">border-image: url(:/images/sea_1.jpg) 0 0 0 0 stretch stretch;</string>
+       </property>
+       <property name="verticalScrollMode">
+        <enum>QAbstractItemView::ScrollMode::ScrollPerPixel</enum>
+       </property>
+       <property name="horizontalScrollMode">
+        <enum>QAbstractItemView::ScrollMode::ScrollPerPixel</enum>
        </property>
       </widget>
      </item>
