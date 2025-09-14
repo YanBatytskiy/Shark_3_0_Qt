@@ -17,28 +17,22 @@ class ScreenChatting : public QWidget {
 public:
   explicit ScreenChatting(QWidget *parent = nullptr);
   ~ScreenChatting();
+
   void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
   void setModel(MessageModel *messageModel);
-  QModelIndex currentIndex() const;
 
-  QTextEdit* newMessageTextEditBlock() const;
-
-public slots:
-  void onChatCurrentChanged(const QModelIndex &current,
-                            const QModelIndex &previous);
+  QTextEdit* getScreenChattingNewMessageTextEdit() const;
 
 signals:
-  void ChatListIdChanged(std::size_t chatId);
-  void sendMessageSignal(QString messageText);
+  void signalsendMessage(QString messageText);
 
 private slots:
-  void on_pushButton_clicked();
+  void slotOn_ScreenChattingSendMessagePushButton_clicked();
 
 private:
   Ui::ScreenChatting *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
   MessageModel *_messageModel{nullptr};
-  size_t _currentChatId{0};
 
 };
 

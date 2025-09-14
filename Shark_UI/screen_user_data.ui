@@ -21,7 +21,7 @@
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
    <item>
-    <widget class="QWidget" name="widget_2" native="true">
+    <widget class="QWidget" name="ScreenUserDataUserDataWidget" native="true">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
        <horstretch>0</horstretch>
@@ -460,7 +460,7 @@
       </spacer>
      </item>
      <item>
-      <widget class="ScreenChatList" name="chatListForUserDataWidget" native="true">
+      <widget class="ScreenChatList" name="ScreenUserDataChatsListWidget" native="true">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
          <horstretch>0</horstretch>
@@ -503,7 +503,7 @@
     </spacer>
    </item>
    <item>
-    <widget class="ScreenChatting" name="screenChattingInUserDataWidget" native="true">
+    <widget class="ScreenChatting" name="ScreenUserDataMessagesListWidget" native="true">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
        <horstretch>0</horstretch>

@@ -42,7 +42,7 @@ public slots:
                                  ServerConnectionMode mode);
 
 private slots:
-  void on_chatUserTabWidget_currentChanged(int index);
+  void on_mainWorkChatUserTabWidget_currentChanged(int index);
 
 private:
   Ui::ScreenMainWork *ui;

@@ -42,7 +42,7 @@ void ScreenChatList::setModel(ChatListModel *chatListModel) {
   auto selectMode = ui->chatListView->selectionModel();
 
   QObject::connect(selectMode, &QItemSelectionModel::currentChanged, this,
-                   &ScreenChatList::currentChatIndexChanged);
+                   &ScreenChatList::signalCurrentChatIndexChanged);
 
   if (chatListModel && chatListModel->rowCount() > 0) {
     ui->chatListView->setCurrentIndex(chatListModel->index(0, 0));
@@ -54,7 +54,7 @@ QItemSelectionModel *ScreenChatList::getSelectionModel() const
 return ui->chatListView->selectionModel();
 }
 
-QModelIndex ScreenChatList::currentIndex() const {
+QModelIndex ScreenChatList::getCcurrentChatIndex() const {
   return ui->chatListView->currentIndex();
 }
 

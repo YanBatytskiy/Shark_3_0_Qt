@@ -261,7 +261,7 @@ border-radius: 8px;</string>
           </layout>
          </item>
          <item>
-          <widget class="QTabWidget" name="chatUserTabWidget">
+          <widget class="QTabWidget" name="mainWorkChatUserTabWidget">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
              <horstretch>0</horstretch>
@@ -275,12 +275,12 @@ border-radius: 8px;</string>
             </size>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>1</number>
            </property>
            <property name="elideMode">
             <enum>Qt::TextElideMode::ElideNone</enum>
            </property>
-           <widget class="ScreenChatList" name="chatListTab">
+           <widget class="ScreenChatList" name="mainWorkTabChatsList">
             <property name="sizePolicy">
              <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
               <horstretch>0</horstretch>
@@ -292,7 +292,7 @@ border-radius: 8px;</string>
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_2"/>
            </widget>
-           <widget class="QWidget" name="userListTab">
+           <widget class="QWidget" name="mainWorkTabUsersList">
             <property name="sizePolicy">
              <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
               <horstretch>0</horstretch>
@@ -313,7 +313,7 @@ border-radius: 8px;</string>
              <item>
               <layout class="QHBoxLayout" name="horizontalLayout_5">
                <item>
-                <widget class="QListView" name="userListView">
+                <widget class="QListView" name="mainWorkUsersList">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
                    <horstretch>0</horstretch>
@@ -369,7 +369,7 @@ border-radius: 8px;</string>
        </item>
       </layout>
      </widget>
-     <widget class="QStackedWidget" name="chatUserDataStackedWidget">
+     <widget class="QStackedWidget" name="mainWorkRightStackedWidget">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
         <horstretch>0</horstretch>
@@ -382,7 +382,7 @@ border-radius: 8px;</string>
       <property name="currentIndex">
        <number>1</number>
       </property>
-      <widget class="ScreenChatting" name="editChatPage">
+      <widget class="ScreenChatting" name="mainWorkPageChatting">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
          <horstretch>0</horstretch>
@@ -390,7 +390,7 @@ border-radius: 8px;</string>
         </sizepolicy>
        </property>
       </widget>
-      <widget class="ScreenUserData" name="userViewPage">
+      <widget class="ScreenUserData" name="mainWorkPageUserDataView">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
          <horstretch>0</horstretch>

@@ -112,6 +112,14 @@ void UserListModel::setBunUntilUserList(int row, std::int64_t newValue) {
   emit dataChanged(i, i, {BunUntilRole});
 }
 
+void UserListModel::clear()
+{
+  if (rowCount() == 0) return;
+  beginResetModel();
+  _items.clear();
+  endResetModel();
+}
+
 void UserListModel::fillUserItem(const QString &login, const QString &name, const QString &email,
                                      const QString &phone, const QString &disableReason, bool isActive,
                                      const int64_t disableAt, const int64_t bunUntil) {

@@ -16,19 +16,19 @@ MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr,
 
   ui->setupUi(this);
 
-  ui->loginPage->setDatabase(_sessionPtr);
-  ui->regPage->setDatabase(_sessionPtr);
-  ui->workPage->setDatabase(_sessionPtr);
+  ui->pageLogin->setDatabase(_sessionPtr);
+  ui->pageRegister->setDatabase(_sessionPtr);
+  ui->pageWork->setDatabase(_sessionPtr);
 
-  connect(ui->loginPage, &ScreenLogin::registrationRequested, this,
+  connect(ui->pageLogin, &ScreenLogin::registrationRequested, this,
           &MainWindow::setRegistrationForm);
-  connect(ui->loginPage, &ScreenLogin::rejected, this,
+  connect(ui->pageLogin, &ScreenLogin::rejected, this,
           &MainWindow::onRejectedRequested);
-  connect(ui->loginPage, &ScreenLogin::accepted, this, &MainWindow::onLoggedIn);
+  connect(ui->pageLogin, &ScreenLogin::accepted, this, &MainWindow::onLoggedIn);
 
-  connect(ui->regPage, &ScreenRegister::loginRequested, this,
+  connect(ui->pageRegister, &ScreenRegister::loginRequested, this,
           &MainWindow::setLoginForm);
-  connect(ui->regPage, &ScreenRegister::rejected, this,
+  connect(ui->pageRegister, &ScreenRegister::rejected, this,
           &MainWindow::onRejectedRequested);
 
   ui->menubar->setVisible(false);
@@ -39,20 +39,20 @@ MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr,
 MainWindow::~MainWindow() { delete ui; }
 
 void MainWindow::setLoginForm() {
-  ui->loginPage->clearFields();
+  ui->pageLogin->clearFields();
   QWidget *page =
-      ui->mainWindowstackedWidget->findChild<QWidget *>("loginPage");
+      ui->mainWindowstackedWidget->findChild<QWidget *>("pageLogin");
   ui->mainWindowstackedWidget->setCurrentWidget(page);
 }
 
 void MainWindow::setRegistrationForm() {
-  ui->regPage->clearFields();
-  QWidget *page = ui->mainWindowstackedWidget->findChild<QWidget *>("regPage");
+  ui->pageRegister->clearFields();
+  QWidget *page = ui->mainWindowstackedWidget->findChild<QWidget *>("pageRegister");
   ui->mainWindowstackedWidget->setCurrentWidget(page);
 }
 
 void MainWindow::setworkForm() {
-  QWidget *page = ui->mainWindowstackedWidget->findChild<QWidget *>("workPage");
+  QWidget *page = ui->mainWindowstackedWidget->findChild<QWidget *>("pageWork");
   ui->mainWindowstackedWidget->setCurrentWidget(page);
 }
 
@@ -65,7 +65,7 @@ void MainWindow::onRejectedRequested() {
 
 void MainWindow::onLoggedIn(QString login) {
   _sessionPtr->registerClientOnDeviceQt(login.toStdString());
-  ui->workPage->createSession();
+  ui->pageWork->createSession();
   setworkForm();
 }
 
@@ -76,13 +76,13 @@ void MainWindow::on_exitAction_triggered() {
 
 void MainWindow::on_mainWindowstackedWidget_currentChanged(int arg1)
 {
-  QWidget *loginPage =
-      ui->mainWindowstackedWidget->findChild<QWidget *>("loginPage");
-  QWidget *regPage = ui->mainWindowstackedWidget->findChild<QWidget *>("regPage");
-  QWidget *workPage = ui->mainWindowstackedWidget->findChild<QWidget *>("workPage");
+  QWidget *pageLogin =
+      ui->mainWindowstackedWidget->findChild<QWidget *>("pageLogin");
+  QWidget *pageRegister = ui->mainWindowstackedWidget->findChild<QWidget *>("pageRegister");
+  QWidget *pageWork = ui->mainWindowstackedWidget->findChild<QWidget *>("pageWork");
 
-  if (ui->mainWindowstackedWidget->currentWidget() == loginPage ||
-      ui->mainWindowstackedWidget->currentWidget() == regPage) {
+  if (ui->mainWindowstackedWidget->currentWidget() == pageLogin ||
+      ui->mainWindowstackedWidget->currentWidget() == pageRegister) {
     ui->menubar->setVisible(false);
   }
 

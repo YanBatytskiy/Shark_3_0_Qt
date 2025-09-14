@@ -32,10 +32,10 @@
       <property name="currentIndex">
        <number>3</number>
       </property>
-      <widget class="ScreenLogin" name="loginPage"/>
-      <widget class="ScreenRegister" name="regPage"/>
-      <widget class="ScreenMainWork" name="workPage"/>
-      <widget class="ScreenUserProfile" name="profilePage"/>
+      <widget class="ScreenLogin" name="pageLogin"/>
+      <widget class="ScreenRegister" name="pageRegister"/>
+      <widget class="ScreenMainWork" name="pageWork"/>
+      <widget class="ScreenUserProfile" name="pageProfile"/>
      </widget>
     </item>
    </layout>

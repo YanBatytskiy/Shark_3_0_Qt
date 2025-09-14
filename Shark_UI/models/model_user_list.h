@@ -50,6 +50,7 @@ public:
   void setIsActiveUserList(int row, bool newValue);
   void setDisableAtUserList(int row, std::int64_t newValue);
   void setBunUntilUserList(int row, std::int64_t newValue);
+  void clear();
 
   void fillUserItem(const QString &login, const QString &name, const QString &email,
                         const QString &phone, const QString &disableReason, bool isActive, const int64_t disableAt,

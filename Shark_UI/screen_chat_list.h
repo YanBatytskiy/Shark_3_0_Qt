@@ -19,7 +19,7 @@ public:
   void setModel(ChatListModel *chatListModel);
   QItemSelectionModel* getSelectionModel() const;
 
-  QModelIndex currentIndex() const;
+  QModelIndex getCcurrentChatIndex() const;
 
 public slots:
   void onUserListIndexChanged(const QModelIndex &current,
@@ -27,7 +27,7 @@ public slots:
 
 
 signals:
-  void currentChatIndexChanged(const QModelIndex &current,
+  void signalCurrentChatIndexChanged(const QModelIndex &current,
                                const QModelIndex &previous);
 
   void UserListIdChanged(std::string login);

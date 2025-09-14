@@ -16,22 +16,23 @@ ScreenChatting::ScreenChatting(QWidget *parent)
   ui->setupUi(this);
 
 
-// Назначает делегат отрисовки элементов списка.
-  ui->ChatMessagesListView->setItemDelegate(
-      new model_chat_mess_delegate(ui->ChatMessagesListView));
+  // Назначает делегат отрисовки элементов списка.
+  ui->ScreenChattingMessagesList->setItemDelegate(
+      new model_chat_mess_delegate(ui->ScreenChattingMessagesList));
 
-         // Отключает “одинаковую высоту для всех строк
-  ui->ChatMessagesListView->setUniformItemSizes(false); // высоту задаёт делегат
+ // Отключает “одинаковую высоту для всех строк
+  ui->ScreenChattingMessagesList->setUniformItemSizes(false); // высоту задаёт делегат
 
-         // Убирает стандартный промежуток между строками
-  ui->ChatMessagesListView->setSpacing(0); // разделитель рисуем сами
+ // Убирает стандартный промежуток между строками
+  ui->ScreenChattingMessagesList->setSpacing(0); // разделитель рисуем сами
 
-         // Заставляет прокрутку работать по пикселям, а не по строкам.
-  ui->ChatMessagesListView->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+ // Заставляет прокрутку работать по пикселям, а не по строкам.
+  ui->ScreenChattingMessagesList->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
 
   // Заставляет прокрутку работать по пикселям, а не по строкам.
-  ui->ChatMessagesListView->setVerticalScrollMode(
+  ui->ScreenChattingMessagesList->setVerticalScrollMode(
       QAbstractItemView::ScrollPerPixel);
+
 }
 
 ScreenChatting::~ScreenChatting() { delete ui; }
@@ -41,38 +42,18 @@ void ScreenChatting::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
 }
 
 void ScreenChatting::setModel(MessageModel *messageModel) {
-  ui->ChatMessagesListView->setModel(messageModel);
+  ui->ScreenChattingMessagesList->setModel(messageModel);
   _messageModel = messageModel;
 }
 
-QModelIndex ScreenChatting::currentIndex() const {
-  return ui->ChatMessagesListView->currentIndex();
+QTextEdit *ScreenChatting::getScreenChattingNewMessageTextEdit() const
+{
+return ui->ScreenChattingNewMessageTextEdit;
 }
 
-QTextEdit *ScreenChatting::newMessageTextEditBlock() const
+void ScreenChatting::slotOn_ScreenChattingSendMessagePushButton_clicked()
 {
-return ui->newMessageTextEdit;
-}
-
-
-void ScreenChatting::onChatCurrentChanged(const QModelIndex &current, const QModelIndex &previous)
-{
-  if (!current.isValid()) {
-    _currentChatId = 0;
-    return;
-  }
-
-  Q_UNUSED(previous);
-
-  _currentChatId =
-      static_cast<size_t>(current.data(ChatListModel::ChatIdRole).toLongLong());
-
-  emit ChatListIdChanged(_currentChatId);
-}
-
-void ScreenChatting::on_pushButton_clicked()
-{
-  if (ui->newMessageTextEdit->toPlainText() != "")
-    emit sendMessageSignal(ui->newMessageTextEdit->toPlainText());
+  if (ui->ScreenChattingNewMessageTextEdit->toPlainText() != "")
+    emit signalsendMessage(ui->ScreenChattingNewMessageTextEdit->toPlainText());
 }
 

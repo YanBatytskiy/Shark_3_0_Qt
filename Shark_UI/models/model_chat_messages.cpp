@@ -89,10 +89,11 @@ void MessageModel::setMessageId(int row, std::size_t value)
 
 void MessageModel::clear()
 {
-  beginResetModel();
+  const int n = rowCount();
+  if (n == 0) return;
+  beginRemoveRows(QModelIndex(), 0, n - 1);
   _items.clear();
-  endResetModel();
-}
+  endRemoveRows();}
 
 void MessageModel::fillMessageItem(const QString &messageText,
                                    const QString &senderLogin,
