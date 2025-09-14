@@ -484,12 +484,19 @@ void ScreenMainWork::on_mainWorkChatUserTabWidget_currentChanged(int index) {
     // userData
     ui->globalAddressBookCheckBox->setEnabled(true);
     ui->findPushButton->setEnabled(true);
+    ui->addUserToChatPushButton->setVisible(false);
 
     QPalette paletteLineEdit = ui->findLineEdit->palette();
     paletteLineEdit.setColor(QPalette::PlaceholderText, QColor("#000000"));
     ui->findLineEdit->setPalette(paletteLineEdit);
 
-    ui->findLineEdit->setEnabled(true);
+    const auto userDataView = ui->mainWorkPageUserDataView->findChild<ScreenUserData *>(
+        "ScreenUserDataUserDataWidget");
+
+    ui->mainWorkPageUserDataView
+
+        ui->findLineEdit->setEnabled(true);
+
     ui->findLineEdit->setClearButtonEnabled(true);
     ui->findLineEdit->clear();
     ui->findLineEdit->setPlaceholderText("Поиск...");
