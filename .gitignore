@@ -71,3 +71,5 @@ test_results/
 for_chat.txt
 CMakeLists.workof
 Exceptions.png
+CMakeLists.txt.user
+CMakeLists.txt.user*
