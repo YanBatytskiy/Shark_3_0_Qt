@@ -20,7 +20,6 @@ private:
     std::size_t ChatId;
   };
   std::vector<ChatListItem> _items;
-bool _inClear = false;
 
 public:
   enum ChatListRoles : int {

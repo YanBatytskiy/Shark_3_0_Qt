@@ -107,12 +107,9 @@ void ChatListModel::setChatId(int row, std::size_t Value)
 
 void ChatListModel::clear()
 {
-  if (_inClear || _items.empty()) return;   // защита от рекурсии и пустого вызова
-  _inClear = true;
   beginResetModel();
   _items.clear();
   endResetModel();
-  _inClear = false;
 }
 
 QString ChatListModel::buildInfoTextForRow(const QString& chatIdStr, const QString& unreadCountStr, const QString& lastTimeStr )
