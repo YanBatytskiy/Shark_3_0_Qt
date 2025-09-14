@@ -24,10 +24,10 @@ public:
   QTextEdit* getScreenChattingNewMessageTextEdit() const;
 
 signals:
-  void signalsendMessage(QString messageText);
+  void signalsendMessage();
 
-private slots:
-  void slotOn_ScreenChattingSendMessagePushButton_clicked();
+private slots:    
+    void on_ScreenChattingSendMessagePushButton_clicked();
 
 private:
   Ui::ScreenChatting *ui;

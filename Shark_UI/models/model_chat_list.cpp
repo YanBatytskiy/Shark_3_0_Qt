@@ -9,7 +9,7 @@ QHash<int, QByteArray> ChatListModel::roleNames() const {
           {UnreadCountRole, "unreadCount"},
           {IsMutedRole, "isMuted"},
           {LastTimeRole, "lastTime"},
-          {ChatIdRole, "chatIdTime"}
+          {ChatIdRole, "chatId"}
   };
 }
 
@@ -99,7 +99,7 @@ void ChatListModel::setLastTime(int row, std::int64_t timeValue)
 void ChatListModel::setChatId(int row, std::size_t Value)
 {
   if (row <0 || row >=rowCount()) return;
-  _items[static_cast<size_t>(row )].LastTime = Value;
+  _items[static_cast<size_t>(row )].ChatId = Value;
   const QModelIndex i = index(row);
   emit dataChanged(i, i, {ChatIdRole});
 
@@ -107,9 +107,16 @@ void ChatListModel::setChatId(int row, std::size_t Value)
 
 void ChatListModel::clear()
 {
-  beginResetModel();
+  // beginResetModel();
+  // _items.clear();
+  // endResetModel();
+
+  if (_items.empty()) return;
+  const int last = rowCount() - 1;
+  beginRemoveRows(QModelIndex(), 0, last);
   _items.clear();
-  endResetModel();
+  endRemoveRows();
+
 }
 
 QString ChatListModel::buildInfoTextForRow(const QString& chatIdStr, const QString& unreadCountStr, const QString& lastTimeStr )

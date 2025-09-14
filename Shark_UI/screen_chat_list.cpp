@@ -55,16 +55,22 @@ return ui->chatListView->selectionModel();
 }
 
 QModelIndex ScreenChatList::getCcurrentChatIndex() const {
-  return ui->chatListView->currentIndex();
+
+    auto v = ui->chatListView;
+    QModelIndex idx = v->currentIndex();
+
+    if (!idx.isValid() && v->selectionModel())
+        idx = v->selectionModel()->currentIndex();
+    return idx;
 }
 
-void ScreenChatList::onUserListIndexChanged(const QModelIndex &current, const QModelIndex &previous)
+void ScreenChatList::slotOnUserListIndexChanged(const QModelIndex &current, const QModelIndex &previous)
 {
 
   std::string login;
 
   if (!current.isValid()) {
-emit UserListIdChanged(std::string{});
+emit signalUserListIdChanged(std::string{});
     return;
   }
 
@@ -72,5 +78,5 @@ emit UserListIdChanged(std::string{});
 
 login = current.data(UserListModel::LoginRole).toString().toStdString();
 
-  emit UserListIdChanged(login);
+  emit signalUserListIdChanged(login);
 }

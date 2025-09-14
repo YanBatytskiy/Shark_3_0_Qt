@@ -53,7 +53,7 @@ Doxyfile
 !Classes.png
 
 # 🛡️ Утилиты
-.clang-format
+#.clang-format
 .clangd
 
 # 📜 Скрипты и временные файлы

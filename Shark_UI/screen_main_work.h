@@ -26,16 +26,20 @@ public:
 
   void fillUserListModelWithData();
   void fillMessageModelWithData(std::size_t chatId);
+
   void createSession();
 
   void setupUserList();
   void setupScreenChatting();
 
-  void sendMessageCommmand();
+  void refillChatListModelWithData(bool allChats);
+
+  void sendMessageCommmand(const QModelIndex idx,
+                           const std::size_t currentChatId,
+                           const QString &newMessageText);
   void resetCountUnreadMessagesCommmand();
 
 signals:
-  void currentUserIndexChanged(const QModelIndex &current);
 
 public slots:
   void onConnectionStatusChanged(bool connectionStatus,

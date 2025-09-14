@@ -1,12 +1,12 @@
-#include "message/message_content.h"
-#include "message/message_content_struct.h"
+// #include "message/message_content.h"
+// #include "message/message_content_struct.h"
 
-#include "models/model_chat_list.h"
+// #include "models/model_chat_list.h"
 #include "models/model_chat_mess_delegate.h"
 #include "models/model_chat_messages.h"
-#include "system/date_time_utils.h"
+// #include "system/date_time_utils.h"
 
-#include "message_text_browser.h"
+// #include "message_text_browser.h"
 
 #include "screen_chatting.h"
 #include "ui_screen_chatting.h"
@@ -51,9 +51,10 @@ QTextEdit *ScreenChatting::getScreenChattingNewMessageTextEdit() const
 return ui->ScreenChattingNewMessageTextEdit;
 }
 
-void ScreenChatting::slotOn_ScreenChattingSendMessagePushButton_clicked()
+
+void ScreenChatting::on_ScreenChattingSendMessagePushButton_clicked()
 {
-  if (ui->ScreenChattingNewMessageTextEdit->toPlainText() != "")
-    emit signalsendMessage(ui->ScreenChattingNewMessageTextEdit->toPlainText());
+    if (ui->ScreenChattingNewMessageTextEdit->toPlainText() != "")
+        emit signalsendMessage();
 }
 

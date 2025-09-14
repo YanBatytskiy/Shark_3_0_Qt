@@ -22,7 +22,7 @@ public:
   QModelIndex getCcurrentChatIndex() const;
 
 public slots:
-  void onUserListIndexChanged(const QModelIndex &current,
+  void slotOnUserListIndexChanged(const QModelIndex &current,
                             const QModelIndex &previous);
 
 
@@ -30,7 +30,7 @@ signals:
   void signalCurrentChatIndexChanged(const QModelIndex &current,
                                const QModelIndex &previous);
 
-  void UserListIdChanged(std::string login);
+  void signalUserListIdChanged(std::string login);
 
 private:
   Ui::ScreenChatList *ui;
