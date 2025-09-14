@@ -5,6 +5,12 @@
 #include <poll.h>
 #include <QObject>
 
+// macOS и другие системы без POLLRDHUP
+#ifndef POLLRDHUP
+#define POLLRDHUP 0
+#endif
+
+
 class ConnectionMonitor : public QObject {
   Q_OBJECT
 public:

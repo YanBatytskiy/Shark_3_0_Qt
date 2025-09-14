@@ -36,7 +36,22 @@ void ScreenMainWork::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
 
 void ScreenMainWork::fillChatListModelWithData(bool allChats) {
 
+  auto *allChats_ptr   = ui->mainWorkTabChatsList;
+  auto *userChats_ptr  = ui->mainWorkPageUserDataView
+                        ->findChild<ScreenChatList*>("ScreenUserDataChatsListWidget");
+
+  auto *m = _ChatListModel;
+
+  // временно убрать модель из обоих видов
+  if (allChats_ptr)  allChats_ptr->setModel(nullptr);
+  if (userChats_ptr) userChats_ptr->setModel(nullptr);
+
   _ChatListModel->clear();
+
+
+  // вернуть модель обратно
+  if (allChats_ptr)  allChats_ptr->setModel(m);
+  if (userChats_ptr) userChats_ptr->setModel(m);
 
   const auto listOfChat = _sessionPtr->getChatListQt();
 
