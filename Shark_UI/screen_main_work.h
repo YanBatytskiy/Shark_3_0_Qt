@@ -7,6 +7,8 @@
 #include "models/model_chat_messages.h"
 #include "models/model_user_list.h"
 
+#include <QButtonGroup>
+#include <QMessageBox>
 #include <QWidget>
 #include <memory>
 
@@ -40,18 +42,32 @@ public:
   void resetCountUnreadMessagesCommmand();
 
 signals:
+  void signalStartNewChat();
+  void signalAddContactToNewChat(const QString &value);
 
 public slots:
   void onConnectionStatusChanged(bool connectionStatus,
                                  ServerConnectionMode mode);
+  void slotCancelNewChat();
+
+  void slotFindContactsByPart();
 
 private slots:
   void on_mainWorkChatUserTabWidget_currentChanged(int index);
+
+  void on_createNewChatPushButton_clicked();
+
+  void on_addUserToChatPushButton_clicked();
+
+  void on_findLineEdit_textChanged(const QString &arg1);
+
+  void on_findPushButton_clicked();
 
 private:
   Ui::ScreenMainWork *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
 
+  QButtonGroup *_findRadoButtonGroup{nullptr};
   ChatListModel *_ChatListModel;
   UserListModel *_userListModel;
   MessageModel *_MessageModel;

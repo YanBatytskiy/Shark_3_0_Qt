@@ -47,6 +47,7 @@ qt_add_executable(Shark_ui
   resources.qrc
   screen_user_data.h screen_user_data.cpp screen_user_data.ui
   screen_user_profile.h screen_user_profile.cpp screen_user_profile.ui
+  screen_new_chat_participants.h screen_new_chat_participants.cpp screen_new_chat_participants.ui
 
 )
 

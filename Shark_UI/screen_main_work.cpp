@@ -8,7 +8,6 @@
 #include <QItemSelectionModel>
 
 #include "model_chat_list.h"
-#include "model_chat_list_delegate.h"
 #include "model_chat_messages.h"
 #include "model_user_list.h"
 #include "model_user_list_delegate.h"
@@ -17,10 +16,28 @@
 #include "message/message_content.h"
 #include "message/message_content_struct.h"
 
+#include "dto/dto_struct.h"
+
+#include "screen_new_chat_participants.h"
+
 ScreenMainWork::ScreenMainWork(QWidget *parent)
     : QWidget(parent), ui(new Ui::ScreenMainWork) {
 
   ui->setupUi(this);
+
+  if (auto w = ui->mainWorkPageUserDataView
+                   ->findChild<ScreenNewChatParticipants *>("ScreenNewChatParticipantsWidget")) {
+
+    // связь: кнопка начать создать новый чат в списке контактов - слот на включение формы и заполнение её
+    connect(this, &ScreenMainWork::signalStartNewChat,
+            w, &ScreenNewChatParticipants::slotCollectParticipantsForNewChat);
+
+    // связь: кнопка отменить создание нового чата - слот на выключение формы и включение списка чатов и окна редактирования сообщений
+    connect(w, &ScreenNewChatParticipants::signalCancelNewChat, this, &ScreenMainWork::slotCancelNewChat);
+
+    // связь: сигнал добавления контакта - слот добавления контакта в список
+    connect(this, &ScreenMainWork::signalAddContactToNewChat, w, &ScreenNewChatParticipants::slotAddContactToParticipantsList);
+  }
 }
 
 ScreenMainWork::~ScreenMainWork() { delete ui; }
@@ -28,6 +45,7 @@ ScreenMainWork::~ScreenMainWork() { delete ui; }
 void ScreenMainWork::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
 
   _sessionPtr = sessionPtr;
+  ui->findLineEdit->setEnabled(false);
   ui->mainWorkChatUserTabWidget->setCurrentIndex(0);
   ui->mainWorkRightStackedWidget->setCurrentIndex(0);
 
@@ -213,10 +231,88 @@ void ScreenMainWork::onConnectionStatusChanged(bool connectionStatus,
   }
 }
 
-void ScreenMainWork::createSession() {
+void ScreenMainWork::slotCancelNewChat() {
+  // экран «чаты контакта»
+  const auto chatListInUser = ui->mainWorkPageUserDataView->findChild<ScreenChatList *>(
+      "ScreenUserDataChatsListWidget");
+  if (!chatListInUser)
+    return;
 
-  // connect(_sessionPtr.get(), &ClientSession::serverStatusChanged, this,
-  //         &ScreenMainWork::onConnectionStatusChanged, Qt::QueuedConnection);
+  // указатель на объект содержащий окно сообщний в режиме чата отдельного контакта адресной книги
+  auto MessageChattingInUser = ui->mainWorkPageUserDataView->findChild<ScreenChatting *>(
+      "ScreenUserDataMessagesListWidget");
+  if (!MessageChattingInUser)
+    return;
+
+  chatListInUser->setEnabled(true);
+  chatListInUser->setVisible(true);
+
+  MessageChattingInUser->setEnabled(true);
+  MessageChattingInUser->setVisible(true);
+
+  ui->createNewChatPushButton->setEnabled(true);
+
+  auto selectModel = ui->mainWorkUsersList->selectionModel();
+  if (selectModel) {
+    selectModel->setCurrentIndex(selectModel->model()->index(0, 0),
+                                 QItemSelectionModel::ClearAndSelect);
+  };
+
+  auto ChatListInUser = ui->mainWorkPageUserDataView->findChild<ScreenChatList *>(
+      "ScreenUserDataChatsListWidget");
+
+  if (!ChatListInUser)
+    return;
+
+  selectModel = ChatListInUser->getSelectionModel();
+
+  if (selectModel) {
+    selectModel->setCurrentIndex(selectModel->model()->index(0, 0),
+                                 QItemSelectionModel::ClearAndSelect);
+  };
+  ui->mainWorkChatUserTabWidget->setTabEnabled(0, true);
+}
+
+void ScreenMainWork::slotFindContactsByPart() {
+
+  if (!ui->findLineEdit->isEnabled())
+    return;
+
+  auto textToFind = ui->findLineEdit->text().toStdString();
+
+  if (textToFind == "")
+    return;
+
+  std::vector<UserDTO> userListDTO;
+  userListDTO.clear();
+
+  userListDTO = _sessionPtr->findUserByTextPartOnServerCl(textToFind);
+
+  if (auto sm = ui->mainWorkUsersList->selectionModel()) {
+    QSignalBlocker b(sm);
+    _userListModel->clear();
+  }
+
+  if (userListDTO.empty())
+    return;
+
+  for (const auto &userDTO : userListDTO) {
+
+    const QString login = QString::fromStdString(userDTO.login);
+    const QString name = QString::fromStdString(userDTO.userName);
+    const QString email = QString::fromStdString(userDTO.email);
+    const QString phone = QString::fromStdString(userDTO.phone);
+    const QString disableReason = QString::fromStdString(userDTO.disable_reason);
+    bool isActive = userDTO.is_active;
+    const std::int64_t disableAt = userDTO.disabled_at;
+    const std::int64_t bunUntil = userDTO.ban_until;
+
+    _userListModel->fillUserItem(login, name, email, phone, disableReason, isActive, disableAt, bunUntil);
+
+  } // for userLisstDTO
+}
+
+void ScreenMainWork::createSession() {
 
   ui->serverStatusLabelRound->setStyleSheet(
       "background-color: green; border-radius: 8px;");
@@ -276,7 +372,6 @@ void ScreenMainWork::setupUserList()
 
   ui->addressBookLabel->setText("Контакты из записной книжки");
   ui->findLineEdit->setPlaceholderText("Under Construction");
-  ui->globalAddressBookCheckBox->setChecked(false);
 
   //достаем модель выбора второго списка чатов (списка чатов конкретного пользователя)
   auto selectMode = ui->mainWorkUsersList->selectionModel();
@@ -482,8 +577,9 @@ void ScreenMainWork::refillChatListModelWithData(bool allChats) {
 void ScreenMainWork::on_mainWorkChatUserTabWidget_currentChanged(int index) {
   if (index == 1) {
     // userData
-    ui->globalAddressBookCheckBox->setEnabled(true);
+
     ui->findPushButton->setEnabled(true);
+
     ui->addUserToChatPushButton->setVisible(false);
 
     QPalette paletteLineEdit = ui->findLineEdit->palette();
@@ -493,9 +589,7 @@ void ScreenMainWork::on_mainWorkChatUserTabWidget_currentChanged(int index) {
     const auto userDataView = ui->mainWorkPageUserDataView->findChild<ScreenUserData *>(
         "ScreenUserDataUserDataWidget");
 
-    ui->mainWorkPageUserDataView
-
-        ui->findLineEdit->setEnabled(true);
+    ui->findLineEdit->setEnabled(true);
 
     ui->findLineEdit->setClearButtonEnabled(true);
     ui->findLineEdit->clear();
@@ -524,7 +618,6 @@ void ScreenMainWork::on_mainWorkChatUserTabWidget_currentChanged(int index) {
     }
   } else {
     // chatList
-    ui->globalAddressBookCheckBox->setEnabled(false);
     ui->findPushButton->setEnabled(false);
 
     QPalette paletteLineEdit = ui->findLineEdit->palette();
@@ -626,4 +719,66 @@ const auto& idx = ui->mainWorkTabChatsList->getCcurrentChatIndex();
   // заменили в модели количество непрочатанных и обновили элемент списка
     _ChatListModel->setUnreadCount(idx.row(),0);
   }
+}
+
+void ScreenMainWork::on_createNewChatPushButton_clicked() {
+
+  // экран «чаты контакта»
+  const auto chatListInUser = ui->mainWorkPageUserDataView->findChild<ScreenChatList *>(
+      "ScreenUserDataChatsListWidget");
+  if (!chatListInUser)
+    return;
+
+  // указатель на объект содержащий окно сообщний в режиме чата отдельного контакта адресной книги
+  auto MessageChattingInUser = ui->mainWorkPageUserDataView->findChild<ScreenChatting *>(
+      "ScreenUserDataMessagesListWidget");
+  if (!MessageChattingInUser)
+    return;
+
+  chatListInUser->setEnabled(false);
+  chatListInUser->setVisible(false);
+
+  MessageChattingInUser->setEnabled(false);
+  MessageChattingInUser->setVisible(false);
+
+  ui->createNewChatPushButton->setEnabled(false);
+
+  ui->mainWorkChatUserTabWidget->setTabEnabled(0, false);
+
+  ui->addUserToChatPushButton->setVisible(true);
+
+  emit signalStartNewChat();
+}
+
+void ScreenMainWork::on_addUserToChatPushButton_clicked() {
+
+  const auto &selectModel = ui->mainWorkUsersList->selectionModel();
+  const auto &idx = selectModel->currentIndex();
+
+  if (idx.isValid()) {
+
+    const auto &isActive = idx.data(UserListModel::IsActiveRole).toBool();
+    const auto &bunTo = idx.data(UserListModel::BunUntilRole).toLongLong();
+
+    if (!isActive) {
+      QMessageBox::warning(this, "Сообщение", "Контакт заблокирован.");
+      return;
+    }
+    if (bunTo != 0 && bunTo > getCurrentDateTimeInt()) {
+      QMessageBox::warning(this, "Сообщение", "Пользователь забанен.");
+      return;
+    }
+
+    const auto &value = idx.data(UserListModel::LoginRole).toString();
+    emit signalAddContactToNewChat(value);
+  }
+}
+
+void ScreenMainWork::on_findLineEdit_textChanged(const QString &arg1) {
+
+  slotFindContactsByPart();
+}
+
+void ScreenMainWork::on_findPushButton_clicked() {
+  slotFindContactsByPart();
 }

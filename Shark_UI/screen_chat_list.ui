@@ -21,6 +21,13 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Список чатов:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QListView" name="chatListView">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
@@ -30,6 +37,9 @@
      </property>
      <property name="mouseTracking">
       <bool>true</bool>
+     </property>
+     <property name="horizontalScrollBarPolicy">
+      <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOn</enum>
      </property>
      <property name="verticalScrollMode">
       <enum>QAbstractItemView::ScrollMode::ScrollPerPixel</enum>

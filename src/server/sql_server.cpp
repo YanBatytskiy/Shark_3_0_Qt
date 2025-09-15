@@ -538,7 +538,8 @@ std::optional<std::vector<UserDTO>> getUsersByTextPartSQL(PGconn *conn, const Us
 
     } else {
       PQclear(result);
-      throw exc::SQLSelectException(", getUsersByTextPartSQL");
+      return std::nullopt;
+      // throw exc::SQLSelectException(", getUsersByTextPartSQL");
     }
   } // try
   catch (const exc::SQLSelectException &ex) {
