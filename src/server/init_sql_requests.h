@@ -19,12 +19,12 @@ create table if not exists public.chats (
   std::string t2 = R"(create table if not exists public.users (
     id bigserial primary key,
     login varchar(30) not null unique,
-    name varchar(30) not null,
-    email varchar(100),
-    phone varchar(100),
+    name varchar(30) not null DEFAULT '',
+    email varchar(100) not null DEFAULT '',
+    phone varchar(100) not null DEFAULT '',
 	is_active boolean not null DEFAULT true,
-	disabled_at bigint,
-	ban_until bigint,
+	disabled_at bigint not null DEFAULT 0,
+	ban_until bigint  not null DEFAULT 0,
 	disable_reason text not null DEFAULT ''
 );
 )";

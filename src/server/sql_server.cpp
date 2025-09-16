@@ -525,11 +525,16 @@ std::optional<std::vector<UserDTO>> getUsersByTextPartSQL(PGconn *conn, const Us
       for (int i = 0; i < quantity; ++i) {
 
         UserDTO userDTO;
+
         userDTO.login = PQgetvalue(result, i, 1);
         userDTO.userName = PQgetvalue(result, i, 2);
         userDTO.email = PQgetvalue(result, i, 3);
         userDTO.phone = PQgetvalue(result, i, 4);
+        userDTO.is_active = (*PQgetvalue(result, i, 5) == 't');
 
+        userDTO.disabled_at = std::stoull(PQgetvalue(result, i, 6));
+        userDTO.ban_until = std::stoull(PQgetvalue(result, i, 7));
+        userDTO.disable_reason = PQgetvalue(result, i, 8);
         value.push_back(userDTO);
       }
 
@@ -599,11 +604,12 @@ std::optional<std::vector<UserDTO>> getSeveralUsersDTOFromSrvSQL(PGconn *conn, c
           userDTO.userName = PQgetvalue(result, i, 1);
           userDTO.email = PQgetvalue(result, i, 2);
           userDTO.phone = PQgetvalue(result, i, 3);
-          userDTO.is_active = !PQgetisnull(result, i, 4) && (*PQgetvalue(result, i, 4) == 't');
-          userDTO.disabled_at = PQgetisnull(result, i, 5) ? 0 : std::stoll(PQgetvalue(result, i, 5));
-          userDTO.ban_until = PQgetisnull(result, i, 6) ? 0 : std::stoll(PQgetvalue(result, i, 6));
-          userDTO.disable_reason = PQgetvalue(result, i, 7);
+          userDTO.is_active = (*PQgetvalue(result, i, 4) == 't');
 
+          userDTO.disabled_at = std::stoull(PQgetvalue(result, i, 5));
+          userDTO.ban_until = std::stoull(PQgetvalue(result, i, 6));
+          userDTO.disable_reason = PQgetvalue(result, i, 7);
+ 
           value.push_back(userDTO);
         }
 

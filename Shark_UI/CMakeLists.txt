@@ -10,7 +10,6 @@ if(NOT TARGET dto)
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)

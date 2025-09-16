@@ -35,7 +35,7 @@ const int &ServerSession::getConnection() const { return _connection; }
 // setters
 void ServerSession::setPgConnection(PGconn *connection) { _pqConnection = connection; }
 
-void ServerSession::setConnection(const std::uint8_t &connection) { _connection = connection; }
+void ServerSession::setConnection(const int &connection) { _connection = connection; }
 //
 //
 // transport
@@ -58,7 +58,7 @@ void ServerSession::runServer(int socketFd) {
       }
     }
     // создаем новое соединение
-    struct sockaddr_in client {};
+    struct sockaddr_in client{};
     socklen_t client_len = sizeof(client);
 
     _connection = accept(socketFd, (struct sockaddr *)&client, &client_len);
@@ -107,6 +107,7 @@ void ServerSession::listeningClients() {
     if (_connection <= 0 || fcntl(_connection, F_GETFD) == -1) {
       throw exc::SocketInvalidException();
     }
+
     // проверка
 
     // std::cerr << "[DEBUG] connection fd = " << connection << std::endl;
@@ -373,20 +374,35 @@ bool ServerSession::processingCheckAndRegistryUser(PacketListDTO &packetListRece
 
     auto userDTOVector = getUsersByTextPartSQL(this->getPGConnection(), packet);
 
-    if (!userDTOVector.has_value())
-      return false;
+    if (userDTOVector.has_value() && !userDTOVector->empty()) {
 
-    // пакет для отправки
+      // пакет для отправки
+      PacketDTO packetDTOForSend;
+      packetDTOForSend.requestType = RequestType::RqFrClientFindUserByPart;
+      packetDTOForSend.structDTOClassType = StructDTOClassType::userDTO;
+      packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
+
+      for (const auto &userDTO : userDTOVector.value()) {
+
+        packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<UserDTO>>(userDTO);
+
+        packetDTOListForSend.packets.push_back(packetDTOForSend);
+      }
+    } // if
+    else {
+      // пустой ответ
+      ResponceDTO responceDTO{};
+    responceDTO.reqResult = false;
+    responceDTO.anyNumber = 0;
+    responceDTO.anyString = "";
+
     PacketDTO packetDTOForSend;
     packetDTOForSend.requestType = RequestType::RqFrClientFindUserByPart;
-    packetDTOForSend.structDTOClassType = StructDTOClassType::userDTO;
+    packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
     packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
+    packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
 
-    for (const auto &userDTO : userDTOVector.value()) {
-
-      packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<UserDTO>>(userDTO);
-
-      packetDTOListForSend.packets.push_back(packetDTOForSend);
+    packetDTOListForSend.packets.push_back(packetDTOForSend);
     }
 
     break;

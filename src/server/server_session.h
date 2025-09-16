@@ -38,7 +38,7 @@ public:
   // setters
   void setPgConnection(PGconn *connection);
 
-  void setConnection(const std::uint8_t &connection);
+  void setConnection(const int &connection);
   //
   //
   // transport

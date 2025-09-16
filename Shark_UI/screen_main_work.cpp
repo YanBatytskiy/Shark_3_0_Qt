@@ -38,6 +38,11 @@ ScreenMainWork::ScreenMainWork(QWidget *parent)
     // связь: сигнал добавления контакта - слот добавления контакта в список
     connect(this, &ScreenMainWork::signalAddContactToNewChat, w, &ScreenNewChatParticipants::slotAddContactToParticipantsList);
   }
+
+  // связь: начало редактирования поиска контактов - очистка данных на форме пользователяя
+  connect(this, &ScreenMainWork::signalClearUserDataToLabels,
+          ui->mainWorkPageUserDataView, &ScreenUserData::slotClearUserDataToLabels,
+          Qt::UniqueConnection);
 }
 
 ScreenMainWork::~ScreenMainWork() { delete ui; }
@@ -218,6 +223,17 @@ void ScreenMainWork::fillMessageModelWithData(std::size_t chatId) {
   } // for messages
 }
 
+void ScreenMainWork::clearMessageModelWithData() {
+  if (auto sm = ui->mainWorkTabChatsList->getSelectionModel()) {
+    QSignalBlocker b1(sm);
+    auto clInUser = ui->mainWorkPageUserDataView->findChild<ScreenChatList *>(
+        "ScreenUserDataChatsListWidget");
+    QSignalBlocker b2(clInUser ? clInUser->getSelectionModel() : nullptr);
+
+    _MessageModel->clear();
+  }
+}
+
 void ScreenMainWork::onConnectionStatusChanged(bool connectionStatus,
                                                ServerConnectionMode mode) {
   if (connectionStatus) {
@@ -275,27 +291,39 @@ void ScreenMainWork::slotCancelNewChat() {
 
 void ScreenMainWork::slotFindContactsByPart() {
 
-  if (!ui->findLineEdit->isEnabled())
+  static bool busy = false;
+  if (busy)
     return;
+  busy = true;
 
-  auto textToFind = ui->findLineEdit->text().toStdString();
+  const QSignalBlocker blockEdit(ui->findLineEdit); // глушим textChanged на время
+  ui->findLineEdit->setEnabled(false);
 
-  if (textToFind == "")
+  const auto textToFind = ui->findLineEdit->text().toStdString();
+
+  if (textToFind.empty()) {
+    ui->findLineEdit->setEnabled(true);
+    busy = false;
     return;
+  }
 
-  std::vector<UserDTO> userListDTO;
-  userListDTO.clear();
+  emit signalClearUserDataToLabels();
+  clearChatListModelWithData();
+  clearMessageModelWithData();
 
-  userListDTO = _sessionPtr->findUserByTextPartOnServerCl(textToFind);
+  std::vector<UserDTO> userListDTO = _sessionPtr->findUserByTextPartOnServerCl(textToFind);
 
   if (auto sm = ui->mainWorkUsersList->selectionModel()) {
     QSignalBlocker b(sm);
     _userListModel->clear();
   }
 
-  if (userListDTO.empty())
+  if (userListDTO.empty() || userListDTO[0].login.empty()) {
+    ui->findLineEdit->setEnabled(true);
+    ui->findLineEdit->setFocus();
+    busy = false;
     return;
-
+  }
   for (const auto &userDTO : userListDTO) {
 
     const QString login = QString::fromStdString(userDTO.login);
@@ -310,6 +338,9 @@ void ScreenMainWork::slotFindContactsByPart() {
     _userListModel->fillUserItem(login, name, email, phone, disableReason, isActive, disableAt, bunUntil);
 
   } // for userLisstDTO
+  ui->findLineEdit->setEnabled(true);
+  ui->findLineEdit->setFocus();
+  busy = false;
 }
 
 void ScreenMainWork::createSession() {
@@ -371,7 +402,6 @@ void ScreenMainWork::setupUserList()
   ui->mainWorkUsersList->setStyleSheet("QListView { background-color: #FFFFF0; }");
 
   ui->addressBookLabel->setText("Контакты из записной книжки");
-  ui->findLineEdit->setPlaceholderText("Under Construction");
 
   //достаем модель выбора второго списка чатов (списка чатов конкретного пользователя)
   auto selectMode = ui->mainWorkUsersList->selectionModel();
@@ -562,6 +592,17 @@ void ScreenMainWork::setupScreenChatting() {
           });
 }
 
+void ScreenMainWork::clearChatListModelWithData() {
+  if (auto sm = ui->mainWorkTabChatsList->getSelectionModel()) {
+    QSignalBlocker b1(sm);
+    auto clInUser = ui->mainWorkPageUserDataView->findChild<ScreenChatList *>(
+        "ScreenUserDataChatsListWidget");
+    QSignalBlocker b2(clInUser ? clInUser->getSelectionModel() : nullptr);
+
+    _ChatListModel->clear();
+  }
+}
+
 void ScreenMainWork::refillChatListModelWithData(bool allChats) {
   if (auto sm = ui->mainWorkTabChatsList->getSelectionModel()) {
     QSignalBlocker b1(sm);
@@ -589,14 +630,22 @@ void ScreenMainWork::on_mainWorkChatUserTabWidget_currentChanged(int index) {
     const auto userDataView = ui->mainWorkPageUserDataView->findChild<ScreenUserData *>(
         "ScreenUserDataUserDataWidget");
 
+    ui->findLineEdit->clear();
     ui->findLineEdit->setEnabled(true);
 
-    ui->findLineEdit->setClearButtonEnabled(true);
-    ui->findLineEdit->clear();
+    // ui->findLineEdit->setClearButtonEnabled(true);
     ui->findLineEdit->setPlaceholderText("Поиск...");
+
     ui->mainWorkRightStackedWidget->setCurrentIndex(1);
 
     fillUserListModelWithData();
+
+    auto selectModelUsersList = ui->mainWorkUsersList->selectionModel();
+
+    if (selectModelUsersList) {
+      selectModelUsersList->setCurrentIndex(selectModelUsersList->model()->index(0, 0),
+                                            QItemSelectionModel::ClearAndSelect);
+    }
 
     const auto &userIdx = ui->mainWorkUsersList->currentIndex();
 
@@ -618,13 +667,16 @@ void ScreenMainWork::on_mainWorkChatUserTabWidget_currentChanged(int index) {
     }
   } else {
     // chatList
-    ui->findPushButton->setEnabled(false);
 
     QPalette paletteLineEdit = ui->findLineEdit->palette();
     paletteLineEdit.setColor(QPalette::PlaceholderText, QColor("#9AA0A6"));
+
     ui->findLineEdit->setPalette(paletteLineEdit);
+
     ui->findLineEdit->setEnabled(false);
-    ui->findLineEdit->setPlaceholderText("under construction");
+    ui->findPushButton->setEnabled(false);
+    ui->findLineEdit->setPlaceholderText("Поиск...");
+
     ui->mainWorkRightStackedWidget->setCurrentIndex(0);
 
     refillChatListModelWithData(true);
@@ -780,5 +832,10 @@ void ScreenMainWork::on_findLineEdit_textChanged(const QString &arg1) {
 }
 
 void ScreenMainWork::on_findPushButton_clicked() {
-  slotFindContactsByPart();
+
+  // slotFindContactsByPart();
+}
+
+void ScreenMainWork::on_findLineEdit_editingFinished() {
+  _startFind = true;
 }

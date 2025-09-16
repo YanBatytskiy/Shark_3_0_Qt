@@ -14,11 +14,26 @@ void ScreenUserData::setDatabase(std::shared_ptr<ClientSession> sessionPtr)
 
 }
 
+void ScreenUserData::slotClearUserDataToLabels() {
+
+  ui->loginLineEdit->setText("");
+  ui->nameLineEdit->setText("");
+  ui->emailLineEdit->setText("");
+  ui->phoneLineEdit->setText("");
+
+  ui->blockedUserLabel->setVisible(false);
+  ui->reasonDisableabel->setVisible(false);
+
+  ui->unblockPushButton->setVisible(false);
+  ui->banPushButton->setEnabled(false);
+  ui->blockPushButton->setEnabled(false);
+}
+
 void ScreenUserData::setUserDataToLabels(const QModelIndex &index)
 {
 
   QString textValue = index.data(UserListModel::LoginRole).toString();
-    ui->loginLineEdit->setText(textValue);
+  ui->loginLineEdit->setText(textValue);
 
   textValue = index.data(UserListModel::NameRole).toString();
   ui->nameLineEdit->setText(textValue);
@@ -29,10 +44,10 @@ void ScreenUserData::setUserDataToLabels(const QModelIndex &index)
   textValue = index.data(UserListModel::PhoneRole).toString();
   ui->phoneLineEdit->setText(textValue);
 
-  const auto& isActive = index.data(UserListModel::IsActiveRole).toBool();
+  const auto &isActive = index.data(UserListModel::IsActiveRole).toBool();
   const auto& reasonDisable = index.data(UserListModel::DisableReasonRole).toString();
 
-  const auto& bunTo = index.data(UserListModel::BunUntilRole).toLongLong();
+  const auto &bunTo = index.data(UserListModel::BunUntilRole).toLongLong();
 
   if (bunTo != 0 && bunTo > getCurrentDateTimeInt()) {
     ui->bunnedToDateUserLabel->setText("Бан до: " + QString::fromStdString(
@@ -62,5 +77,4 @@ void ScreenUserData::setUserDataToLabels(const QModelIndex &index)
     ui->reasonDisableabel->setText("Причина блокировки: " + reasonDisable);
     ui->reasonDisableabel->setVisible(true);
   }
-
 }

@@ -16,6 +16,8 @@ public:
   ~ScreenUserData();
   void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
 
+  void slotClearUserDataToLabels();
+
   void setUserDataToLabels(const QModelIndex& index);
 
 private:

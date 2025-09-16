@@ -8,6 +8,7 @@
 #include <iostream>
 #include <nlohmann/json.hpp> 
 #include <string>
+#include <sys/poll.h>
 #include <sys/socket.h>
 #include <thread>
 #include <unistd.h>
@@ -93,11 +94,34 @@ int main() {
   std::cout << "[INFO] TCP-сервер запущен на порту " << serverSession.getServerConnectionConfig().port << std::endl;
 
   // Главный цикл
-  while (true) {
-    serverSession.runServer(socket_file_descriptor);
-    if (serverSession.isConnected()) {
-      serverSession.listeningClients();
+  // while (true) {
+  //   serverSession.runServer(socket_file_descriptor);
+  //   if (serverSession.isConnected()) {
+  //     serverSession.listeningClients();
+  //   }
+
+while (true) {
+  serverSession.runServer(socket_file_descriptor);
+
+  if (serverSession.isConnected()) {
+    int fd = serverSession.getConnection();
+
+    pollfd pfd{};
+    pfd.fd = fd;
+    pfd.events = POLLIN;
+
+    int pr = ::poll(&pfd, 1, 0);            // без блокировки
+    if (pr > 0) {
+      if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+        close(fd);
+        serverSession.setConnection(-1);
+      } else if (pfd.revents & POLLIN) {
+        serverSession.listeningClients();
+      }
     }
+  }
+
+
     usleep(50000);
   }
 

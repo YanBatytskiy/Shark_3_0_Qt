@@ -28,11 +28,14 @@ public:
 
   void fillUserListModelWithData();
   void fillMessageModelWithData(std::size_t chatId);
+  void clearMessageModelWithData();
 
   void createSession();
 
   void setupUserList();
   void setupScreenChatting();
+
+  void clearChatListModelWithData();
 
   void refillChatListModelWithData(bool allChats);
 
@@ -44,6 +47,7 @@ public:
 signals:
   void signalStartNewChat();
   void signalAddContactToNewChat(const QString &value);
+  void signalClearUserDataToLabels();
 
 public slots:
   void onConnectionStatusChanged(bool connectionStatus,
@@ -63,6 +67,10 @@ private slots:
 
   void on_findPushButton_clicked();
 
+  // void on_mainWorkUsersList_clicked(const QModelIndex &index);
+
+  void on_findLineEdit_editingFinished();
+
 private:
   Ui::ScreenMainWork *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
@@ -71,6 +79,8 @@ private:
   ChatListModel *_ChatListModel;
   UserListModel *_userListModel;
   MessageModel *_MessageModel;
+
+  bool _startFind{true};
 };
 
 #endif // WORKWINDOW_H
