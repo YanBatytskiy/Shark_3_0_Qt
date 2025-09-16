@@ -3,9 +3,10 @@
 #include "screen_chat_list.h"
 #include "screen_chatting.h"
 
-#include <QTimeZone>
-#include <QMessageBox>
 #include <QItemSelectionModel>
+#include <QMessageBox>
+#include <QScopedValueRollback>
+#include <QTimeZone>
 
 #include "model_chat_list.h"
 #include "model_chat_messages.h"
@@ -291,19 +292,38 @@ void ScreenMainWork::slotCancelNewChat() {
 
 void ScreenMainWork::slotFindContactsByPart() {
 
-  static bool busy = false;
-  if (busy)
-    return;
-  busy = true;
+  if (!ui->findLineEdit->isEnabled())
+    return; // уже идёт обработка
 
-  const QSignalBlocker blockEdit(ui->findLineEdit); // глушим textChanged на время
-  ui->findLineEdit->setEnabled(false);
+  static bool busy = false;
+  if (busy)    return;
+
+  QScopedValueRollback<bool> busyGuard(busy, true); // вместо ручных сбросов
+
+  const QSignalBlocker blockEdit(ui->findLineEdit); // 1) блокируем сигналы сразу
+
+  ui->findLineEdit->setEnabled(false); // 2) одного вызова достаточно
+  QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 
   const auto textToFind = ui->findLineEdit->text().toStdString();
 
   if (textToFind.empty()) {
+    _userListModel->clear();
+
+    clearChatListModelWithData();
+    clearMessageModelWithData();
+
+    fillUserListModelWithData();
+    refillChatListModelWithData(true);
+
     ui->findLineEdit->setEnabled(true);
-    busy = false;
+
+    const auto selectModel = ui->mainWorkUsersList->selectionModel();
+
+    selectModel->setCurrentIndex(selectModel->model()->index(0, 0),
+                                 QItemSelectionModel::ClearAndSelect);
+
+    ui->findLineEdit->setFocus();
     return;
   }
 
@@ -313,34 +333,25 @@ void ScreenMainWork::slotFindContactsByPart() {
 
   std::vector<UserDTO> userListDTO = _sessionPtr->findUserByTextPartOnServerCl(textToFind);
 
-  if (auto sm = ui->mainWorkUsersList->selectionModel()) {
-    QSignalBlocker b(sm);
-    _userListModel->clear();
+  _userListModel->clear();
+
+  if (!userListDTO.empty() && !userListDTO[0].login.empty()) {
+    for (const auto &userDTO : userListDTO) {
+
+      const QString login = QString::fromStdString(userDTO.login);
+      const QString name = QString::fromStdString(userDTO.userName);
+      const QString email = QString::fromStdString(userDTO.email);
+      const QString phone = QString::fromStdString(userDTO.phone);
+      const QString disableReason = QString::fromStdString(userDTO.disable_reason);
+      bool isActive = userDTO.is_active;
+      const std::int64_t disableAt = userDTO.disabled_at;
+      const std::int64_t bunUntil = userDTO.ban_until;
+
+      _userListModel->fillUserItem(login, name, email, phone, disableReason, isActive, disableAt, bunUntil);
+    } // for userLisstDTO
   }
-
-  if (userListDTO.empty() || userListDTO[0].login.empty()) {
-    ui->findLineEdit->setEnabled(true);
-    ui->findLineEdit->setFocus();
-    busy = false;
-    return;
-  }
-  for (const auto &userDTO : userListDTO) {
-
-    const QString login = QString::fromStdString(userDTO.login);
-    const QString name = QString::fromStdString(userDTO.userName);
-    const QString email = QString::fromStdString(userDTO.email);
-    const QString phone = QString::fromStdString(userDTO.phone);
-    const QString disableReason = QString::fromStdString(userDTO.disable_reason);
-    bool isActive = userDTO.is_active;
-    const std::int64_t disableAt = userDTO.disabled_at;
-    const std::int64_t bunUntil = userDTO.ban_until;
-
-    _userListModel->fillUserItem(login, name, email, phone, disableReason, isActive, disableAt, bunUntil);
-
-  } // for userLisstDTO
   ui->findLineEdit->setEnabled(true);
   ui->findLineEdit->setFocus();
-  busy = false;
 }
 
 void ScreenMainWork::createSession() {

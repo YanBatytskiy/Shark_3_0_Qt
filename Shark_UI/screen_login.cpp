@@ -116,9 +116,12 @@ void ScreenLogin::on_loginButtonBox_accepted() { checkSignIn(); }
 void ScreenLogin::on_loginButtonBox_rejected() { emit rejected(); }
 
 void ScreenLogin::checkSignIn() {
+
   try {
 
-    if (ui->loginEdit->text().toStdString() == "" || ui->passwordEdit->text().toStdString() == "")
+    const auto newInput = ui->passwordEdit->text().toStdString();
+
+    if (ui->loginEdit->text().toStdString() == "" || newInput == "")
       return;
 
     if (!_sessionPtr->getIsServerOnline()) {

@@ -1,15 +1,36 @@
 cmake_minimum_required(VERSION 3.16)
 project(Shark_ui LANGUAGES CXX)
 
-# UI собирается отдельно от корня
-set(SHARK_UI_STANDALONE ON CACHE INTERNAL "UI standalone build")
+# Определяем, собирается ли UI автономно
+set(SHARK_UI_STANDALONE OFF CACHE BOOL "UI standalone build")
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  set(SHARK_UI_STANDALONE ON CACHE BOOL "UI standalone build" FORCE)
+endif()
+
+# Пины Homebrew и поиск зависимостей только при автономной сборке
+if(SHARK_UI_STANDALONE)
+  set(CMAKE_PREFIX_PATH "/opt/homebrew;/opt/homebrew/opt/qt;/opt/homebrew/opt/libpq" CACHE STRING "" FORCE)
+  if(EXISTS "/opt/homebrew/opt/qt/lib/cmake/Qt6/Qt6Config.cmake")
+    set(Qt6_DIR "/opt/homebrew/opt/qt/lib/cmake/Qt6" CACHE PATH "" FORCE)
+  endif()
+  set(PostgreSQL_ROOT "/opt/homebrew/opt/libpq" CACHE PATH "" FORCE)
+  set(PostgreSQL_INCLUDE_DIRS "/opt/homebrew/opt/libpq/include" CACHE PATH "" FORCE)
+  set(PostgreSQL_LIBRARY "/opt/homebrew/opt/libpq/lib/libpq.dylib" CACHE FILEPATH "" FORCE)
+endif()
 
 # Если нас запустили напрямую — подтянуть корневой проект один раз
-if(NOT TARGET dto)
+if(SHARK_UI_STANDALONE AND NOT TARGET dto)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_BINARY_DIR}/_root_build)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+# Ищем Qt
+if(SHARK_UI_STANDALONE)
+  find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+else()
+  if(NOT TARGET Qt6::Widgets)
+    find_package(Qt6 REQUIRED COMPONENTS Widgets)
+  endif()
+endif()
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -34,7 +55,7 @@ qt_add_executable(Shark_ui
   models/model_chat_messages.h        models/model_chat_messages.cpp
   models/model_chat_mess_delegate.h   models/model_chat_mess_delegate.cpp
 
-  # exceptions_qt (заголовки, чтобы папка показывалась)
+  # exceptions_qt
   exceptions_qt/errorbus.h
   exceptions_qt/exception_login.h
   exceptions_qt/exception_network.h
@@ -47,7 +68,6 @@ qt_add_executable(Shark_ui
   screen_user_data.h screen_user_data.cpp screen_user_data.ui
   screen_user_profile.h screen_user_profile.cpp screen_user_profile.ui
   screen_new_chat_participants.h screen_new_chat_participants.cpp screen_new_chat_participants.ui
-
 )
 
 # Инклуды проекта
@@ -70,4 +90,3 @@ target_link_libraries(Shark_ui PRIVATE
   core
   dto
 )
-target_link_libraries(Shark_ui PRIVATE Qt6::Core Qt6::Widgets)
