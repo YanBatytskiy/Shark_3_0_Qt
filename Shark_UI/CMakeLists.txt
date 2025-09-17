@@ -7,15 +7,15 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   set(SHARK_UI_STANDALONE ON CACHE BOOL "UI standalone build" FORCE)
 endif()
 
-# Пины Homebrew и поиск зависимостей только при автономной сборке
-if(SHARK_UI_STANDALONE)
-  set(CMAKE_PREFIX_PATH "/opt/homebrew;/opt/homebrew/opt/qt;/opt/homebrew/opt/libpq" CACHE STRING "" FORCE)
+# Пины Homebrew и поиск зависимостей только при автономной сборке на macOS
+if(SHARK_UI_STANDALONE AND APPLE)
+  set(CMAKE_PREFIX_PATH "/opt/homebrew;/opt/homebrew/opt/qt;/opt/homebrew/opt/libpq" CACHE STRING "")
   if(EXISTS "/opt/homebrew/opt/qt/lib/cmake/Qt6/Qt6Config.cmake")
-    set(Qt6_DIR "/opt/homebrew/opt/qt/lib/cmake/Qt6" CACHE PATH "" FORCE)
+    set(Qt6_DIR "/opt/homebrew/opt/qt/lib/cmake/Qt6" CACHE PATH "")
   endif()
-  set(PostgreSQL_ROOT "/opt/homebrew/opt/libpq" CACHE PATH "" FORCE)
-  set(PostgreSQL_INCLUDE_DIRS "/opt/homebrew/opt/libpq/include" CACHE PATH "" FORCE)
-  set(PostgreSQL_LIBRARY "/opt/homebrew/opt/libpq/lib/libpq.dylib" CACHE FILEPATH "" FORCE)
+  set(PostgreSQL_ROOT "/opt/homebrew/opt/libpq" CACHE PATH "")
+  set(PostgreSQL_INCLUDE_DIR "/opt/homebrew/opt/libpq/include" CACHE PATH "")
+  set(PostgreSQL_LIBRARY "/opt/homebrew/opt/libpq/lib/libpq.dylib" CACHE FILEPATH "")
 endif()
 
 # Если нас запустили напрямую — подтянуть корневой проект один раз
