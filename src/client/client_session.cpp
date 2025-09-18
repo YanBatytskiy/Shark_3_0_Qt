@@ -99,7 +99,7 @@ std::optional<std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>> 
 
     if (chat_ptr) {
 
-      auto chatDTO = FillForSendOneChatDTOFromClient(chat_ptr);
+      auto chatDTO = fillChatDTOQt(chat_ptr);
 
       if (!chatDTO.has_value())
         continue;
@@ -118,6 +118,60 @@ std::optional<std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>> 
   } // for
 
   return result;
+}
+
+bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat>& chat_ptr, std::vector<std::string> &participants, Message &newMessage) {
+
+  bool result = true;
+
+  ChatDTO chatDTO;
+  chatDTO.chatId = 0;
+  chatDTO.senderLogin = getActiveUserCl()->getLogin();
+
+  for (const auto &participant : participants) {
+
+    // временная структура для заполнения
+    ParticipantsDTO participantsDTO;
+
+    // заполняем данные на юзера для регистрации в системе
+    participantsDTO.login = participant;
+
+    // заполняем lastReadMessage
+    participantsDTO.lastReadMessage = 0;
+
+    // заполняем deletedMessageIds
+    participantsDTO.deletedMessageIds.clear();
+
+    participantsDTO.deletedFromChat = false;
+
+    chatDTO.participants.push_back(participantsDTO);
+  }
+
+  MessageDTO messageDTO;
+  messageDTO.messageId = 0;
+  messageDTO.chatId = 0;
+  messageDTO.senderLogin = chatDTO.senderLogin;
+  messageDTO.timeStamp = newMessage.getTimeStamp();
+
+  // получаем контент
+  MessageContentDTO temContent;
+  temContent.messageContentType = MessageContentType::Text;
+  auto contentElement = newMessage.getContent().front();
+
+  auto contentTextPtr = std::dynamic_pointer_cast<MessageContent<TextContent>>(contentElement);
+
+  if (contentTextPtr) {
+    auto contentText = contentTextPtr->getMessageContent();
+    temContent.payload = contentText._text;
+  }
+
+  messageDTO.messageContent.push_back(temContent);
+
+  MessageChatDTO messageChatDTO;
+  messageChatDTO.chatId = messageDTO.chatId;
+  messageChatDTO.messageDTO.push_back(messageDTO);
+
+  return createNewChatCl(chat_ptr, chatDTO, messageChatDTO);
 }
 
 // threads
@@ -956,24 +1010,18 @@ bool ClientSession::createUserCl(std::shared_ptr<User> &user) {
 //
 //
 //
-bool ClientSession::createNewChatCl(std::shared_ptr<Chat> &chat) {
+bool ClientSession::createNewChatCl(std::shared_ptr<Chat> &chat, ChatDTO &chatDTO, MessageChatDTO &messageChatDTO) {
 
   // логика такая
   // формируем чат и сообщение в пакет и отправляем на сервер
   // в ответ мы получаем номера чата и сообщения
   // если все ок, то вводим чат и сообщение в систему
 
-  // формируем пакет для отправки чата
-  auto chatDTO = FillForSendOneChatDTOFromClient(chat);
-
-  // формируем пакет для отправки сообщений
-  auto messageChatDTO = fillChatMessageDTOFromClient(chat);
-
   PacketDTO chatPacket;
   chatPacket.requestType = RequestType::RqFrClientCreateChat;
   chatPacket.structDTOClassType = StructDTOClassType::chatDTO;
   chatPacket.reqDirection = RequestDirection::ClientToSrv;
-  chatPacket.structDTOPtr = std::make_shared<StructDTOClass<ChatDTO>>(chatDTO.value());
+  chatPacket.structDTOPtr = std::make_shared<StructDTOClass<ChatDTO>>(chatDTO);
 
   std::vector<PacketDTO> packetDTOListSend;
   packetDTOListSend.push_back(chatPacket);
@@ -1011,13 +1059,16 @@ bool ClientSession::createNewChatCl(std::shared_ptr<Chat> &chat) {
           //   std::cout << "[DEBUG] anyString = '" << packetDTO.anyString << "'" << std::endl;
 
           auto generalMessageId = parseGetlineToSizeT(packetDTO.anyString);
-          chat->getMessages().begin()->second->setMessageId(generalMessageId);
+          
+          const auto& temp = chat->getMessages();
 
           if (chat->getMessages().empty())
-            throw exc_qt::CreateMessageException();
+          throw exc_qt::CreateMessageException();
+        
+        chat->getMessages().begin()->second->setMessageId(generalMessageId);
 
-          // добавляем чат в систему
-          _instance.addChatToInstance(chat);
+        // добавляем чат в систему
+          // _instance.addChatToInstance(chat);
         }
       }
     }
@@ -1490,7 +1541,7 @@ void ClientSession::setOneChatDTOFromSrv(const ChatDTO &chatDTO) {
   //     std::cout << "- удалённый пользователь" << std::endl;
   //   }
 }
-std::optional<ChatDTO> ClientSession::FillForSendOneChatDTOFromClient(const std::shared_ptr<Chat> &chat_ptr) {
+std::optional<ChatDTO> ClientSession::fillChatDTOQt(const std::shared_ptr<Chat> &chat_ptr) {
   ChatDTO chatDTO;
 
   // взяли chatId
@@ -1542,14 +1593,11 @@ std::optional<ChatDTO> ClientSession::FillForSendOneChatDTOFromClient(const std:
 
       } // if user_ptr
       else
-        // throw exc_qt::UserNotFoundException();
         continue;
     } // for participants
   }
   // try
   catch (const exc_qt::UserNotFoundException &ex) {
-    // std::cerr << "Клиент: FillForSendOneChatDTOFromClient. " << ex.what() << std::endl;
-    // return std::nullopt;
   }
   if (chatDTO.participants.empty())
     return std::nullopt;
@@ -1558,45 +1606,45 @@ std::optional<ChatDTO> ClientSession::FillForSendOneChatDTOFromClient(const std:
 //
 //
 // получаем одно конкретное сообщение пользователя
-MessageDTO ClientSession::FillForSendOneMessageDTOFromClient(const std::shared_ptr<Message> &message,
-                                                             const std::size_t &chatId) {
-  MessageDTO messageDTO;
-  auto user_ptr = message->getSender().lock();
+// MessageDTO ClientSession::FillForSendOneMessageDTOFromClient(const std::shared_ptr<Message> &message,
+//                                                              const std::size_t &chatId) {
+// MessageDTO messageDTO;
+// auto user_ptr = message->getSender().lock();
 
-  messageDTO.senderLogin = user_ptr ? user_ptr->getLogin() : "";
+// messageDTO.senderLogin = user_ptr ? user_ptr->getLogin() : "";
 
-  messageDTO.chatId = chatId;
-  messageDTO.messageId = message->getMessageId();
-  messageDTO.timeStamp = message->getTimeStamp();
+// messageDTO.chatId = chatId;
+// messageDTO.messageId = message->getMessageId();
+// messageDTO.timeStamp = message->getTimeStamp();
 
-  // получаем контент
-  MessageContentDTO temContent;
-  temContent.messageContentType = MessageContentType::Text;
-  auto contentElement = message->getContent().front();
+// // получаем контент
+// MessageContentDTO temContent;
+// temContent.messageContentType = MessageContentType::Text;
+// auto contentElement = message->getContent().front();
 
-  auto contentTextPtr = std::dynamic_pointer_cast<MessageContent<TextContent>>(contentElement);
+// auto contentTextPtr = std::dynamic_pointer_cast<MessageContent<TextContent>>(contentElement);
 
-  if (contentTextPtr) {
-    auto contentText = contentTextPtr->getMessageContent();
-    temContent.payload = contentText._text;
-  }
+// if (contentTextPtr) {
+//   auto contentText = contentTextPtr->getMessageContent();
+//   temContent.payload = contentText._text;
+// }
 
-  messageDTO.messageContent.push_back(temContent);
+// messageDTO.messageContent.push_back(temContent);
 
-  return messageDTO;
-}
+// return messageDTO;
+// }
 
 // передаем сообщения пользователя конкретного чата
-MessageChatDTO ClientSession::fillChatMessageDTOFromClient(const std::shared_ptr<Chat> &chat) {
-  MessageChatDTO messageChatDTO;
+// MessageChatDTO ClientSession::fillChatMessageDTOFromClient(const std::shared_ptr<Chat> &chat) {
+// MessageChatDTO messageChatDTO;
 
-  // взяли chatId
-  messageChatDTO.chatId = chat->getChatId();
+// // взяли chatId
+// messageChatDTO.chatId = chat->getChatId();
 
-  for (const auto &message : chat->getMessages()) {
+// for (const auto &message : chat->getMessages()) {
 
-    messageChatDTO.messageDTO.push_back(FillForSendOneMessageDTOFromClient(message.second, messageChatDTO.chatId));
+//   messageChatDTO.messageDTO.push_back(FillForSendOneMessageDTOFromClient(message.second, messageChatDTO.chatId));
 
-  } // for message
-  return messageChatDTO;
-}
+// } // for message
+// return messageChatDTO;
+// }

@@ -72,7 +72,7 @@ public:
 
   std::optional<std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>> getChatListQt();
 
-
+  bool CreateAndSendNewChatQt(std::shared_ptr<Chat>& chat_ptr, std::vector<std::string> &participants, Message &newMessage);
 
   // threads
 
@@ -140,7 +140,7 @@ public:
 
   bool createUserCl(std::shared_ptr<User> &user);
 
-  bool createNewChatCl(std::shared_ptr<Chat> &chat);
+  bool createNewChatCl(std::shared_ptr<Chat> &chat, ChatDTO &chatDTO, MessageChatDTO &messageChatDTO);
 
   std::size_t createMessageCl(const Message &message, std::shared_ptr<Chat> &chat, const std::shared_ptr<User> &user);
 
@@ -165,13 +165,14 @@ public:
   // установка чат лист пльзователя
 
   void setOneChatDTOFromSrv(const ChatDTO &chatDTO);
+
   MessageDTO fillOneMessageDTOFromCl(const std::shared_ptr<Message> &message, std::size_t chatId);
 
   // заполнение на отправку пакета Chat
-  std::optional<ChatDTO> FillForSendOneChatDTOFromClient(const std::shared_ptr<Chat> &chat);
+  std::optional<ChatDTO> fillChatDTOQt(const std::shared_ptr<Chat> &chat);
 
-  MessageDTO FillForSendOneMessageDTOFromClient(const std::shared_ptr<Message> &message, const std::size_t &chatId);
+  // MessageDTO FillForSendOneMessageDTOFromClient(const std::shared_ptr<Message> &message, const std::size_t &chatId);
 
-  // передаем сообщения пользователя конкретного чата
-  MessageChatDTO fillChatMessageDTOFromClient(const std::shared_ptr<Chat> &chat);
+  // // передаем сообщения пользователя конкретного чата
+  // MessageChatDTO fillChatMessageDTOFromClient(const std::shared_ptr<Chat> &chat);
 };

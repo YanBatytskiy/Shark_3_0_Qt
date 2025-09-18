@@ -318,7 +318,7 @@ border-radius: 8px;</string>
            <string extracomment="whatthis"/>
           </property>
           <property name="styleSheet">
-           <string notr="true"/>
+           <string notr="true">border-color: rgb(0, 0, 0);</string>
           </property>
          </widget>
         </item>
@@ -335,7 +335,7 @@ border-radius: 8px;</string>
         <item row="1" column="1">
          <widget class="QLineEdit" name="passwordEdit">
           <property name="styleSheet">
-           <string notr="true"/>
+           <string notr="true">border-color: rgb(0, 0, 0);</string>
           </property>
           <property name="echoMode">
            <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>

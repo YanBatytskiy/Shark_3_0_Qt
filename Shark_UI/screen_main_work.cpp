@@ -18,6 +18,7 @@
 #include "message/message_content_struct.h"
 
 #include "dto/dto_struct.h"
+#include "user/user.h"
 
 #include "screen_new_chat_participants.h"
 
@@ -625,7 +626,7 @@ void ScreenMainWork::setupScreenChatting() {
     if (newMessageText.trimmed().isEmpty())
       return;
 
-    sendMessageCommmand(idx, currentChatId, newMessageText);
+    sendMessageCommmand(idx, currentChatId, newMessageText, false);
 
     refillChatListModelWithData(true);
 
@@ -708,7 +709,7 @@ void ScreenMainWork::setupScreenChatting() {
             if (newMessageText.trimmed().isEmpty())
               return;
 
-            sendMessageCommmand(idx, currentChatId, newMessageText);
+            sendMessageCommmand(idx, currentChatId, newMessageText, false);
 
             if (!chatListInUser)
               return;
@@ -824,19 +825,11 @@ void ScreenMainWork::on_mainWorkChatUserTabWidget_currentChanged(int index) {
 
 void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
                                          const std::size_t currentChatId,
-                                         const QString &newMessageText) {
+                                         const QString &newMessageText, bool newChatBool) {
   if (newMessageText.trimmed().isEmpty())
     return;
 
-  auto chat_ptr = _sessionPtr->getInstance().getChatById(currentChatId);
-
-  std::vector<std::shared_ptr<User>> recipients;
-  for (const auto &participant : chat_ptr->getParticipants()) {
-    auto user_ptr = participant._user.lock();
-    if (user_ptr && user_ptr != _sessionPtr->getActiveUserCl())
-      recipients.push_back(user_ptr);
-  }
-
+  // формируем структуру сообщения
   std::vector<std::shared_ptr<IMessageContent>> iMessageContent;
   TextContent textContent = newMessageText.toStdString();
   MessageContent<TextContent> messageContentText(textContent);
@@ -845,30 +838,112 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
   auto newMessageTimeStamp = getCurrentDateTimeInt();
   Message newMessage(iMessageContent, _sessionPtr->getActiveUserCl(), newMessageTimeStamp, 0);
 
-  const auto& newMessageId =
-      _sessionPtr->createMessageCl(newMessage, chat_ptr, _sessionPtr->getInstance().getActiveUser());
+  std::size_t newMessageId;
 
-  if (newMessageId == 0) {
-    QMessageBox::warning(this, tr("Ошибка!"), tr("Невозможно отправить сообщение."));
-    return;
+  //   если новый чат то сначала вызываем
+  if (!newChatBool) {
+
+    auto chat_ptr = std::make_shared<Chat>();
+
+    chat_ptr->addMessageToChat(std::make_shared<Message>(newMessage), _sessionPtr->getActiveUserCl(),
+                               false);
+
+    std::vector<std::string> participants;
+    participants.clear();
+
+    participants.push_back(_sessionPtr->getActiveUserCl()->getLogin());
+
+    // заполняем получателей
+    for (int i = 0; i < _newChatUserListModel->rowCount(); ++i) {
+
+      const auto &idx = _newChatUserListModel->index(i, 0);
+      const auto &login = idx.data(UserListModel::LoginRole).toString().toStdString();
+
+      participants.push_back(login);
+    }
+
+    // bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std::vector<std::string> &participants, Message &newMessage)
+   
+    bool result = _sessionPtr->CreateAndSendNewChatQt(chat_ptr, participants, newMessage);
+
+    
+    
+    
+    // если ответ с сервера - окей
+    
+    if (!result) {
+      QMessageBox::warning(this, tr("Ошибка!"), tr("Невозможно отправить сообщение."));
+      return;
+    } else {
+
+      newMessageId =  chat_ptr->getMessages().begin()->second->getMessageId();
+
+      // создаем пользователей в системе если их нет
+      for (int i = 0; i < _newChatUserListModel->rowCount(); ++i) {
+
+        const auto &idx = _newChatUserListModel->index(i, 0);
+        const auto &login = idx.data(UserListModel::LoginRole).toString().toStdString();
+        const auto &user_ptr = _sessionPtr->getInstance().findUserByLogin(login);
+
+        if (user_ptr == nullptr) {
+
+          auto newUser_ptr = std::make_shared<User>(UserData(
+              login,
+              idx.data(UserListModel::NameRole).toString().toStdString(),
+              "-1",
+              idx.data(UserListModel::EmailRole).toString().toStdString(),
+              idx.data(UserListModel::PhoneRole).toString().toStdString(),
+              idx.data(UserListModel::DisableReasonRole).toString().toStdString(),
+              idx.data(UserListModel::IsActiveRole).toBool(),
+              idx.data(UserListModel::DisableAtRole).toULongLong(),
+              idx.data(UserListModel::BunUntilRole).toULongLong()));
+
+          _sessionPtr->getInstance().addUserToSystem(newUser_ptr);
+        } // if user_ptr
+      } // for
+      // затем добавляем чат в систему
+      _sessionPtr->getInstance().addChatToInstance(chat_ptr);
+    } // if else
+    
+    // заменили в модели чатов
+    _ChatListModel->setChatId(idx.row(), chat_ptr->getChatId());
   }
+  // если это не новый чат
+  else {
+    auto chat_ptr = _sessionPtr->getInstance().getChatById(currentChatId);
+
+    std::vector<std::shared_ptr<User>> recipients;
+    for (const auto &participant : chat_ptr->getParticipants()) {
+      auto user_ptr = participant._user.lock();
+      if (user_ptr && user_ptr != _sessionPtr->getActiveUserCl())
+        recipients.push_back(user_ptr);
+    }
+
+    newMessageId =
+        _sessionPtr->createMessageCl(newMessage, chat_ptr, _sessionPtr->getInstance().getActiveUser());
+
+    if (newMessageId == 0) {
+      QMessageBox::warning(this, tr("Ошибка!"), tr("Невозможно отправить сообщение."));
+      return;
+    }
+  } // else - не новый чат
 
   _MessageModel->fillMessageItem(
       newMessageText,
       QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin()),
       QString::fromStdString(_sessionPtr->getActiveUserCl()->getUserName()),
       newMessageTimeStamp,
-      newMessageId
-      );
+      newMessageId);
 
-         // чистим редактор-источник
-  if (auto s = qobject_cast<ScreenChatting*>(sender()); s) {
-    if (auto ed = s->getScreenChattingNewMessageTextEdit()) ed->setText("");
+  // чистим редактор-источник
+  if (auto s = qobject_cast<ScreenChatting *>(sender()); s) {
+    if (auto ed = s->getScreenChattingNewMessageTextEdit())
+      ed->setText("");
   } else {
     ui->mainWorkPageChatting->getScreenChattingNewMessageTextEdit()->setText("");
   }
 
-         // заменили в модели время последнего сообщения
+  // заменили в модели чатов
   _ChatListModel->setLastTime(idx.row(), newMessageTimeStamp);
 }
 
@@ -988,4 +1063,31 @@ void ScreenMainWork::on_findPushButton_clicked() {
 
 void ScreenMainWork::on_findLineEdit_editingFinished() {
   _startFind = true;
+}
+
+void ScreenMainWork::on_mainWorkUsersList_doubleClicked(const QModelIndex &index) {
+  // const auto &selectModel = ui->mainWorkUsersList->selectionModel();
+  // const auto &idx = selectModel->currentIndex();
+
+  // if (idx.isValid()) {
+
+  //   const auto &isActive = idx.data(UserListModel::IsActiveRole).toBool();
+  //   const auto &bunTo = idx.data(UserListModel::BunUntilRole).toLongLong();
+
+  //   if (!isActive) {
+  //     QMessageBox::warning(this, "Сообщение", "Контакт заблокирован.");
+  //     return;
+  //   }
+  //   if (bunTo != 0 && bunTo > getCurrentDateTimeInt()) {
+  //     QMessageBox::warning(this, "Сообщение", "Пользователь забанен.");
+  //     return;
+  //   }
+
+  //   const auto &value = idx.data(UserListModel::LoginRole).toString();
+
+  //   const auto element = _userListModel->getItem(idx.row());
+  //   _newChatUserListModel->appendItem(element);
+
+  //   emit signalAddContactToNewChat(_newChatUserListModel, value);
+  // }
 }

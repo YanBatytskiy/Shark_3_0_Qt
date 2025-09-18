@@ -43,7 +43,7 @@ public:
 
   void sendMessageCommmand(const QModelIndex idx,
                            const std::size_t currentChatId,
-                           const QString &newMessageText);
+                           const QString &newMessageText, bool newChatBool);
   void resetCountUnreadMessagesCommmand();
 
 signals:
@@ -73,6 +73,8 @@ private slots:
   // void on_mainWorkUsersList_clicked(const QModelIndex &index);
 
   void on_findLineEdit_editingFinished();
+
+  void on_mainWorkUsersList_doubleClicked(const QModelIndex &index);
 
 private:
   Ui::ScreenMainWork *ui;

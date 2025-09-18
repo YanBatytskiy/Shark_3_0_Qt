@@ -161,13 +161,6 @@ bool ChatSystem::addChatToInstance(const std::shared_ptr<Chat> &chat_ptr) {
   }
   return result;
 }
-/**
- * @brief Removes a user from the system (not implemented).
- * @param user shared pointer to the user to remove.
- */
-void ChatSystem::eraseUser(const std::shared_ptr<User> &user) {
-  // доделать
-}
 
 // utilities
 std::size_t ChatSystem::createNewChatId(const std::shared_ptr<Chat> &chat_ptr) {

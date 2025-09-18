@@ -104,8 +104,6 @@ public:
 
   bool addChatToInstance(const std::shared_ptr<Chat> &chat);
 
-  void eraseUser(const std::shared_ptr<User> &user);
-
   // utilities
   std::size_t createNewChatId(const std::shared_ptr<Chat> &chat_ptr);
 
