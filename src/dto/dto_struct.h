@@ -51,14 +51,16 @@ enum class StructDTOClassType {
   responceDTO,
 };
 
-enum class RequestDirection { ClientToSrv = 1, SrvToClient = 2 };
+enum class RequestDirection { ClientToSrv = 1,
+                              SrvToClient = 2 };
 
 class IStructDTO {
 public:
   virtual ~IStructDTO() = default;
 };
 
-template <typename T> class StructDTOClass : public IStructDTO {
+template <typename T>
+class StructDTOClass : public IStructDTO {
 private:
   T _structDTO;
 
@@ -84,7 +86,9 @@ struct PacketListDTO {
   std::vector<PacketDTO> packets;
 };
 
-enum class MessageContentType { Text, Image, File };
+enum class MessageContentType { Text,
+                                Image,
+                                File };
 
 struct MessageContentDTO {
   MessageContentType messageContentType;
@@ -125,7 +129,6 @@ struct UserDTO {
   bool is_active;
   std::size_t disabled_at;
   std::size_t ban_until;
-  
 };
 struct UserLoginDTO {
   std::string login; ///< User login.

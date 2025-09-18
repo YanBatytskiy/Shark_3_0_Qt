@@ -41,7 +41,10 @@ public:
   QVariant data(const QModelIndex& index, int userRole) const override;
   Qt::ItemFlags flags(const QModelIndex& idx) const override;
 
+  UserListModel::UserItem getItem(int row) const;
+
   void appendItem(const UserItem& userItem);
+  void removeItem(int row);
   void setLoginUserList(int row, const QString& textValue);
   void setNameUserList(int row, const QString& textValue);
   void setEmailUserList(int row, const QString& textValue);
@@ -51,6 +54,7 @@ public:
   void setDisableAtUserList(int row, std::int64_t newValue);
   void setBunUntilUserList(int row, std::int64_t newValue);
   void clear();
+  QString findNameByLogin(const QString &login) const;
 
   void fillUserItem(const QString &login, const QString &name, const QString &email,
                         const QString &phone, const QString &disableReason, bool isActive, const int64_t disableAt,

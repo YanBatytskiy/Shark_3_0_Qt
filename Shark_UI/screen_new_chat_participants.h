@@ -3,6 +3,8 @@
 
 #include <QListView>
 #include <QStringListModel>
+#include "models/model_user_list.h"
+
 #include <QWidget>
 
 namespace Ui {
@@ -18,16 +20,19 @@ public:
 
 signals:
   void signalCancelNewChat();
+  void signalMakeNewChat(int quantity, const QStringListModel* participantsListModel);
 
 public slots:
   void slotCollectParticipantsForNewChat();
-  void slotAddContactToParticipantsList(const QString &value);
+  void slotAddContactToParticipantsList(UserListModel* newChatUserListModel, const QString &value);
 
 private slots:
 
   void on_screenNewChatDeleteContactPushButton_clicked();
 
   void on_screenUserDataCancelNewChatPushButton_clicked();
+
+  void on_screenUserDataCreateNewChatPushButton_clicked();
 
 private:
   Ui::ScreenNewChatParticipants *ui;

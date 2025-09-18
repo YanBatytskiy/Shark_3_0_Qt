@@ -42,6 +42,13 @@ Qt::ItemFlags UserListModel::flags(const QModelIndex &idx) const
   return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 }
 
+UserListModel::UserItem UserListModel::getItem(int row) const
+{
+  if (row < 0 || row >= static_cast<int>(_items.size()))
+    return{};
+  return _items.at(row);
+}
+
 void UserListModel::appendItem(const UserItem &userItem)
 {
   const int rows = rowCount();
@@ -49,6 +56,15 @@ void UserListModel::appendItem(const UserItem &userItem)
   _items.push_back(userItem);
   endInsertRows();
 }
+
+void UserListModel::removeItem(int row)
+{
+  if (row < 0 || row >= rowCount())
+    return;
+
+  beginRemoveRows(QModelIndex(), row, row);
+  _items.erase(_items.begin() + row);
+  endRemoveRows();}
 
 void UserListModel::setLoginUserList(int row, const QString &textValue)
 {
@@ -118,6 +134,17 @@ void UserListModel::clear()
   beginResetModel();
   _items.clear();
   endResetModel();
+}
+
+QString UserListModel::findNameByLogin(const QString &login) const
+{
+  for (int row = 0; row < rowCount(); ++row) {
+    const QModelIndex idx = index(row, 0);
+    if (idx.data(UserListModel::LoginRole).toString() == login) {
+      return idx.data(UserListModel::NameRole).toString();
+    }
+  }
+  return {};
 }
 
 void UserListModel::fillUserItem(const QString &login, const QString &name, const QString &email,

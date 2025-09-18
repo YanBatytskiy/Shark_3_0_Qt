@@ -1,5 +1,7 @@
 #include "screen_new_chat_participants.h"
 #include "ui_screen_new_chat_participants.h"
+#include "models/model_user_list.h"
+
 
 #include <QObject>
 
@@ -23,15 +25,18 @@ void ScreenNewChatParticipants::slotCollectParticipantsForNewChat() {
   _participantsListModel->setStringList({});
 }
 
-void ScreenNewChatParticipants::slotAddContactToParticipantsList(const QString &value) {
+void ScreenNewChatParticipants::slotAddContactToParticipantsList(UserListModel* newChatUserListModel,
+                                                                 const QString &value) {
 
   const auto quantity = _participantsListModel->rowCount();
 
   for (const auto &line : _participantsListModel->stringList()) {
-    if (line == value)
+    if (line == value){
+      newChatUserListModel->removeItem(newChatUserListModel->rowCount()-1);
       return;
-    ;
+    }
   }
+
 
   _participantsListModel->insertRow(quantity);
 
@@ -54,6 +59,26 @@ void ScreenNewChatParticipants::on_screenUserDataCancelNewChatPushButton_clicked
   this->setVisible(false);
   this->setEnabled(false);
 
+  ui->screenUserDataCreateNewChatPushButton->setEnabled(true);
+
+  ui->screenNewChatDeleteContactPushButton->setEnabled(true);
+
+  ui->screenUserDataNewChatUsersList->setEnabled(true);
+
   _participantsListModel->setStringList({});
   emit signalCancelNewChat();
 }
+
+
+void ScreenNewChatParticipants::on_screenUserDataCreateNewChatPushButton_clicked()
+{
+  const auto quantity = _participantsListModel->rowCount();
+
+  if (quantity > 0) {
+    ui->screenUserDataCreateNewChatPushButton->setEnabled(false);
+    ui->screenNewChatDeleteContactPushButton->setEnabled(false);
+    ui->screenUserDataNewChatUsersList->setEnabled(false);
+    emit signalMakeNewChat(quantity, _participantsListModel);
+  }
+}
+

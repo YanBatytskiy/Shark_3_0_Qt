@@ -36,6 +36,9 @@ ScreenMainWork::ScreenMainWork(QWidget *parent)
     // связь: кнопка отменить создание нового чата - слот на выключение формы и включение списка чатов и окна редактирования сообщений
     connect(w, &ScreenNewChatParticipants::signalCancelNewChat, this, &ScreenMainWork::slotCancelNewChat);
 
+    // связь: кнопка создать чат с учатсниками - слот на переключение на форму списка чатов и окна редактирования сообщений
+    connect(w, &ScreenNewChatParticipants::signalMakeNewChat, this, &ScreenMainWork::slotMakeNewChat);
+
     // связь: сигнал добавления контакта - слот добавления контакта в список
     connect(this, &ScreenMainWork::signalAddContactToNewChat, w, &ScreenNewChatParticipants::slotAddContactToParticipantsList);
   }
@@ -59,85 +62,119 @@ void ScreenMainWork::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
           &ScreenMainWork::onConnectionStatusChanged, Qt::QueuedConnection);
 }
 
+void ScreenMainWork::fillOneChatListModelWithData(const std::pair<std::size_t, ChatDTO> chat, bool newChatBool)
+{
+  QString participantsChatList;
+  QString infoText;
+
+  int unreadCount;
+  bool isMuted;
+  std::int64_t lastTime;
+
+  // добавляем номер чата
+  const auto chatIdStr = QString::number(chat.second.chatId);
+
+  // добавляем количество непрочитанных
+
+  if (chat.second.chatId != 0)  {
+  unreadCount =
+      _sessionPtr->getInstance()
+          .getChatById(chat.second.chatId)
+          ->getUnreadMessageCount(_sessionPtr->getActiveUserCl());
+  }
+  else unreadCount = 0;
+
+  // добавляем время последнего сообщения
+
+  std::string dateTimeStamp;
+
+  lastTime = static_cast<std::int64_t>(chat.first);
+  if (lastTime == 0)
+  dateTimeStamp = formatTimeStampToString(chat.first, true);
+  else
+    dateTimeStamp = "";
+
+  infoText = _ChatListModel->buildInfoTextForRow(chatIdStr, QString::number(unreadCount), QString::fromStdString(dateTimeStamp));
+
+
+  // собираем строку участников с логинами и именами
+  participantsChatList = "Имя (Логин: ";
+
+  bool first = true;
+  for (const auto &participant : chat.second.participants) {
+
+    // достаем логин и имя пользователя
+    const auto &login = participant.login;
+
+           // пропускаем активного пользователя
+    if (login == _sessionPtr->getActiveUserCl()->getLogin())
+      continue;
+
+    std::string userName;
+
+    if (!newChatBool) {
+    const auto &user = _sessionPtr->getInstance().findUserByLogin(login);
+    userName = user->getUserName();
+    }
+    else userName = _newChatUserListModel->findNameByLogin(QString::fromStdString(login)).toStdString();
+
+    if (!first)
+      participantsChatList += ", ";
+
+    participantsChatList += QString::fromStdString(userName) + " (" +
+                            QString::fromStdString(login) + ")";
+    first = false;
+  } // for participants
+
+  isMuted = false;
+
+  _ChatListModel->fillChatListItem(participantsChatList, infoText,
+                                   unreadCount, isMuted, lastTime,
+                                   chat.second.chatId);
+
+}
+
 void ScreenMainWork::fillChatListModelWithData(bool allChats) {
 
   const auto listOfChat = _sessionPtr->getChatListQt();
 
   if (listOfChat.has_value()) {
 
-    std::string contactLogin;
+    std::string choosenContact;
 
     if (!allChats) {
       const QModelIndex &idx = ui->mainWorkUsersList->currentIndex();
 
       if (idx.isValid()) {
-        contactLogin = idx.data(UserListModel::LoginRole).toString().toStdString();
+        choosenContact = idx.data(UserListModel::LoginRole).toString().toStdString();
       } else
-        contactLogin.clear();
+        choosenContact.clear();
     }
 
     for (const auto &chat : listOfChat.value()) {
 
-      QString participantsChatList;
-      QString infoText;
+      if (!allChats) {
+        bool ischoosenContact = false;
+        for (const auto &participant : chat.second.participants) {
 
-      int unreadCount;
-      bool isMuted;
-      std::int64_t lastTime;
+          // достаем логин
+          const auto &login = participant.login;
 
-      // добавляем номер чата
-      const auto chatIdStr = QString::number(chat.second.chatId);
+                 // пропускаем активного пользователя
+          if (login == _sessionPtr->getActiveUserCl()->getLogin())
+            continue;
 
-      // добавляем количество непрочитанных
-      unreadCount =
-          _sessionPtr->getInstance()
-              .getChatById(chat.second.chatId)
-              ->getUnreadMessageCount(_sessionPtr->getActiveUserCl());
+                 // определяем наличие выбранного контакта в списке участников чата
+          if (login == choosenContact){
+            ischoosenContact = true;
+            break;
+          }
+        } // for
 
-
-      // добавляем время последнего сообщения
-      lastTime = static_cast<std::int64_t>(chat.first);
-      const auto dateTimeStamp = formatTimeStampToString(chat.first, true);
-
-      infoText = _ChatListModel->buildInfoTextForRow(chatIdStr, QString::number(unreadCount), QString::fromStdString(dateTimeStamp));
-
-
-      // собираем строку участников с логинами и именами
-      participantsChatList = "Имя (Логин: ";
-      bool first = true;
-      bool isContactLogin = false;
-      for (const auto &participant : chat.second.participants) {
-
-        // достаем логин и имя пользователя
-        const auto &login = participant.login;
-
-        // пропускаем активного пользователя
-        if (login == _sessionPtr->getActiveUserCl()->getLogin())
-          continue;
-
-        // определяем наличие выбранного контакта в списке участников чата
-        if (!allChats && login == contactLogin) isContactLogin = true;
-
-
-        const auto &user = _sessionPtr->getInstance().findUserByLogin(login);
-        const auto &userName = user->getUserName();
-
-        if (!first)
-          participantsChatList += ", ";
-
-        participantsChatList += QString::fromStdString(userName) + " (" +
-                                QString::fromStdString(login) + ")";
-        first = false;
-      } // for
-
-
-      if (!allChats && !isContactLogin) continue;
-
-      isMuted = false;
-
-      _ChatListModel->fillChatListItem(participantsChatList, infoText,
-                                       unreadCount, isMuted, lastTime,
-                                       chat.second.chatId);
+        // если это чат заданного пользователя, то вызываем заполнение чата
+        if (ischoosenContact) fillOneChatListModelWithData(chat, false);
+      } //if
+      else fillOneChatListModelWithData(chat, false);
 
     } // for listOfChat
 
@@ -184,8 +221,12 @@ void ScreenMainWork::fillMessageModelWithData(std::size_t chatId) {
 
   _MessageModel->clear();
 
-  const auto messages =
-      _sessionPtr->getInstance().getChatById(chatId)->getMessages();
+  if (chatId == 0) return;                                   // новый чат без id
+  const auto chat_ptr = _sessionPtr->getInstance().getChatById(chatId);
+  if (!chat_ptr) return;                                      // чата нет в map
+
+  const auto& messages = chat_ptr->getMessages();
+  if (messages.empty()) return;
 
   for (const auto &message : messages) {
 
@@ -261,6 +302,17 @@ void ScreenMainWork::slotCancelNewChat() {
   if (!MessageChattingInUser)
     return;
 
+  if (auto panel = ui->mainWorkPageUserDataView
+                       ->findChild<QWidget*>("ScreenUserDataUserDataWidget")) {
+    if (auto button1 = panel->findChild<QPushButton*>("banPushButton")) {
+      button1->setVisible(true);
+    }
+    if (auto button2 = panel->findChild<QPushButton*>("blockPushButton")) {
+      button2->setVisible(true);
+    }
+  }
+
+
   chatListInUser->setEnabled(true);
   chatListInUser->setVisible(true);
 
@@ -275,6 +327,9 @@ void ScreenMainWork::slotCancelNewChat() {
                                  QItemSelectionModel::ClearAndSelect);
   };
 
+  ui->mainWorkUsersList->setEnabled(true);
+
+
   auto ChatListInUser = ui->mainWorkPageUserDataView->findChild<ScreenChatList *>(
       "ScreenUserDataChatsListWidget");
 
@@ -287,7 +342,72 @@ void ScreenMainWork::slotCancelNewChat() {
     selectModel->setCurrentIndex(selectModel->model()->index(0, 0),
                                  QItemSelectionModel::ClearAndSelect);
   };
+
+  ui->findLineEdit->setEnabled(true);
+  ui->findLineEdit->setText({});
+
   ui->mainWorkChatUserTabWidget->setTabEnabled(0, true);
+}
+
+void ScreenMainWork::slotMakeNewChat(int quantity, const QStringListModel* participantsListModel)
+{
+
+  // экран «чаты контакта»
+  const auto chatListInUser = ui->mainWorkPageUserDataView->findChild<ScreenChatList *>(
+      "ScreenUserDataChatsListWidget");
+  if (!chatListInUser)
+    return;
+
+         // указатель на объект содержащий окно сообщний в режиме чата отдельного контакта адресной книги
+  auto MessageChattingInUser = ui->mainWorkPageUserDataView->findChild<ScreenChatting *>(
+      "ScreenUserDataMessagesListWidget");
+  if (!MessageChattingInUser)
+    return;
+
+  ui->findLineEdit->setEnabled(false);
+  ui->mainWorkUsersList->setEnabled(false);
+
+  //формируем чат
+  _newChatDTO.chatId = 0;
+  _newChatDTO.senderLogin = _sessionPtr->getActiveUserCl()->getLogin();
+  _newChatDTO.participants.clear();
+
+  ParticipantsDTO participantsDTO;
+
+  //формируем список участников чата
+  for (int i=0; i < quantity; ++i) {
+    participantsDTO.login = participantsListModel->stringList().at(i).toStdString();
+    participantsDTO.lastReadMessage = 0;
+    participantsDTO.deletedMessageIds.clear();
+    participantsDTO.deletedFromChat = false;
+
+    _newChatDTO.participants.push_back(participantsDTO);
+  }
+
+  //заполняем модель чата данными
+  auto chat = std::pair<std::size_t, ChatDTO>({0,_newChatDTO});
+
+  clearChatListModelWithData();
+  fillOneChatListModelWithData(chat, true);
+
+  // включаем список чатов справа
+  chatListInUser->setEnabled(true);
+  chatListInUser->setVisible(true);
+
+  //включаем окно сообщений
+  clearMessageModelWithData();
+
+  MessageChattingInUser->setEnabled(true);
+  MessageChattingInUser->setVisible(true);
+
+  ui->addUserToChatPushButton->setVisible(false);
+
+         // блокируем сигналы выбора на время установки индекса
+  if (auto sm = chatListInUser->getSelectionModel()) {
+    QSignalBlocker blk(sm);
+    sm->setCurrentIndex(sm->model()->index(0, 0),
+                        QItemSelectionModel::ClearAndSelect);
+  }
 }
 
 void ScreenMainWork::slotFindContactsByPart() {
@@ -765,9 +885,12 @@ const auto& idx = ui->mainWorkTabChatsList->getCcurrentChatIndex();
 
   const auto& currentChatId =
       static_cast<size_t>(idx.data(ChatListModel::ChatIdRole).toLongLong());
+  if (currentChatId == 0) return;
 
 //доастали указатель на чат
   const auto& chat_ptr = _sessionPtr->getInstance().getChatById(currentChatId);
+  if (!chat_ptr) return;
+  if (chat_ptr->getMessages().empty()) return;
 
   //проверили, все ли сообщения прочитаны
   const auto &lastMessageId = chat_ptr->getMessages().rbegin()->second->getMessageId();
@@ -797,6 +920,18 @@ void ScreenMainWork::on_createNewChatPushButton_clicked() {
       "ScreenUserDataMessagesListWidget");
   if (!MessageChattingInUser)
     return;
+
+  if (auto panel = ui->mainWorkPageUserDataView
+                       ->findChild<QWidget*>("ScreenUserDataUserDataWidget")) {
+    if (auto button1 = panel->findChild<QPushButton*>("banPushButton")) {
+      button1->setVisible(false);
+    }
+      if (auto button2 = panel->findChild<QPushButton*>("blockPushButton")) {
+        button2->setVisible(false);
+    }
+  }
+
+  _newChatUserListModel = new UserListModel();
 
   chatListInUser->setEnabled(false);
   chatListInUser->setVisible(false);
@@ -833,7 +968,11 @@ void ScreenMainWork::on_addUserToChatPushButton_clicked() {
     }
 
     const auto &value = idx.data(UserListModel::LoginRole).toString();
-    emit signalAddContactToNewChat(value);
+
+    const auto element = _userListModel->getItem(idx.row());
+    _newChatUserListModel->appendItem(element);
+
+    emit signalAddContactToNewChat(_newChatUserListModel, value);
   }
 }
 

@@ -9,6 +9,7 @@
 
 #include <QButtonGroup>
 #include <QMessageBox>
+#include <QStringListModel>
 #include <QWidget>
 #include <memory>
 
@@ -24,6 +25,7 @@ public:
   ~ScreenMainWork();
   void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
 
+  void fillOneChatListModelWithData(const std::pair<std::size_t, ChatDTO> chat, bool newChatBool);
   void fillChatListModelWithData(bool allChats);
 
   void fillUserListModelWithData();
@@ -46,13 +48,14 @@ public:
 
 signals:
   void signalStartNewChat();
-  void signalAddContactToNewChat(const QString &value);
+  void signalAddContactToNewChat(UserListModel* newChatUserListModel, const QString &value);
   void signalClearUserDataToLabels();
 
 public slots:
   void onConnectionStatusChanged(bool connectionStatus,
                                  ServerConnectionMode mode);
   void slotCancelNewChat();
+  void slotMakeNewChat(int quantity, const QStringListModel* participantsListModel);
 
   void slotFindContactsByPart();
 
@@ -79,6 +82,8 @@ private:
   ChatListModel *_ChatListModel;
   UserListModel *_userListModel;
   MessageModel *_MessageModel;
+  UserListModel *_newChatUserListModel;
+  ChatDTO _newChatDTO;
 
   bool _startFind{true};
 };

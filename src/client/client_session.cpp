@@ -8,9 +8,9 @@
 #include "user/user.h"
 #include "user/user_chat_list.h"
 
-#include "exceptions_qt/exception_router.h"
 #include "exceptions_qt/exception_login.h"
 #include "exceptions_qt/exception_network.h"
+#include "exceptions_qt/exception_router.h"
 #include "nw_connection_monitor.h"
 #include <QCoreApplication>
 #include <atomic>
@@ -209,30 +209,53 @@ const std::vector<UserDTO> ClientSession::findUserByTextPartOnServerCl(const std
   std::vector<UserDTO> result;
   result.clear();
 
-  try {
-    if (!responcePacketListDTO.packets.empty()) {
+  //   try {
+  // if (!responcePacketListDTO.packets.empty()) {
 
-      for (const auto &packet : responcePacketListDTO.packets) {
+  for (const auto &packet : responcePacketListDTO.packets) {
 
-        if (packet.requestType != RequestType::RqFrClientFindUserByPart)
-          throw exc_qt::WrongresponceTypeException();
-        else {
-          const auto &packetUserDTO = static_cast<const StructDTOClass<UserDTO> &>(*packet.structDTOPtr)
-                                          .getStructDTOClass();
-          result.push_back(packetUserDTO);
-        }
+    if (packet.requestType != RequestType::RqFrClientFindUserByPart)
+      //   throw exc_qt::WrongresponceTypeException();
+      continue;
+    // else {
+
+    if (!packet.structDTOPtr)
+      continue;
+
+    switch (packet.structDTOClassType) {
+    case StructDTOClassType::userDTO: {
+
+      const auto &packetUserDTO = static_cast<const StructDTOClass<UserDTO> &>(*packet.structDTOPtr)
+                                      .getStructDTOClass();
+      result.push_back(packetUserDTO);
+      break;
+      // }
+      //   }
+    } // case
+    case StructDTOClassType::responceDTO: {
+      const auto &r =
+          static_cast<const StructDTOClass<ResponceDTO> &>(*packet.structDTOPtr).getStructDTOClass();
+
+      if (!r.reqResult) {
+        result.clear(); // «не найдено»
+        return result;  // ранний выход без падения
       }
-    } else
-      throw exc_qt::WrongPacketSizeException();
+    } // case
+    default:
+      break;
+    } // switch
 
-  } catch (const exc_qt::WrongresponceTypeException &ex) {
-    std::cout << "Клиент. Поиск пользователей по части слова. " << ex.what() << std::endl;
-    result.clear();
-  } catch (const std::exception &ex) {
-    std::cout << "Клиент. Неизвестная ошибка. " << ex.what() << std::endl;
-    result.clear();
+    // } else
+    //   throw exc_qt::WrongPacketSizeException();
+
+    //   } catch (const exc_qt::WrongresponceTypeException &ex) {
+    //     std::cout << "Клиент. Поиск пользователей по части слова. " << ex.what() << std::endl;
+    //     result.clear();
+    //   } catch (const std::exception &ex) {
+    //     std::cout << "Клиент. Неизвестная ошибка. " << ex.what() << std::endl;
+    //     result.clear();
+    //   }
   }
-
   return result;
 }
 //
@@ -529,7 +552,7 @@ PacketListDTO ClientSession::getDatafromServer(const std::vector<std::uint8_t> &
     uint32_t len = htonl(static_cast<uint32_t>(packetListSend.size()));
 
     packetWithSize.resize(4 + packetListSend.size());
-    std::memcpy(packetWithSize.data(), &len, 4); // первые 4 байта — длина
+    std::memcpy(packetWithSize.data(), &len, 4);                                          // первые 4 байта — длина
     std::memcpy(packetWithSize.data() + 4, packetListSend.data(), packetListSend.size()); // далее — данные
 
     // 2. Отправка
@@ -1056,7 +1079,7 @@ MessageDTO ClientSession::fillOneMessageDTOFromCl(const std::shared_ptr<Message>
 //
 //
 std::size_t ClientSession::createMessageCl(const Message &message, std::shared_ptr<Chat> &chat_ptr,
-                                    const std::shared_ptr<User> &user) {
+                                           const std::shared_ptr<User> &user) {
 
   auto message_ptr = std::make_shared<Message>(message);
 
@@ -1077,7 +1100,7 @@ std::size_t ClientSession::createMessageCl(const Message &message, std::shared_p
   responcePacketListDTO = processingRequestToServer(packetDTOListForSendVector, packetDTO.requestType);
 
   std::size_t newMessageId = 0;
-      
+
   try {
 
     if (responcePacketListDTO.packets.empty())

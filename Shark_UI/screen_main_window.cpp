@@ -41,6 +41,7 @@ void MainWindow::setLoginForm() {
   QWidget *page =
       ui->mainWindowstackedWidget->findChild<QWidget *>("pageLogin");
 
+  menuBar()->setNativeMenuBar(false);
   menuBar()->setVisible(false);
 
   ui->mainWindowstackedWidget->setCurrentWidget(page);
@@ -50,6 +51,7 @@ void MainWindow::setRegistrationForm() {
   ui->pageRegister->clearFields();
   QWidget *page = ui->mainWindowstackedWidget->findChild<QWidget *>("pageRegister");
 
+  menuBar()->setNativeMenuBar(false);
   menuBar()->setVisible(false);
 
   ui->mainWindowstackedWidget->setCurrentWidget(page);
@@ -57,6 +59,8 @@ void MainWindow::setRegistrationForm() {
 
 void MainWindow::setworkForm() {
   QWidget *page = ui->mainWindowstackedWidget->findChild<QWidget *>("pageWork");
+
+  menuBar()->setNativeMenuBar(true);
   menuBar()->setVisible(true);
   ui->mainWindowstackedWidget->setCurrentWidget(page);
 }
@@ -77,5 +81,6 @@ void MainWindow::onLoggedIn(QString login) {
 void MainWindow::on_exitAction_triggered() {
   _sessionPtr->resetSessionData();
   setLoginForm();
+  menuBar()->setNativeMenuBar(false);
   menuBar()->setVisible(false);
 }
