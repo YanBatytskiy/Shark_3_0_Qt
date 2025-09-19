@@ -1,7 +1,7 @@
 #include "screen_main_work.h"
-#include "ui_screen_main_work.h"
 #include "screen_chat_list.h"
 #include "screen_chatting.h"
+#include "ui_screen_main_work.h"
 
 #include <QItemSelectionModel>
 #include <QMessageBox>
@@ -27,6 +27,8 @@ ScreenMainWork::ScreenMainWork(QWidget *parent)
 
   ui->setupUi(this);
 
+  _newChatMode = false;
+
   if (auto w = ui->mainWorkPageUserDataView
                    ->findChild<ScreenNewChatParticipants *>("ScreenNewChatParticipantsWidget")) {
 
@@ -39,6 +41,9 @@ ScreenMainWork::ScreenMainWork(QWidget *parent)
 
     // связь: кнопка создать чат с учатсниками - слот на переключение на форму списка чатов и окна редактирования сообщений
     connect(w, &ScreenNewChatParticipants::signalMakeNewChat, this, &ScreenMainWork::slotMakeNewChat);
+
+    // связь: после удачной отправки сообщения в новом чате - слот на переключение всех форм в режим основного листа чатов
+    connect(this, &ScreenMainWork::signalMainWorkTransferrNewChatToMainChatList, w, &ScreenNewChatParticipants::slotScreenNewChatTransferrNewChatToMainChatList);
 
     // связь: сигнал добавления контакта - слот добавления контакта в список
     connect(this, &ScreenMainWork::signalAddContactToNewChat, w, &ScreenNewChatParticipants::slotAddContactToParticipantsList);
@@ -89,11 +94,13 @@ void ScreenMainWork::fillOneChatListModelWithData(const std::pair<std::size_t, C
 
   std::string dateTimeStamp;
 
-  lastTime = static_cast<std::int64_t>(chat.first);
-  if (lastTime == 0)
-  dateTimeStamp = formatTimeStampToString(chat.first, true);
-  else
-    dateTimeStamp = "";
+  if (newChatBool) {
+    lastTime = 0;
+    dateTimeStamp = "---";
+  } else {
+    lastTime = static_cast<std::int64_t>(chat.first);
+    dateTimeStamp = formatTimeStampToString(chat.first, true);
+  }
 
   infoText = _ChatListModel->buildInfoTextForRow(chatIdStr, QString::number(unreadCount), QString::fromStdString(dateTimeStamp));
 
@@ -313,12 +320,11 @@ void ScreenMainWork::slotCancelNewChat() {
     }
   }
 
-
   chatListInUser->setEnabled(true);
-  chatListInUser->setVisible(true);
+  // chatListInUser->setVisible(true);
 
   MessageChattingInUser->setEnabled(true);
-  MessageChattingInUser->setVisible(true);
+  // MessageChattingInUser->setVisible(true);
 
   ui->createNewChatPushButton->setEnabled(true);
 
@@ -348,6 +354,11 @@ void ScreenMainWork::slotCancelNewChat() {
   ui->findLineEdit->setText({});
 
   ui->mainWorkChatUserTabWidget->setTabEnabled(0, true);
+
+  _newChatMode = false;
+
+  // связь- изменение индекса при выборе контакта - заполнение окна списка чатов контакта
+  slotConnectUserListToChatListchange(true);
 }
 
 void ScreenMainWork::slotMakeNewChat(int quantity, const QStringListModel* participantsListModel)
@@ -364,6 +375,9 @@ void ScreenMainWork::slotMakeNewChat(int quantity, const QStringListModel* parti
       "ScreenUserDataMessagesListWidget");
   if (!MessageChattingInUser)
     return;
+
+  clearChatListModelWithData();
+  clearMessageModelWithData();
 
   ui->findLineEdit->setEnabled(false);
   ui->mainWorkUsersList->setEnabled(false);
@@ -393,13 +407,11 @@ void ScreenMainWork::slotMakeNewChat(int quantity, const QStringListModel* parti
 
   // включаем список чатов справа
   chatListInUser->setEnabled(true);
-  chatListInUser->setVisible(true);
 
   //включаем окно сообщений
   clearMessageModelWithData();
 
   MessageChattingInUser->setEnabled(true);
-  MessageChattingInUser->setVisible(true);
 
   ui->addUserToChatPushButton->setVisible(false);
 
@@ -409,6 +421,13 @@ void ScreenMainWork::slotMakeNewChat(int quantity, const QStringListModel* parti
     sm->setCurrentIndex(sm->model()->index(0, 0),
                         QItemSelectionModel::ClearAndSelect);
   }
+}
+
+void ScreenMainWork::slotMainWorkTransferrNewChatToMainChatList() {
+  emit signalMainWorkTransferrNewChatToMainChatList();
+
+  // перезаполняем модель листа чатов через сигнал окна ScreenMainWork
+  refillChatListModelWithData(true);
 }
 
 void ScreenMainWork::slotFindContactsByPart() {
@@ -543,24 +562,7 @@ void ScreenMainWork::setupUserList()
                    ui->mainWorkPageUserDataView, &ScreenUserData::setUserDataToLabels);
 
   // связь- изменение индекса при выборе контакта - заполнение окна списка чатов контакта
-  QObject::connect(selectMode,
-                   &QItemSelectionModel::currentChanged,
-                   this, [this](auto) {
-                     refillChatListModelWithData(false);
-
-                     const auto chatListInUser = ui->mainWorkPageUserDataView->findChild<ScreenChatList *>(
-                         "ScreenUserDataChatsListWidget");
-
-                     if (!chatListInUser)
-                       return;
-
-                     auto selectMode = chatListInUser->getSelectionModel();
-                     if (!selectMode)
-                       return;
-
-                     selectMode->setCurrentIndex(selectMode->model()->index(0, 0),
-                                                 QItemSelectionModel::ClearAndSelect);
-                   });
+  slotConnectUserListToChatListchange(true);
 }
 
 void ScreenMainWork::setupScreenChatting() {
@@ -755,9 +757,9 @@ void ScreenMainWork::on_mainWorkChatUserTabWidget_currentChanged(int index) {
 
     ui->addUserToChatPushButton->setVisible(false);
 
-    QPalette paletteLineEdit = ui->findLineEdit->palette();
-    paletteLineEdit.setColor(QPalette::PlaceholderText, QColor("#000000"));
-    ui->findLineEdit->setPalette(paletteLineEdit);
+    // QPalette paletteLineEdit = ui->findLineEdit->palette();
+    // paletteLineEdit.setColor(QPalette::PlaceholderText, QColor("#000000"));
+    // ui->findLineEdit->setPalette(paletteLineEdit);
 
     const auto userDataView = ui->mainWorkPageUserDataView->findChild<ScreenUserData *>(
         "ScreenUserDataUserDataWidget");
@@ -803,7 +805,7 @@ void ScreenMainWork::on_mainWorkChatUserTabWidget_currentChanged(int index) {
     QPalette paletteLineEdit = ui->findLineEdit->palette();
     paletteLineEdit.setColor(QPalette::PlaceholderText, QColor("#9AA0A6"));
 
-    ui->findLineEdit->setPalette(paletteLineEdit);
+    // ui->findLineEdit->setPalette(paletteLineEdit);
 
     ui->findLineEdit->setEnabled(false);
     ui->findPushButton->setEnabled(false);
@@ -841,7 +843,7 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
   std::size_t newMessageId;
 
   //   если новый чат то сначала вызываем
-  if (!newChatBool) {
+  if (newChatBool) {
 
     auto chat_ptr = std::make_shared<Chat>();
 
@@ -866,11 +868,8 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
    
     bool result = _sessionPtr->CreateAndSendNewChatQt(chat_ptr, participants, newMessage);
 
-    
-    
-    
     // если ответ с сервера - окей
-    
+
     if (!result) {
       QMessageBox::warning(this, tr("Ошибка!"), tr("Невозможно отправить сообщение."));
       return;
@@ -904,7 +903,7 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
       // затем добавляем чат в систему
       _sessionPtr->getInstance().addChatToInstance(chat_ptr);
     } // if else
-    
+
     // заменили в модели чатов
     _ChatListModel->setChatId(idx.row(), chat_ptr->getChatId());
   }
@@ -945,6 +944,18 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
 
   // заменили в модели чатов
   _ChatListModel->setLastTime(idx.row(), newMessageTimeStamp);
+
+  slotMainWorkTransferrNewChatToMainChatList();
+  slotCancelNewChat();
+
+  ui->createNewChatPushButton->setEnabled(true);
+
+  ui->mainWorkChatUserTabWidget->setTabEnabled(0, true);
+  ui->mainWorkChatUserTabWidget->setCurrentIndex(0);
+
+  ui->addUserToChatPushButton->setVisible(true);
+
+  refillChatListModelWithData(true);
 }
 
 void ScreenMainWork::resetCountUnreadMessagesCommmand()
@@ -982,6 +993,36 @@ const auto& idx = ui->mainWorkTabChatsList->getCcurrentChatIndex();
   }
 }
 
+void ScreenMainWork::slotConnectUserListToChatListchange(bool status) {
+
+  // достаем модель выбора второго списка чатов (списка чатов конкретного пользователя)
+  auto selectMode = ui->mainWorkUsersList->selectionModel();
+
+  if (!status)
+    QObject::disconnect(_connUserListToChatListChange);
+  {
+    // связь- изменение индекса при выборе контакта - заполнение окна списка чатов контакта
+    QMetaObject::Connection _connUserListToChatListChange = QObject::connect(selectMode,
+                                                                             &QItemSelectionModel::currentChanged,
+                                                                             this, [this](auto) {
+                                                                               refillChatListModelWithData(false);
+
+                                                                               const auto chatListInUser = ui->mainWorkPageUserDataView->findChild<ScreenChatList *>(
+                                                                                   "ScreenUserDataChatsListWidget");
+
+                                                                               if (!chatListInUser)
+                                                                                 return;
+
+                                                                               auto selectMode = chatListInUser->getSelectionModel();
+                                                                               if (!selectMode)
+                                                                                 return;
+
+                                                                               selectMode->setCurrentIndex(selectMode->model()->index(0, 0),
+                                                                                                           QItemSelectionModel::ClearAndSelect);
+                                                                             });
+  }
+}
+
 void ScreenMainWork::on_createNewChatPushButton_clicked() {
 
   // экран «чаты контакта»
@@ -997,7 +1038,7 @@ void ScreenMainWork::on_createNewChatPushButton_clicked() {
     return;
 
   if (auto panel = ui->mainWorkPageUserDataView
-                       ->findChild<QWidget*>("ScreenUserDataUserDataWidget")) {
+                       ->findChild<QWidget *>("ScreenUserDataUserDataWidget")) {
     if (auto button1 = panel->findChild<QPushButton*>("banPushButton")) {
       button1->setVisible(false);
     }
@@ -1008,11 +1049,11 @@ void ScreenMainWork::on_createNewChatPushButton_clicked() {
 
   _newChatUserListModel = new UserListModel();
 
-  chatListInUser->setEnabled(false);
-  chatListInUser->setVisible(false);
+  clearChatListModelWithData();
+  clearMessageModelWithData();
 
-  MessageChattingInUser->setEnabled(false);
-  MessageChattingInUser->setVisible(false);
+  // связь- изменение индекса при выборе контакта - заполнение окна списка чатов контакта
+  slotConnectUserListToChatListchange(false);
 
   ui->createNewChatPushButton->setEnabled(false);
 
@@ -1020,11 +1061,21 @@ void ScreenMainWork::on_createNewChatPushButton_clicked() {
 
   ui->addUserToChatPushButton->setVisible(true);
 
-  emit signalStartNewChat();
+  slotAddUserToNewChatList();
+
+  QString login;
+
+  if (_newChatUserListModel->rowCount() == 0)
+    login = "";
+  else
+    login = _newChatUserListModel->getItem(0).Login;
+
+  _newChatMode = true;
+
+  emit signalStartNewChat(login);
 }
 
-void ScreenMainWork::on_addUserToChatPushButton_clicked() {
-
+void ScreenMainWork::slotAddUserToNewChatList() {
   const auto &selectModel = ui->mainWorkUsersList->selectionModel();
   const auto &idx = selectModel->currentIndex();
 
@@ -1051,6 +1102,10 @@ void ScreenMainWork::on_addUserToChatPushButton_clicked() {
   }
 }
 
+void ScreenMainWork::on_addUserToChatPushButton_clicked() {
+  slotAddUserToNewChatList();
+}
+
 void ScreenMainWork::on_findLineEdit_textChanged(const QString &arg1) {
 
   slotFindContactsByPart();
@@ -1066,28 +1121,7 @@ void ScreenMainWork::on_findLineEdit_editingFinished() {
 }
 
 void ScreenMainWork::on_mainWorkUsersList_doubleClicked(const QModelIndex &index) {
-  // const auto &selectModel = ui->mainWorkUsersList->selectionModel();
-  // const auto &idx = selectModel->currentIndex();
 
-  // if (idx.isValid()) {
-
-  //   const auto &isActive = idx.data(UserListModel::IsActiveRole).toBool();
-  //   const auto &bunTo = idx.data(UserListModel::BunUntilRole).toLongLong();
-
-  //   if (!isActive) {
-  //     QMessageBox::warning(this, "Сообщение", "Контакт заблокирован.");
-  //     return;
-  //   }
-  //   if (bunTo != 0 && bunTo > getCurrentDateTimeInt()) {
-  //     QMessageBox::warning(this, "Сообщение", "Пользователь забанен.");
-  //     return;
-  //   }
-
-  //   const auto &value = idx.data(UserListModel::LoginRole).toString();
-
-  //   const auto element = _userListModel->getItem(idx.row());
-  //   _newChatUserListModel->appendItem(element);
-
-  //   emit signalAddContactToNewChat(_newChatUserListModel, value);
-  // }
+  if (_newChatMode)
+    slotAddUserToNewChatList();
 }

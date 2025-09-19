@@ -47,15 +47,22 @@ public:
   void resetCountUnreadMessagesCommmand();
 
 signals:
-  void signalStartNewChat();
+  void signalStartNewChat(const QString &login);
   void signalAddContactToNewChat(UserListModel* newChatUserListModel, const QString &value);
   void signalClearUserDataToLabels();
+  void signalMainWorkTransferrNewChatToMainChatList();
 
 public slots:
+
+  void slotConnectUserListToChatListchange(bool status);
+
   void onConnectionStatusChanged(bool connectionStatus,
                                  ServerConnectionMode mode);
+  void slotAddUserToNewChatList();
   void slotCancelNewChat();
   void slotMakeNewChat(int quantity, const QStringListModel* participantsListModel);
+
+  void slotMainWorkTransferrNewChatToMainChatList();
 
   void slotFindContactsByPart();
 
@@ -69,8 +76,6 @@ private slots:
   void on_findLineEdit_textChanged(const QString &arg1);
 
   void on_findPushButton_clicked();
-
-  // void on_mainWorkUsersList_clicked(const QModelIndex &index);
 
   void on_findLineEdit_editingFinished();
 
@@ -88,6 +93,9 @@ private:
   ChatDTO _newChatDTO;
 
   bool _startFind{true};
+  bool _newChatMode{false};
+
+  QMetaObject::Connection _connUserListToChatListChange;
 };
 
 #endif // WORKWINDOW_H

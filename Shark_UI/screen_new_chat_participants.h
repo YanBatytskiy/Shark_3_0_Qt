@@ -23,8 +23,9 @@ signals:
   void signalMakeNewChat(int quantity, const QStringListModel* participantsListModel);
 
 public slots:
-  void slotCollectParticipantsForNewChat();
+  void slotCollectParticipantsForNewChat(const QString &login);
   void slotAddContactToParticipantsList(UserListModel* newChatUserListModel, const QString &value);
+  void slotScreenNewChatTransferrNewChatToMainChatList();
 
 private slots:
 

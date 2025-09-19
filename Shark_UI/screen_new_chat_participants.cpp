@@ -19,10 +19,9 @@ ScreenNewChatParticipants::~ScreenNewChatParticipants() {
   delete ui;
 }
 
-void ScreenNewChatParticipants::slotCollectParticipantsForNewChat() {
+void ScreenNewChatParticipants::slotCollectParticipantsForNewChat(const QString &login) {
   this->setVisible(true);
   this->setEnabled(true);
-  _participantsListModel->setStringList({});
 }
 
 void ScreenNewChatParticipants::slotAddContactToParticipantsList(UserListModel* newChatUserListModel,
@@ -37,12 +36,29 @@ void ScreenNewChatParticipants::slotAddContactToParticipantsList(UserListModel* 
     }
   }
 
-
   _participantsListModel->insertRow(quantity);
 
   const auto &idx = _participantsListModel->index(_participantsListModel->rowCount() - 1);
 
   _participantsListModel->setData(idx, value);
+}
+
+void ScreenNewChatParticipants::slotScreenNewChatTransferrNewChatToMainChatList() {
+
+  // // вызываем нажатие клавиши отмены создания нового чата
+  // on_screenNewChatDeleteContactPushButton_clicked();
+
+  this->setVisible(false);
+  this->setEnabled(false);
+
+  ui->screenUserDataCreateNewChatPushButton->setEnabled(true);
+
+  ui->screenNewChatDeleteContactPushButton->setEnabled(true);
+
+  ui->screenUserDataNewChatUsersList->setEnabled(true);
+
+  _participantsListModel->setStringList({});
+  emit signalCancelNewChat();
 }
 
 void ScreenNewChatParticipants::on_screenNewChatDeleteContactPushButton_clicked() {

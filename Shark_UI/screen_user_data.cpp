@@ -21,10 +21,10 @@ void ScreenUserData::slotClearUserDataToLabels() {
   ui->emailLineEdit->setText("");
   ui->phoneLineEdit->setText("");
 
-  ui->blockedUserLabel->setVisible(false);
-  ui->reasonDisableabel->setVisible(false);
+  ui->blockedUserLabel->setText("");
+  ui->reasonDisableabel->setText("");
 
-  ui->unblockPushButton->setVisible(false);
+  ui->unblockPushButton->setEnabled(false);
   ui->banPushButton->setEnabled(false);
   ui->blockPushButton->setEnabled(false);
 }
@@ -52,29 +52,26 @@ void ScreenUserData::setUserDataToLabels(const QModelIndex &index)
   if (bunTo != 0 && bunTo > getCurrentDateTimeInt()) {
     ui->bunnedToDateUserLabel->setText("Бан до: " + QString::fromStdString(
                                                         formatTimeStampToString(bunTo, true)));
-    ui->bunnedToDateUserLabel->setVisible(true);
-    ui->unBunPushButton->setVisible(true);
+    ui->unBunPushButton->setEnabled(true);
     ui->banPushButton->setEnabled(false);
     ui->reasonDisableabel->setText("Причина блокировки: " + reasonDisable);
-    ui->reasonDisableabel->setVisible(true);
   } else {
-    ui->bunnedToDateUserLabel->setVisible(false);
-    ui->unBunPushButton->setVisible(false);
+    ui->bunnedToDateUserLabel->setText("");
+    ui->unBunPushButton->setEnabled(false);
     ui->banPushButton->setEnabled(true);
   }
 
   if (isActive) {
-    ui->blockedUserLabel->setVisible(false);
-    ui->unblockPushButton->setVisible(false);
+    ui->blockedUserLabel->setText("");
+    ui->unblockPushButton->setEnabled(false);
     ui->blockPushButton->setEnabled(true);
-    ui->reasonDisableabel->setVisible(false);
+    ui->reasonDisableabel->setText("");
   } else {
-    ui->blockedUserLabel->setVisible(true);
+    ui->blockedUserLabel->setText("Пользователь заблокирован.");
     ui->unblockPushButton->setEnabled(true);
-    ui->unblockPushButton->setVisible(true);
     ui->blockPushButton->setEnabled(false);
     ui->banPushButton->setEnabled(false);
     ui->reasonDisableabel->setText("Причина блокировки: " + reasonDisable);
-    ui->reasonDisableabel->setVisible(true);
+    ui->reasonDisableabel->setText("");
   }
 }

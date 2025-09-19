@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>344</width>
+    <width>361</width>
     <height>382</height>
    </rect>
   </property>
@@ -81,6 +81,9 @@
        <property name="enabled">
         <bool>true</bool>
        </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(170, 255, 174);</string>
+       </property>
        <property name="text">
         <string>Создать чат</string>
        </property>
@@ -123,6 +126,9 @@
       <widget class="QPushButton" name="screenUserDataCancelNewChatPushButton">
        <property name="enabled">
         <bool>true</bool>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 180, 181);</string>
        </property>
        <property name="text">
         <string>Отменить</string>

@@ -8,10 +8,6 @@ MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr,
                        QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
 
-  if (!sessionPtr) {
-    qWarning() << "ClientSession is null";
-    return;
-  }
   _sessionPtr = std::move(sessionPtr);
 
   ui->setupUi(this);
@@ -41,8 +37,12 @@ void MainWindow::setLoginForm() {
   QWidget *page =
       ui->mainWindowstackedWidget->findChild<QWidget *>("pageLogin");
 
-  menuBar()->setNativeMenuBar(false);
+#ifdef Q_OS_MAC
+  // скрыть меню: очистить действия у нативного меню
+  menuBar()->clear();
+#else
   menuBar()->setVisible(false);
+#endif
 
   ui->mainWindowstackedWidget->setCurrentWidget(page);
 }
@@ -51,8 +51,12 @@ void MainWindow::setRegistrationForm() {
   ui->pageRegister->clearFields();
   QWidget *page = ui->mainWindowstackedWidget->findChild<QWidget *>("pageRegister");
 
-  menuBar()->setNativeMenuBar(false);
+#ifdef Q_OS_MAC
+  // скрыть меню: очистить действия у нативного меню
+  menuBar()->clear();
+#else
   menuBar()->setVisible(false);
+#endif
 
   ui->mainWindowstackedWidget->setCurrentWidget(page);
 }
@@ -60,8 +64,16 @@ void MainWindow::setRegistrationForm() {
 void MainWindow::setworkForm() {
   QWidget *page = ui->mainWindowstackedWidget->findChild<QWidget *>("pageWork");
 
-  menuBar()->setNativeMenuBar(true);
+#ifdef Q_OS_MAC
+  // macOS: возвращаем меню — повторно подвешиваем QMenu из .ui
+  QMenuBar *mb = menuBar();
+  if (mb->actions().isEmpty()) {
+    mb->addAction(ui->menu->menuAction());
+  }
+#else
   menuBar()->setVisible(true);
+#endif
+
   ui->mainWindowstackedWidget->setCurrentWidget(page);
 }
 
@@ -81,6 +93,4 @@ void MainWindow::onLoggedIn(QString login) {
 void MainWindow::on_exitAction_triggered() {
   _sessionPtr->resetSessionData();
   setLoginForm();
-  menuBar()->setNativeMenuBar(false);
-  menuBar()->setVisible(false);
 }
