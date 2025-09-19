@@ -1,4 +1,3 @@
-#include "0_init_system.h"
 #include "postgres_db.h"
 #include "server_session.h"
 #include "system/system_function.h"
@@ -53,9 +52,9 @@ int main() {
   ServerSession serverSession;
   serverSession.setPgConnection(conn);
 
-  if (!systemInitForTest(serverSession, conn)) {
-    return 1;
-  }
+  // if (!systemInitForTest(serverSession, conn)) {
+  //   return 1;
+  // }
   // 🔧 Старт UDP discovery-сервера в потоке, без копирования
   std::thread([&serverSession]() {
     serverSession.runUDPServerDiscovery(serverSession.getServerConnectionConfig().port);

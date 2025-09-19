@@ -30,34 +30,23 @@
     <item>
      <widget class="QStackedWidget" name="mainWindowstackedWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>2</number>
       </property>
-      <widget class="ScreenLogin" name="pageLogin"/>
-      <widget class="ScreenRegister" name="pageRegister"/>
-      <widget class="ScreenMainWork" name="pageWork"/>
-      <widget class="ScreenUserProfile" name="pageProfile"/>
+      <widget class="ScreenLogin" name="pageLogin">
+       <layout class="QVBoxLayout" name="pageLoginLayout"/>
+      </widget>
+      <widget class="ScreenRegister" name="pageRegister">
+       <layout class="QVBoxLayout" name="pageRegisterLayout"/>
+      </widget>
+      <widget class="ScreenMainWork" name="pageWork">
+       <layout class="QVBoxLayout" name="pageWorkLayout"/>
+      </widget>
+      <widget class="ScreenUserProfile" name="pageProfile">
+       <layout class="QVBoxLayout" name="pageProfileLayout"/>
+      </widget>
      </widget>
     </item>
    </layout>
-  </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>1199</width>
-     <height>24</height>
-    </rect>
-   </property>
-   <widget class="QMenu" name="menu">
-    <property name="title">
-     <string>Меню</string>
-    </property>
-    <addaction name="separator"/>
-    <addaction name="userProfileAction"/>
-    <addaction name="exitAction"/>
-   </widget>
-   <addaction name="menu"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="userProfileAction">

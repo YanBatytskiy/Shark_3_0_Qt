@@ -32,13 +32,13 @@ public:
   void fillMessageModelWithData(std::size_t chatId);
   void clearMessageModelWithData();
 
-  void createSession();
+  void ResetViewToInit();
 
+  void createSession();
   void setupUserList();
   void setupScreenChatting();
 
   void clearChatListModelWithData();
-
   void refillChatListModelWithData(bool allChats);
 
   void sendMessageCommmand(const QModelIndex idx,
@@ -47,10 +47,11 @@ public:
   void resetCountUnreadMessagesCommmand();
 
 signals:
-  void signalStartNewChat(const QString &login);
+  void signalStartNewChat(bool turnOn);
   void signalAddContactToNewChat(UserListModel* newChatUserListModel, const QString &value);
   void signalClearUserDataToLabels();
   void signalMainWorkTransferrNewChatToMainChatList();
+  void signalLogOut();
 
 public slots:
 
@@ -75,11 +76,11 @@ private slots:
 
   void on_findLineEdit_textChanged(const QString &arg1);
 
-  void on_findPushButton_clicked();
-
   void on_findLineEdit_editingFinished();
 
   void on_mainWorkUsersList_doubleClicked(const QModelIndex &index);
+
+  void on_logOutPushButton_clicked();
 
 private:
   Ui::ScreenMainWork *ui;

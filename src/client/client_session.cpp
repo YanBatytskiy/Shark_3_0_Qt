@@ -43,6 +43,11 @@ ClientSession::ClientSession(ChatSystem &client, QObject *parent) : QObject(pare
 // qt methods
 
 // itilities
+
+bool ClientSession::reInitilizeBaseQt(){
+  return reInitilizeBaseCl();
+}
+
 bool ClientSession::checkLoginPsswordQt(std::string login, std::string password) {
 
   auto passHash = picosha2::hash256_hex_string(password);
@@ -120,7 +125,7 @@ std::optional<std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>> 
   return result;
 }
 
-bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat>& chat_ptr, std::vector<std::string> &participants, Message &newMessage) {
+bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std::vector<std::string> &participants, Message &newMessage) {
 
   bool result = true;
 
@@ -882,6 +887,46 @@ bool ClientSession::initServerConnection() {
 void ClientSession::resetSessionData() {
   _instance = ChatSystem(); // пересоздание всего chatSystem (users, chats, id)
 }
+
+bool ClientSession::reInitilizeBaseCl() {
+  UserLoginDTO userLoginDTO;
+  userLoginDTO.login = "reInitilizeBase";
+  PacketDTO packetDTO;
+  packetDTO.reqDirection = RequestDirection::ClientToSrv;
+  packetDTO.structDTOClassType = StructDTOClassType::userLoginDTO;
+
+  packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserLoginDTO>>(userLoginDTO);
+
+  packetDTO.requestType = RequestType::RqFrClientReInitializeBase;
+
+  std::vector<PacketDTO> packetDTOListSend;
+  packetDTOListSend.push_back(packetDTO);
+
+  PacketListDTO packetListDTOresult;
+  packetListDTOresult.packets.clear();
+
+  packetListDTOresult = processingRequestToServer(packetDTOListSend, packetDTO.requestType);
+
+  try {
+    if (packetListDTOresult.packets[0].requestType != packetDTO.requestType)
+      throw exc_qt::WrongresponceTypeException();
+
+      const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(*packetListDTOresult.packets[0].structDTOPtr)
+                             .getStructDTOClass();
+
+    if (packet.reqResult)
+      return true;
+    else
+      return false;
+  } // try
+  catch (const exc_qt::WrongresponceTypeException &ex) {
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "Клиент: Переинициализация базы. Неверный тип ответа с сервера."));
+    return false;
+  }
+}
+
 //
 //
 //
@@ -1059,15 +1104,15 @@ bool ClientSession::createNewChatCl(std::shared_ptr<Chat> &chat, ChatDTO &chatDT
           //   std::cout << "[DEBUG] anyString = '" << packetDTO.anyString << "'" << std::endl;
 
           auto generalMessageId = parseGetlineToSizeT(packetDTO.anyString);
-          
-          const auto& temp = chat->getMessages();
+
+          const auto &temp = chat->getMessages();
 
           if (chat->getMessages().empty())
-          throw exc_qt::CreateMessageException();
-        
-        chat->getMessages().begin()->second->setMessageId(generalMessageId);
+            throw exc_qt::CreateMessageException();
 
-        // добавляем чат в систему
+          chat->getMessages().begin()->second->setMessageId(generalMessageId);
+
+          // добавляем чат в систему
           // _instance.addChatToInstance(chat);
         }
       }

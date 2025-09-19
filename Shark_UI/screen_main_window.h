@@ -1,10 +1,9 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "client_session.h"
 #include <QMainWindow>
 #include <memory>
-#include "client_session.h"
-
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -23,13 +22,14 @@ public:
   void setRegistrationForm();
   void setworkForm();
 
+signals:
 
 public slots:
-  void onRejectedRequested();
   void onLoggedIn(QString login);
+  void slotOnLogOut();
+  void slotonRejectedRequested();
 
 private slots:
-  void on_exitAction_triggered();
 
 private:
   Ui::MainWindow *ui;

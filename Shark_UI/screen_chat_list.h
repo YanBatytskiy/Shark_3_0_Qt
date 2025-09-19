@@ -35,8 +35,6 @@ signals:
 private:
   Ui::ScreenChatList *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
-
-  // ChatListModel* _ChatListModel;
 };
 
 #endif // CHAT_LIST_VIEW_SCREEN_H

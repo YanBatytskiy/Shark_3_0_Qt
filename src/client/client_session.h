@@ -62,6 +62,9 @@ public:
 
   // qt methods
   //  utilities
+
+  bool reInitilizeBaseQt();
+
   bool checkLoginPsswordQt(std::string login, std::string password);
 
   bool registerClientOnDeviceQt(std::string login);
@@ -134,6 +137,8 @@ public:
 
   void resetSessionData();
 
+  bool reInitilizeBaseCl();
+
   const std::size_t createNewMessageIdFromCl() const;
 
   bool registerClientToSystemCl(const std::string &login);
@@ -146,6 +151,7 @@ public:
 
   // отправить на сервер lastReadMessage
   bool sendLastReadMessageFromClient(const std::shared_ptr<Chat> &chat_ptr, std::size_t messageId);
+
   //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   // transport setters
 

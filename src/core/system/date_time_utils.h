@@ -3,11 +3,7 @@
 #include <cstdint>
 #include <ctime>
 
-/**
- * @return String containing the current date and time.
- * @brief Retrieves the current date and time as a string.
- */
-// std::string getCurrentDateTime(); // вернет строку с текущей датой и временем
+std::int64_t makeTimeStamp(int year, int month, int day, int hour, int minute, int second);
 
 int64_t getCurrentDateTimeInt(); // вернет количество миллисекунд
 

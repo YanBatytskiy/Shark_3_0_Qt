@@ -14,6 +14,11 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 
+if(APPLE)
+  set(CMAKE_PREFIX_PATH "/opt/homebrew;/opt/homebrew/opt/qt" CACHE STRING "" FORCE)
+  set(Qt6_DIR "/opt/homebrew/opt/qt/lib/cmake/Qt6" CACHE PATH "" FORCE)
+endif()
+
 find_package(PostgreSQL REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Core)

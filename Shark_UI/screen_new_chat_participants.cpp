@@ -8,7 +8,7 @@
 ScreenNewChatParticipants::ScreenNewChatParticipants(QWidget *parent) : QWidget(parent),
                                                                         ui(new Ui::ScreenNewChatParticipants) {
   ui->setupUi(this);
-  this->setVisible(false);
+  this->setEnabled(false);
 
   _participantsListModel = new QStringListModel(this);
 
@@ -19,9 +19,12 @@ ScreenNewChatParticipants::~ScreenNewChatParticipants() {
   delete ui;
 }
 
-void ScreenNewChatParticipants::slotCollectParticipantsForNewChat(const QString &login) {
-  this->setVisible(true);
-  this->setEnabled(true);
+void ScreenNewChatParticipants::slotCollectParticipantsForNewChat(bool turnOn) {
+
+  if (turnOn)
+    this->setEnabled(true);
+  else
+    this->setEnabled(false);
 }
 
 void ScreenNewChatParticipants::slotAddContactToParticipantsList(UserListModel* newChatUserListModel,
@@ -45,11 +48,8 @@ void ScreenNewChatParticipants::slotAddContactToParticipantsList(UserListModel* 
 
 void ScreenNewChatParticipants::slotScreenNewChatTransferrNewChatToMainChatList() {
 
-  // // вызываем нажатие клавиши отмены создания нового чата
-  // on_screenNewChatDeleteContactPushButton_clicked();
-
-  this->setVisible(false);
   this->setEnabled(false);
+  this->setVisible(false);
 
   ui->screenUserDataCreateNewChatPushButton->setEnabled(true);
 
@@ -58,6 +58,7 @@ void ScreenNewChatParticipants::slotScreenNewChatTransferrNewChatToMainChatList(
   ui->screenUserDataNewChatUsersList->setEnabled(true);
 
   _participantsListModel->setStringList({});
+
   emit signalCancelNewChat();
 }
 

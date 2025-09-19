@@ -40,7 +40,7 @@
        <height>16777215</height>
       </size>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_3">
+     <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
@@ -186,53 +186,6 @@ border-radius: 8px;</string>
           </property>
          </widget>
         </item>
-        <item>
-         <spacer name="horizontalSpacer_4">
-          <property name="orientation">
-           <enum>Qt::Orientation::Horizontal</enum>
-          </property>
-          <property name="sizeType">
-           <enum>QSizePolicy::Policy::Fixed</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>5</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item>
-         <widget class="QPushButton" name="findPushButton">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>0</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>16777215</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="text">
-           <string/>
-          </property>
-          <property name="icon">
-           <iconset theme="QIcon::ThemeIcon::EditFind"/>
-          </property>
-         </widget>
-        </item>
        </layout>
       </item>
       <item>
@@ -266,7 +219,7 @@ border-radius: 8px;</string>
          </size>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <property name="elideMode">
          <enum>Qt::TextElideMode::ElideNone</enum>
@@ -281,7 +234,7 @@ border-radius: 8px;</string>
          <attribute name="title">
           <string>Чаты</string>
          </attribute>
-         <layout class="QVBoxLayout" name="verticalLayout_2"/>
+         <layout class="QVBoxLayout" name="mainWorkTabChatsListLayout"/>
         </widget>
         <widget class="QWidget" name="mainWorkTabUsersList">
          <property name="sizePolicy">
@@ -356,6 +309,16 @@ border-radius: 8px;</string>
         </widget>
        </widget>
       </item>
+      <item>
+       <widget class="QPushButton" name="logOutPushButton">
+        <property name="styleSheet">
+         <string notr="true">background-color: rgb(255, 195, 201);</string>
+        </property>
+        <property name="text">
+         <string>Log Out</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
@@ -371,7 +334,7 @@ border-radius: 8px;</string>
       <enum>QFrame::Shape::Box</enum>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <widget class="ScreenChatting" name="mainWorkPageChatting">
       <property name="sizePolicy">
@@ -380,6 +343,7 @@ border-radius: 8px;</string>
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
+      <layout class="QVBoxLayout" name="mainWorkPageChattingLayout"/>
      </widget>
      <widget class="ScreenUserData" name="mainWorkPageUserDataView">
       <property name="sizePolicy">
@@ -388,18 +352,13 @@ border-radius: 8px;</string>
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
+      <layout class="QVBoxLayout" name="mainWorkPageUserDataViewLayout"/>
      </widget>
     </widget>
    </item>
   </layout>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>ScreenChatting</class>
-   <extends>QWidget</extends>
-   <header>screen_chatting.h</header>
-   <container>1</container>
-  </customwidget>
   <customwidget>
    <class>ScreenChatList</class>
    <extends>QWidget</extends>
@@ -410,6 +369,12 @@ border-radius: 8px;</string>
    <class>ScreenUserData</class>
    <extends>QWidget</extends>
    <header>screen_user_data.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ScreenChatting</class>
+   <extends>QWidget</extends>
+   <header>screen_chatting.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

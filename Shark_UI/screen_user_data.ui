@@ -49,10 +49,13 @@
         <property name="orientation">
          <enum>Qt::Orientation::Vertical</enum>
         </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Policy::Fixed</enum>
+        </property>
         <property name="sizeHint" stdset="0">
          <size>
           <width>20</width>
-          <height>19</height>
+          <height>5</height>
          </size>
         </property>
        </spacer>
@@ -117,6 +120,9 @@
             <width>250</width>
             <height>0</height>
            </size>
+          </property>
+          <property name="autoFillBackground">
+           <bool>false</bool>
           </property>
           <property name="styleSheet">
            <string notr="true">background-color: rgb(239, 238, 240);
@@ -319,12 +325,12 @@ border-color: rgb(0, 0, 0);</string>
        </layout>
       </item>
       <item>
-       <widget class="QLabel" name="blockedUserLabel">
+       <widget class="QLabel" name="bunnedToDateUserLabel">
         <property name="styleSheet">
          <string notr="true">color: rgb(192, 28, 40);</string>
         </property>
         <property name="text">
-         <string>Контакт заблокирован.</string>
+         <string>Контакт забанен до:</string>
         </property>
        </widget>
       </item>
@@ -345,12 +351,12 @@ border-color: rgb(0, 0, 0);</string>
        </spacer>
       </item>
       <item>
-       <widget class="QLabel" name="bunnedToDateUserLabel">
+       <widget class="QLabel" name="blockedUserLabel">
         <property name="styleSheet">
          <string notr="true">color: rgb(192, 28, 40);</string>
         </property>
         <property name="text">
-         <string>Контакт забанен до:</string>
+         <string>Контакт заблокирован.</string>
         </property>
        </widget>
       </item>
@@ -388,6 +394,7 @@ border-color: rgb(0, 0, 0);</string>
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
+        <layout class="QVBoxLayout" name="ScreenNewChatParticipantsWidgetLayout"/>
        </widget>
       </item>
       <item>
@@ -447,6 +454,7 @@ border-color: rgb(0, 0, 0);</string>
        <property name="styleSheet">
         <string notr="true">background-color: rgb(246, 245, 244);</string>
        </property>
+       <layout class="QVBoxLayout" name="ScreenUserDataChatsListWidgetLayout"/>
       </widget>
      </item>
     </layout>
@@ -481,6 +489,7 @@ border-color: rgb(0, 0, 0);</string>
        <height>0</height>
       </size>
      </property>
+     <layout class="QVBoxLayout" name="ScreenUserDataMessagesListWidgetLayout"/>
     </widget>
    </item>
    <item>
@@ -500,15 +509,15 @@ border-color: rgb(0, 0, 0);</string>
  </widget>
  <customwidgets>
   <customwidget>
-   <class>ScreenChatting</class>
-   <extends>QWidget</extends>
-   <header>screen_chatting.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>ScreenChatList</class>
    <extends>QWidget</extends>
    <header>screen_chat_list.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ScreenChatting</class>
+   <extends>QWidget</extends>
+   <header>screen_chatting.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

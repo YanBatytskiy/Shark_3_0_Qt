@@ -39,6 +39,7 @@ enum class RequestType {
 
   // transport
   RqFrSrvSynchroUser = 16,
+  RqFrClientReInitializeBase = 17,
 };
 
 enum class StructDTOClassType {

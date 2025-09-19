@@ -1,5 +1,6 @@
 #include "sql_server.h"
 #include "dto_struct.h"
+#include "init_sql_requests.h"
 #include "exceptions_cpp/sql_exception.h"
 #include "message/message_content.h"
 #include "message/message_content_struct.h"
@@ -15,6 +16,58 @@
 #include <vector>
 
 // utilities
+bool initDatabaseOnServer(PGconn *conn) {
+    std::multimap<int, std::string> sqlRequests;
+  std::multimap<int, std::string> temp_sql;
+  std::multimap<int, std::string> sqlDescription;
+
+  sqlRequests.clear();
+  PGresult *result;
+
+  // проверяем пустая ли база
+  //   bool emptyResult = checkEmptyBaseSQL(conn);
+  bool emptyResult = true;
+
+  // если база пустая, то мы ее заполняем
+  if (emptyResult) {
+
+    // очищаем
+    clearBaseSQL(conn);
+
+    // заполняем
+    sqlRequests = createInitTablesSQL();
+    sqlDescription.insert({1, "chats"});
+    sqlDescription.insert({2, "users"});
+    sqlDescription.insert({3, "messages"});
+    sqlDescription.insert({4, "message_status"});
+    sqlDescription.insert({5, "users_passhash"});
+    sqlDescription.insert({6, "participants"});
+    sqlDescription.insert({7, "insert users"});
+    sqlDescription.insert({8, "users_buns"});
+    sqlDescription.insert({9, "Chat 1"});
+    sqlDescription.insert({10, "Chat 2"});
+
+    sqlRequests.insert({9, createChatFirstSQL().begin()->second});
+    result = execTransactionToSQL(conn, sqlRequests, sqlDescription);
+
+    sqlRequests.clear();
+    sqlRequests.insert({10, createChatSecondSQL().begin()->second});
+    result = execTransactionToSQL(conn, sqlRequests, sqlDescription);
+
+    bool ok = (result != nullptr);
+    if (result)
+      PQclear(result);
+    return ok;
+    // если база не пустая, то мы проверяем ее целостность
+  } else {
+    return true;
+    // если база битая, предлагаем пользователю либо пересоздать ее либо выйти
+    clearBaseSQL(conn);
+  }
+  return true;
+
+}
+
 bool checkEmptyBaseSQL(PGconn *conn) {
 
   std::string sql = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';";

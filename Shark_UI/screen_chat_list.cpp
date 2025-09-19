@@ -21,7 +21,7 @@ ScreenChatList::ScreenChatList(QWidget *parent)
   // Даёт виджету события движения мыши даже без нажатия кнопок.
   ui->chatListView->setMouseTracking(true);
 
-  ui->chatListView->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+  ui->chatListView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
   ui->chatListView->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
   ui->chatListView->setWordWrap(false);
   ui->chatListView->setTextElideMode(Qt::ElideNone);

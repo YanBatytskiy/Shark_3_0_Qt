@@ -3,24 +3,18 @@
 #include <cstdint>
 #include <ctime>
 
-/**
- * @brief Retrieves the current date and time as a string.
- * @return String in the format "YYYY-MM-DD, HH:MM:SS".
- * @details Uses local time to format the current date and time.
- */
-// std::string getCurrentDateTime() { // вернет строку с текущей датой и временем
+std::int64_t makeTimeStamp(int year, int month, int day, int hour, int minute, int second) {
+  tm tm = {};
+  tm.tm_year = year - 1900; // годы от 1900
+  tm.tm_mon = month - 1;    // месяцы от 0
+  tm.tm_mday = day;
+  tm.tm_hour = hour;
+  tm.tm_min = minute;
+  tm.tm_sec = second;
 
-//   time_t mytime = time(NULL);
-//   struct tm *now = localtime(&mytime);
-
-//   char date_stamp[20];
-//   char time_stamp[20];
-
-//   std::strftime(date_stamp, sizeof(date_stamp), "%Y-%m-%d", now);
-//   std::strftime(time_stamp, sizeof(time_stamp), "%H:%M:%S", now);
-
-//   return std::string(date_stamp) + ", " + time_stamp;
-// }
+  time_t timeT = mktime(&tm);                // локальное время
+  return static_cast<int64_t>(timeT) * 1000; // миллисекунды
+}
 
 int64_t getCurrentDateTimeInt() // вернет количество миллисекунд
 {

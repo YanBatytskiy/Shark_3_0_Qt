@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+bool initDatabaseOnServer(PGconn *conn);
+
 bool checkEmptyBaseSQL(PGconn *conn);
 
 bool clearBaseSQL(PGconn *conn);

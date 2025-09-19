@@ -259,6 +259,10 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
 
   // check and registry User
   switch (packetDTOrequestType) {
+  case RequestType::RqFrClientReInitializeBase: {
+    if(!processingRqFrClientReInitializeBase()) return false;
+    break;
+  }
   case RequestType::RqFrClientCheckLogin:
   case RequestType::RqFrClientCheckLogPassword:
   case RequestType::RqFrClientRegisterUser:
@@ -287,6 +291,17 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   }
   return true;
 }
+
+bool ServerSession::processingRqFrClientReInitializeBase(){
+
+  if (!initDatabaseOnServer(_pqConnection)) {
+    std::cout << "Не удалось инициаизировать базу на сервере. \n";
+    return false;
+  };
+  return true;
+
+}
+
 bool ServerSession::processingCheckAndRegistryUser(PacketListDTO &packetListReceived, const RequestType &requestType,
                                                    int connection) {
 

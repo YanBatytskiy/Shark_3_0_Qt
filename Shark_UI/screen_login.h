@@ -37,6 +37,8 @@ private slots:
   void on_loginEdit_returnPressed();
   void on_passwordEdit_returnPressed();
 
+  void on_baseReInitialisationPushButton_clicked();
+
 private:
   Ui::ScreenLogin *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
