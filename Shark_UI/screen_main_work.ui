@@ -98,6 +98,16 @@ border-radius: 8px;</string>
           </property>
          </spacer>
         </item>
+        <item>
+         <widget class="QPushButton" name="ProfilePushButton">
+          <property name="styleSheet">
+           <string notr="true">background-color: rgb(109, 182, 136);</string>
+          </property>
+          <property name="text">
+           <string>Профиль</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
       <item>

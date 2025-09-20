@@ -47,12 +47,16 @@ ScreenMainWork::ScreenMainWork(QWidget *parent)
 
     // связь: сигнал добавления контакта - слот добавления контакта в список
     connect(this, &ScreenMainWork::signalAddContactToNewChat, w, &ScreenNewChatParticipants::slotAddContactToParticipantsList);
+
+    // связь: сигнал включения списка получателей нового чата - слот на выключение кнопок блокирования и бана
+    connect(w, &ScreenNewChatParticipants::signalNewChatUserListBecameEnabled, this, &ScreenMainWork::slotNewChatUserListBecameEnabled);
+
   }
 
   // связь: начало редактирования поиска контактов - очистка данных на форме пользователяя
   connect(this, &ScreenMainWork::signalClearUserDataToLabels,
           ui->mainWorkPageUserDataView, &ScreenUserData::slotClearUserDataToLabels,
-          Qt::UniqueConnection);
+          Qt::UniqueConnection);  
 }
 
 ScreenMainWork::~ScreenMainWork() { delete ui; }
@@ -415,6 +419,19 @@ void ScreenMainWork::slotMakeNewChat(int quantity, const QStringListModel* parti
   }
 }
 
+void ScreenMainWork::slotNewChatUserListBecameEnabled()
+{
+
+  if (auto b = ui->mainWorkPageUserDataView->findChild<QPushButton*>("blockPushButton"))
+    b->setEnabled(false);
+  if (auto b = ui->mainWorkPageUserDataView->findChild<QPushButton*>("unblockPushButton"))
+    b->setEnabled(false);
+  if (auto b = ui->mainWorkPageUserDataView->findChild<QPushButton*>("banPushButton"))
+    b->setEnabled(false);
+  if (auto b = ui->mainWorkPageUserDataView->findChild<QPushButton*>("unBunPushButton"))
+    b->setEnabled(false);
+  }
+
 void ScreenMainWork::slotMainWorkTransferrNewChatToMainChatList() {
 
   // запускаем обработку в дочерних окнах
@@ -638,7 +655,7 @@ void ScreenMainWork::setupScreenChatting() {
 
   //!!!
   // связь: сигнал отправить сообщение из общего списка чатов - метод отправки сообщения
-  connect(ui->mainWorkPageChatting, &ScreenChatting::signalsendMessage, this, [this] {
+  connect(ui->mainWorkPageChatting, &ScreenChatting::signalSendMessage, this, [this] {
     QModelIndex idx;
 
     idx = ui->mainWorkTabChatsList->getCcurrentChatIndex();
@@ -719,7 +736,7 @@ void ScreenMainWork::setupScreenChatting() {
 
   // связываем сигнал от экрана редактирования сообщения с методом отправки сообщения
   connect(MessageChattingInUser,
-          &ScreenChatting::signalsendMessage,
+          &ScreenChatting::signalSendMessage,
           this,
           [this, chatListInUser, MessageChattingInUser] {
             const auto &idx = chatListInUser->getCcurrentChatIndex();
@@ -737,7 +754,10 @@ void ScreenMainWork::setupScreenChatting() {
             if (newMessageText.trimmed().isEmpty())
               return;
 
-            sendMessageCommmand(idx, currentChatId, newMessageText, false);
+            if (currentChatId != 0)
+              sendMessageCommmand(idx, currentChatId, newMessageText, false);
+            else
+              sendMessageCommmand(idx, currentChatId, newMessageText, true);
 
             if (!chatListInUser)
               return;
@@ -871,17 +891,29 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
                                false);
 
     // заполняем получателей
-    std::vector<std::string> participants;
+    std::vector<UserDTO> participants;
     participants.clear();
 
-    participants.push_back(_sessionPtr->getActiveUserCl()->getLogin());
+    UserDTO userDTO;
+    userDTO.login = _sessionPtr->getActiveUserCl()->getLogin();
+    participants.push_back(userDTO);
 
     for (int i = 0; i < _newChatUserListModel->rowCount(); ++i) {
 
+      UserDTO userDTO;
       const auto &idx = _newChatUserListModel->index(i, 0);
-      const auto &login = idx.data(UserListModel::LoginRole).toString().toStdString();
 
-      participants.push_back(login);
+      userDTO.login = idx.data(UserListModel::LoginRole).toString().toStdString();
+      userDTO.userName = idx.data(UserListModel::NameRole).toString().toStdString();
+      userDTO.passwordhash = "-1";
+      userDTO.email = idx.data(UserListModel::EmailRole).toString().toStdString();
+      userDTO.phone = idx.data(UserListModel::PhoneRole).toString().toStdString();
+      userDTO.disable_reason = idx.data(UserListModel::DisableReasonRole).toString().toStdString();
+      userDTO.is_active = idx.data(UserListModel::IsActiveRole).toBool();
+      userDTO.disabled_at = idx.data(UserListModel::DisableAtRole).toULongLong();
+      userDTO.ban_until = idx.data(UserListModel::BunUntilRole).toULongLong();
+
+      participants.push_back(userDTO);
     }
 
     // bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std::vector<std::string> &participants, Message &newMessage)
@@ -893,39 +925,7 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
     if (!result) {
       QMessageBox::warning(this, tr("Ошибка!"), tr("Невозможно отправить сообщение."));
       return;
-    } else {
-
-      // определили id нового сообщения с сервера
-      newMessageId =  chat_ptr->getMessages().begin()->second->getMessageId();
-
-      // создаем пользователей в системе если их нет
-      for (int i = 0; i < _newChatUserListModel->rowCount(); ++i) {
-
-        const auto &idx = _newChatUserListModel->index(i, 0);
-        const auto &login = idx.data(UserListModel::LoginRole).toString().toStdString();
-        const auto &user_ptr = _sessionPtr->getInstance().findUserByLogin(login);
-
-        if (user_ptr == nullptr) {
-
-          auto newUser_ptr = std::make_shared<User>(UserData(
-              login,
-              idx.data(UserListModel::NameRole).toString().toStdString(),
-              "-1",
-              idx.data(UserListModel::EmailRole).toString().toStdString(),
-              idx.data(UserListModel::PhoneRole).toString().toStdString(),
-              idx.data(UserListModel::DisableReasonRole).toString().toStdString(),
-              idx.data(UserListModel::IsActiveRole).toBool(),
-              idx.data(UserListModel::DisableAtRole).toULongLong(),
-              idx.data(UserListModel::BunUntilRole).toULongLong()));
-
-          _sessionPtr->getInstance().addUserToSystem(newUser_ptr);
-        } // if user_ptr
-      } // for
-
-      // затем добавляем чат в систему
-      _sessionPtr->getInstance().addChatToInstance(chat_ptr);
-
-    } // if else !result
+    }
 
     // заменили в модели чатов
     _ChatListModel->setChatId(idx.row(), chat_ptr->getChatId());
@@ -969,12 +969,10 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
   // заменили в модели чатов
   _ChatListModel->setLastTime(idx.row(), newMessageTimeStamp);
 
-  refillChatListModelWithData(true);
 
   if (newChatBool) {
 
     slotMainWorkTransferrNewChatToMainChatList();
-    // slotCancelNewChat();
 
     ui->createNewChatPushButton->setEnabled(true);
 
@@ -982,7 +980,13 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
     ui->mainWorkChatUserTabWidget->setCurrentIndex(0);
 
     ui->addUserToChatPushButton->setVisible(true);
+
+    clearChatListModelWithData();
+    clearMessageModelWithData();
+    fillChatListModelWithData(true);
   }
+  else
+    refillChatListModelWithData(true);
 }
 
 void ScreenMainWork::resetCountUnreadMessagesCommmand()
@@ -1061,10 +1065,6 @@ void ScreenMainWork::on_createNewChatPushButton_clicked() {
   if (!MessageChattingInUser)
     return;
 
-  // ui->mainWorkPageUserDataView->blockPushButton->setEnabled(false);
-  // ui->mainWorkPageUserDataView->unblockPushButton->setEnabled(false);
-  // ui->mainWorkPageUserDataView->bunToPushButton->setEnabled(false);
-  // ui->mainWorkPageUserDataView->unBunToPushButton->setEnabled(false);
 
   _newChatUserListModel = new UserListModel();
 
@@ -1142,3 +1142,9 @@ void ScreenMainWork::on_mainWorkUsersList_doubleClicked(const QModelIndex &index
 void ScreenMainWork::on_logOutPushButton_clicked() {
   emit signalLogOut();
 }
+
+void ScreenMainWork::on_ProfilePushButton_clicked()
+{
+  emit signalShowProfile();
+}
+

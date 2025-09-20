@@ -3,6 +3,7 @@
 #include "ui_screen_main_window.h"
 
 #include <QTimeZone>
+#include <QPushButton>
 
 MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr,
                        QWidget *parent)
@@ -26,9 +27,16 @@ MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr,
           &MainWindow::setLoginForm);
   connect(ui->pageRegister, &ScreenRegister::rejected, this,
           &MainWindow::slotonRejectedRequested);
-  if (auto w = ui->pageWork)
 
+  if (auto w = ui->pageWork) {
     connect(ui->pageWork, &ScreenMainWork::signalLogOut, this, &MainWindow::slotOnLogOut);
+
+    connect(ui->pageWork, &ScreenMainWork::signalShowProfile, this, &MainWindow::slotShowProfile);
+  }
+
+  auto w = ui->mainWindowstackedWidget->findChild<ScreenUserProfile*>("pageProfile");
+
+      connect(w, &ScreenUserProfile::signalCloseUserProfile,this, &MainWindow::slotCloseProfile);
 
   setLoginForm();
 }
@@ -73,4 +81,25 @@ void MainWindow::slotonRejectedRequested() {
     _sessionPtr->stopConnectionThread(); // ← остановка фонового соединения
   }
   close();
+}
+
+void MainWindow::slotShowProfile()
+{
+  QWidget *page = ui->mainWindowstackedWidget->findChild<QWidget* >("pageProfile");
+  ui->mainWindowstackedWidget->setCurrentWidget(page);
+
+  auto w = ui->mainWindowstackedWidget->findChild<ScreenUserProfile*>("pageProfile");
+  auto b = w->findChild<QPushButton* >("savePushButton");
+  b->setEnabled(false);
+
+  b = w->findChild<QPushButton* >("changePasswordPushButton");
+  b->setEnabled(false);
+
+}
+
+void MainWindow::slotCloseProfile()
+{
+  QWidget *page = ui->mainWindowstackedWidget->findChild<QWidget* >("pageWork");
+  ui->mainWindowstackedWidget->setCurrentWidget(page);
+
 }

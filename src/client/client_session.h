@@ -75,7 +75,10 @@ public:
 
   std::optional<std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>> getChatListQt();
 
-  bool CreateAndSendNewChatQt(std::shared_ptr<Chat>& chat_ptr, std::vector<std::string> &participants, Message &newMessage);
+  bool CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std::vector<UserDTO> &participants, Message &newMessage);
+
+    bool createUserQt(std::shared_ptr<User> &user);
+
 
   // threads
 

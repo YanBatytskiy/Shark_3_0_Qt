@@ -1,5 +1,6 @@
 #include "screen_register.h"
 #include "ui_screen_register.h"
+#include <QMessageBox>
 
 ScreenRegister::ScreenRegister(QWidget *parent)
     : QWidget(parent), ui(new Ui::ScreenRegister) {
@@ -50,3 +51,34 @@ void ScreenRegister::on_registerButtonBox_rejected() {
   clearFields();
   emit rejected();
 }
+
+void ScreenRegister::on_loginEdit_editingFinished()
+{
+  if (!_sessionPtr->inputNewLoginValidationQt(ui->loginEdit->text().toStdString(),5,20)) {
+    QMessageBox::critical(this,"Ошибка", "Недопустимый логин. Наведи мышку на поле для полсказки.");
+    ui->loginEdit->setStyleSheet("QLineEdit { color: red; }");
+  }
+  ui->loginEdit->setStyleSheet("QLineEdit { color: black; }");
+}
+
+
+void ScreenRegister::on_nameEdit_editingFinished()
+{
+  if (!_sessionPtr->inputNewLoginValidationQt(ui->nameEdit->text().toStdString(),2,20)) {
+    QMessageBox::critical(this,"Ошибка", "Недопустимое имя. Наведи мышку на поле для полсказки.");
+    ui->nameEdit->setStyleSheet("QLineEdit { color: red; }");
+  }
+  ui->nameEdit->setStyleSheet("QLineEdit { color: black; }");
+
+}
+
+
+void ScreenRegister::on_passwordEdit_editingFinished() {
+  if (!_sessionPtr->inputNewPasswordValidationQt(ui->passwordEdit->text().toStdString(), 5, 20)) {
+    QMessageBox::critical(this, "Ошибка", "Недопустимый пароль. Наведи мышку на поле для полсказки.");
+      ui->passwordEdit->setStyleSheet("QLineEdit { color: red; }");
+  }
+ui->passwordEdit->setStyleSheet("QLineEdit { color: black; }");
+
+}
+

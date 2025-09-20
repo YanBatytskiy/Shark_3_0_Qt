@@ -24,7 +24,8 @@ public:
   QTextEdit* getScreenChattingNewMessageTextEdit() const;
 
 signals:
-  void signalsendMessage();
+  void signalSendMessage();
+  void signalSendNewMessage();
 
 private slots:    
     void on_ScreenChattingSendMessagePushButton_clicked();

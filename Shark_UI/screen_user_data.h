@@ -25,6 +25,9 @@ public:
 
   void setUserDataToLabels(const QModelIndex& index);
 
+signals:
+  void signalNewChatListBecameEnabled();
+
 private:
   Ui::ScreenUserData *ui;
   std::shared_ptr<ClientSession> _sessionPtr;

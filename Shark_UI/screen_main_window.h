@@ -23,11 +23,14 @@ public:
   void setworkForm();
 
 signals:
+  void signalChangeUserData();
 
 public slots:
   void onLoggedIn(QString login);
   void slotOnLogOut();
   void slotonRejectedRequested();
+  void slotShowProfile();
+  void slotCloseProfile();
 
 private slots:
 

@@ -136,6 +136,11 @@ bool ChatSystem::addChatToInstance(const std::shared_ptr<Chat> &chat_ptr) {
       }
     } else
       _activeUser->getUserChatList()->addChatToChatList(chat_ptr);
+
+    const auto temp = _activeUser->getUserChatList()->getChatFromList();
+
+    int x = 0;
+    
   } // try
   catch (const exc::ChatListNotFoundException &ex) {
     std::cout << " ! " << ex.what() << std::endl;

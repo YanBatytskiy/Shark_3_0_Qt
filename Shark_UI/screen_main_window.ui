@@ -30,7 +30,7 @@
     <item>
      <widget class="QStackedWidget" name="mainWindowstackedWidget">
       <property name="currentIndex">
-       <number>2</number>
+       <number>3</number>
       </property>
       <widget class="ScreenLogin" name="pageLogin">
        <layout class="QVBoxLayout" name="pageLoginLayout"/>

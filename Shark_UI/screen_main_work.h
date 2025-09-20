@@ -52,6 +52,7 @@ signals:
   void signalClearUserDataToLabels();
   void signalMainWorkTransferrNewChatToMainChatList();
   void signalLogOut();
+  void signalShowProfile();
 
 public slots:
 
@@ -62,6 +63,7 @@ public slots:
   void slotAddUserToNewChatList();
   void slotCancelNewChat();
   void slotMakeNewChat(int quantity, const QStringListModel* participantsListModel);
+  void slotNewChatUserListBecameEnabled();
 
   void slotMainWorkTransferrNewChatToMainChatList();
 
@@ -81,6 +83,8 @@ private slots:
   void on_mainWorkUsersList_doubleClicked(const QModelIndex &index);
 
   void on_logOutPushButton_clicked();
+
+  void on_ProfilePushButton_clicked();
 
 private:
   Ui::ScreenMainWork *ui;

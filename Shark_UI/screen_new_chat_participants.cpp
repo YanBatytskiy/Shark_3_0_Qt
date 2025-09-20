@@ -13,6 +13,7 @@ ScreenNewChatParticipants::ScreenNewChatParticipants(QWidget *parent) : QWidget(
   _participantsListModel = new QStringListModel(this);
 
   ui->screenUserDataNewChatUsersList->setModel(_participantsListModel);
+
 }
 
 ScreenNewChatParticipants::~ScreenNewChatParticipants() {
@@ -21,8 +22,10 @@ ScreenNewChatParticipants::~ScreenNewChatParticipants() {
 
 void ScreenNewChatParticipants::slotCollectParticipantsForNewChat(bool turnOn) {
 
-  if (turnOn)
+  if (turnOn) {
     this->setEnabled(true);
+    emit signalNewChatUserListBecameEnabled();
+  }
   else
     this->setEnabled(false);
 }

@@ -54,7 +54,10 @@ return ui->ScreenChattingNewMessageTextEdit;
 
 void ScreenChatting::on_ScreenChattingSendMessagePushButton_clicked()
 {
-    if (ui->ScreenChattingNewMessageTextEdit->toPlainText() != "")
-        emit signalsendMessage();
+  if (ui->ScreenChattingNewMessageTextEdit->toPlainText() != "") {
+
+    emit signalSendMessage();
+
+  }
 }
 

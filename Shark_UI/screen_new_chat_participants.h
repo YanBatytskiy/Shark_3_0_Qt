@@ -21,6 +21,8 @@ public:
 signals:
   void signalCancelNewChat();
   void signalMakeNewChat(int quantity, const QStringListModel* participantsListModel);
+  void signalNewChatUserListBecameEnabled();
+
 
 public slots:
   void slotCollectParticipantsForNewChat(bool turnOn);

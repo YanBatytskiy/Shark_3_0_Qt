@@ -4,7 +4,8 @@
 #include "system/date_time_utils.h"
 
 ScreenUserData::ScreenUserData(QWidget *parent) : QWidget(parent), ui(new Ui::ScreenUserData) { ui->setupUi(this);
-  }
+
+}
 
 ScreenUserData::~ScreenUserData() { delete ui; }
 

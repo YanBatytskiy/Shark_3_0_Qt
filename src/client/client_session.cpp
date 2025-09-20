@@ -125,7 +125,8 @@ std::optional<std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>> 
   return result;
 }
 
-bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std::vector<std::string> &participants, Message &newMessage) {
+// bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std::vector<std::string> &participants, Message &newMessage) {
+bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std::vector<UserDTO> &participants, Message &newMessage) {
 
   bool result = true;
 
@@ -139,7 +140,7 @@ bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std:
     ParticipantsDTO participantsDTO;
 
     // заполняем данные на юзера для регистрации в системе
-    participantsDTO.login = participant;
+    participantsDTO.login = participant.login;
 
     // заполняем lastReadMessage
     participantsDTO.lastReadMessage = 0;
@@ -150,7 +151,7 @@ bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std:
     participantsDTO.deletedFromChat = false;
 
     chatDTO.participants.push_back(participantsDTO);
-  }
+  } // for
 
   MessageDTO messageDTO;
   messageDTO.messageId = 0;
@@ -176,8 +177,48 @@ bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std:
   messageChatDTO.chatId = messageDTO.chatId;
   messageChatDTO.messageDTO.push_back(messageDTO);
 
-  return createNewChatCl(chat_ptr, chatDTO, messageChatDTO);
+  result = createNewChatCl(chat_ptr, chatDTO, messageChatDTO);
+
+  // добавляем участников в чат
+  if (result) {
+
+    const auto newMessageId = chat_ptr->getMessages().begin()->second->getMessageId();
+
+    chat_ptr->addParticipant(this->getActiveUserCl(), newMessageId, false);
+
+    for (const auto &participant : participants) {
+
+      if (participant.login != this->getActiveUserCl()->getLogin()) {
+        const auto &user_ptr = this->getInstance().findUserByLogin(participant.login);
+
+        if (user_ptr == nullptr) {
+          auto newUser_ptr = std::make_shared<User>(UserData(participant.login,
+                                                             participant.userName,
+                                                             "-1",
+                                                             participant.email,
+                                                             participant.phone,
+                                                             participant.disable_reason,
+                                                             participant.is_active,
+                                                             participant.disabled_at,
+                                                             participant.ban_until));
+
+          this->getInstance().addUserToSystem(newUser_ptr);
+          chat_ptr->addParticipant(newUser_ptr, 0, false);
+        } // if
+        else
+          chat_ptr->addParticipant(user_ptr, 0, false);
+      } // if activeuser
+    } // for
+    
+      // затем добавляем чат в систему
+    this->getInstance().addChatToInstance(chat_ptr);
+  } // if
+
+  return result;
 }
+
+    bool ClientSession::createUserQt(std::shared_ptr<User> &user){}
+
 
 // threads
 void ClientSession::startConnectionThread() {
@@ -1027,6 +1068,10 @@ bool ClientSession::createUserCl(std::shared_ptr<User> &user) {
   userDTO.passwordhash = user->getPasswordHash();
   userDTO.email = user->getEmail();
   userDTO.phone = user->getPhone();
+  userDTO.ban_until = user->getBunUntil();
+  userDTO.disable_reason = user->getDisableReason();
+  userDTO.is_active = user->getIsActive();
+  userDTO.disabled_at = user->getDisabledAt();
 
   PacketDTO packetDTO;
   packetDTO.requestType = RequestType::RqFrClientCreateUser;
