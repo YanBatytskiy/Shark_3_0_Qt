@@ -56,7 +56,8 @@ public:
 
   bool routingRequestsFromClient(PacketListDTO &packetListReceived, const RequestType &requestType, int connection);
 
-  bool processingRqFrClientReInitializeBase();
+  bool processingRqFrClientReInitializeBase(PacketListDTO &packetListReceived, const RequestType &requestType,
+                                                   int connection);
 
 
   bool processingCheckAndRegistryUser(PacketListDTO &packetListReceived, const RequestType &requestType,

@@ -49,7 +49,6 @@ void ScreenNewChatParticipants::slotAddContactToParticipantsList(UserListModel* 
 void ScreenNewChatParticipants::slotScreenNewChatTransferrNewChatToMainChatList() {
 
   this->setEnabled(false);
-  this->setVisible(false);
 
   ui->screenUserDataCreateNewChatPushButton->setEnabled(true);
 
@@ -73,7 +72,6 @@ void ScreenNewChatParticipants::on_screenNewChatDeleteContactPushButton_clicked(
 }
 
 void ScreenNewChatParticipants::on_screenUserDataCancelNewChatPushButton_clicked() {
-  this->setVisible(false);
   this->setEnabled(false);
 
   ui->screenUserDataCreateNewChatPushButton->setEnabled(true);

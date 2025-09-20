@@ -219,7 +219,7 @@ border-radius: 8px;</string>
          </size>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
         <property name="elideMode">
          <enum>Qt::TextElideMode::ElideNone</enum>
@@ -334,7 +334,7 @@ border-radius: 8px;</string>
       <enum>QFrame::Shape::Box</enum>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="ScreenChatting" name="mainWorkPageChatting">
       <property name="sizePolicy">
@@ -366,15 +366,15 @@ border-radius: 8px;</string>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>ScreenUserData</class>
-   <extends>QWidget</extends>
-   <header>screen_user_data.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>ScreenChatting</class>
    <extends>QWidget</extends>
    <header>screen_chatting.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ScreenUserData</class>
+   <extends>QWidget</extends>
+   <header>screen_user_data.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

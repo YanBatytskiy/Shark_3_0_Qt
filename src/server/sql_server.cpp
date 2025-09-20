@@ -49,7 +49,7 @@ bool initDatabaseOnServer(PGconn *conn) {
 
     sqlRequests.clear();
     sqlRequests.insert({10, createChatSecondSQL().begin()->second});
-    result = execTransactionToSQL(conn, sqlRequests, sqlDescription);
+     result = execTransactionToSQL(conn, sqlRequests, sqlDescription);
 
     bool ok = (result != nullptr);
     if (result)

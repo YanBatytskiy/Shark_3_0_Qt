@@ -313,10 +313,10 @@ void ScreenMainWork::slotCancelNewChat() {
   if (auto panel = ui->mainWorkPageUserDataView
                        ->findChild<QWidget*>("ScreenUserDataUserDataWidget")) {
     if (auto button1 = panel->findChild<QPushButton*>("banPushButton")) {
-      button1->setVisible(true);
+      button1->setEnabled(true);
     }
     if (auto button2 = panel->findChild<QPushButton*>("blockPushButton")) {
-      button2->setVisible(true);
+      button2->setEnabled(true);
     }
   }
 
@@ -1061,15 +1061,10 @@ void ScreenMainWork::on_createNewChatPushButton_clicked() {
   if (!MessageChattingInUser)
     return;
 
-  if (auto panel = ui->mainWorkPageUserDataView
-                       ->findChild<QWidget *>("ScreenUserDataUserDataWidget")) {
-    if (auto button1 = panel->findChild<QPushButton*>("banPushButton")) {
-      button1->setVisible(false);
-    }
-      if (auto button2 = panel->findChild<QPushButton*>("blockPushButton")) {
-        button2->setVisible(false);
-    }
-  }
+  // ui->mainWorkPageUserDataView->blockPushButton->setEnabled(false);
+  // ui->mainWorkPageUserDataView->unblockPushButton->setEnabled(false);
+  // ui->mainWorkPageUserDataView->bunToPushButton->setEnabled(false);
+  // ui->mainWorkPageUserDataView->unBunToPushButton->setEnabled(false);
 
   _newChatUserListModel = new UserListModel();
 
@@ -1092,6 +1087,9 @@ void ScreenMainWork::on_createNewChatPushButton_clicked() {
     login = _newChatUserListModel->getItem(0).Login;
 
   _newChatMode = true;
+
+  clearChatListModelWithData();
+  clearMessageModelWithData();
 
   emit signalStartNewChat(true);
 }

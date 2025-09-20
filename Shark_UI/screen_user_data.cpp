@@ -49,6 +49,12 @@ void ScreenUserData::setUserDataToLabels(const QModelIndex &index)
 
   const auto &bunTo = index.data(UserListModel::BunUntilRole).toLongLong();
 
+  const auto w = ui->ScreenNewChatParticipantsWidget;
+
+  const bool status = w->isEnabled();
+
+  if (!status)
+  {
   if (bunTo != 0 && bunTo > getCurrentDateTimeInt()) {
     ui->bunnedToDateUserLabel->setText("Бан до: " + QString::fromStdString(
                                                         formatTimeStampToString(bunTo, true)));
@@ -74,4 +80,30 @@ void ScreenUserData::setUserDataToLabels(const QModelIndex &index)
     ui->reasonDisableabel->setText("Причина блокировки: " + reasonDisable);
     ui->reasonDisableabel->setText("");
   }
+}
+  else {
+    ui->unBunPushButton->setEnabled(false);
+    ui->banPushButton->setEnabled(false);
+    ui->unblockPushButton->setEnabled(false);
+    ui->blockPushButton->setEnabled(false);
+
+    if (bunTo != 0 && bunTo > getCurrentDateTimeInt()) {
+      ui->bunnedToDateUserLabel->setText("Бан до: " + QString::fromStdString(
+                                                          formatTimeStampToString(bunTo, true)));
+      ui->reasonDisableabel->setText("Причина блокировки: " + reasonDisable);
+    } else {
+      ui->bunnedToDateUserLabel->setText("");
+    }
+
+    if (isActive) {
+      ui->blockedUserLabel->setText("");
+      ui->reasonDisableabel->setText("");
+    } else {
+      ui->blockedUserLabel->setText("Пользователь заблокирован.");
+      ui->reasonDisableabel->setText("Причина блокировки: " + reasonDisable);
+      ui->reasonDisableabel->setText("");
+    }
+
+}
+
 }

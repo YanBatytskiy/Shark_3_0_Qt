@@ -44,7 +44,7 @@ ClientSession::ClientSession(ChatSystem &client, QObject *parent) : QObject(pare
 
 // itilities
 
-bool ClientSession::reInitilizeBaseQt(){
+bool ClientSession::reInitilizeBaseQt() {
   return reInitilizeBaseCl();
 }
 
@@ -847,6 +847,7 @@ PacketListDTO ClientSession::processingRequestToServer(std::vector<PacketDTO> &p
     // отправили и получили ответ от сервера
     packetListDTOresult = getDatafromServer(packetListBinarySend);
 
+    int x = 1;
   } // try
   catch (const exc_qt::LostConnectionException &ex) {
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
@@ -908,10 +909,14 @@ bool ClientSession::reInitilizeBaseCl() {
   packetListDTOresult = processingRequestToServer(packetDTOListSend, packetDTO.requestType);
 
   try {
+
+    if (packetListDTOresult.packets.empty())
+      throw exc_qt::WrongresponceTypeException();
+
     if (packetListDTOresult.packets[0].requestType != packetDTO.requestType)
       throw exc_qt::WrongresponceTypeException();
 
-      const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(*packetListDTOresult.packets[0].structDTOPtr)
+    const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(*packetListDTOresult.packets[0].structDTOPtr)
                              .getStructDTOClass();
 
     if (packet.reqResult)

@@ -427,7 +427,6 @@ inline std::multimap<int, std::string> createChatSecondSQL() {
     FROM message5_insert, user_yakov
     RETURNING message_id
   ),
-
   participants_insert AS (
     INSERT INTO public.participants (chat_id, user_id, last_read_message_id, deleted_from_chat)
     (

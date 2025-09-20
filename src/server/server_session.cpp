@@ -58,7 +58,7 @@ void ServerSession::runServer(int socketFd) {
       }
     }
     // создаем новое соединение
-    struct sockaddr_in client{};
+    struct sockaddr_in client {};
     socklen_t client_len = sizeof(client);
 
     _connection = accept(socketFd, (struct sockaddr *)&client, &client_len);
@@ -260,7 +260,8 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   // check and registry User
   switch (packetDTOrequestType) {
   case RequestType::RqFrClientReInitializeBase: {
-    if(!processingRqFrClientReInitializeBase()) return false;
+    if (!processingRqFrClientReInitializeBase(packetListReceived, packetDTOrequestType, connection))
+      return false;
     break;
   }
   case RequestType::RqFrClientCheckLogin:
@@ -292,14 +293,41 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   return true;
 }
 
-bool ServerSession::processingRqFrClientReInitializeBase(){
+bool ServerSession::processingRqFrClientReInitializeBase(PacketListDTO &packetListReceived, const RequestType &requestType,
+                                                         int connection) {
 
-  if (!initDatabaseOnServer(_pqConnection)) {
-    std::cout << "Не удалось инициаизировать базу на сервере. \n";
-    return false;
-  };
+  bool result = initDatabaseOnServer(_pqConnection);
+
+  // создали структуру вектора пакетов для отправки
+  PacketListDTO packetDTOListForSend;
+  packetDTOListForSend.packets.clear();
+
+  // отдельный пакет для отправки
+  PacketDTO packetDTOForSend;
+  packetDTOForSend.requestType = requestType;
+  packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
+  packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
+
+  const auto &packet = static_cast<const StructDTOClass<UserLoginDTO> &>(*packetListReceived.packets[0].structDTOPtr)
+                           .getStructDTOClass();
+
+  // пакет для отправки
+  ResponceDTO responceDTO;
+  responceDTO.anyNumber = 0;
+  responceDTO.anyString = "";
+
+  if (result) {
+    responceDTO.reqResult = true;
+  } else {
+    responceDTO.reqResult = false;
+  }
+
+  packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
+
+  packetDTOListForSend.packets.push_back(packetDTOForSend);
+
+  sendPacketListDTO(packetDTOListForSend, connection);
   return true;
-
 }
 
 bool ServerSession::processingCheckAndRegistryUser(PacketListDTO &packetListReceived, const RequestType &requestType,
@@ -407,17 +435,17 @@ bool ServerSession::processingCheckAndRegistryUser(PacketListDTO &packetListRece
     else {
       // пустой ответ
       ResponceDTO responceDTO{};
-    responceDTO.reqResult = false;
-    responceDTO.anyNumber = 0;
-    responceDTO.anyString = "";
+      responceDTO.reqResult = false;
+      responceDTO.anyNumber = 0;
+      responceDTO.anyString = "";
 
-    PacketDTO packetDTOForSend;
-    packetDTOForSend.requestType = RequestType::RqFrClientFindUserByPart;
-    packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
-    packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
-    packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
+      PacketDTO packetDTOForSend;
+      packetDTOForSend.requestType = RequestType::RqFrClientFindUserByPart;
+      packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
+      packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
+      packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
 
-    packetDTOListForSend.packets.push_back(packetDTOForSend);
+      packetDTOListForSend.packets.push_back(packetDTOForSend);
     }
 
     break;

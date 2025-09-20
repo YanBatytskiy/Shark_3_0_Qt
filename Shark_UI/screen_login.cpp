@@ -162,6 +162,6 @@ void ScreenLogin::on_baseReInitialisationPushButton_clicked() {
   if (!result)
     QMessageBox::warning(this, "Ошибка", "Не удалось переинициализировать базу.");
   else {
-    QMessageBox::information(this, "Успешно.", "Нужно перелогиниться.");
+    QMessageBox::information(this, "Успешно.", "Можно входить.");
   }
 }
