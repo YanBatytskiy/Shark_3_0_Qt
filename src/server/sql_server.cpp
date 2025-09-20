@@ -17,21 +17,15 @@
 
 // utilities
 bool initDatabaseOnServer(PGconn *conn) {
-    std::multimap<int, std::string> sqlRequests;
+
+  std::multimap<int, std::string> sqlRequests;
   std::multimap<int, std::string> temp_sql;
   std::multimap<int, std::string> sqlDescription;
 
   sqlRequests.clear();
-  PGresult *result;
+  PGresult *result = nullptr;
 
-  // проверяем пустая ли база
-  //   bool emptyResult = checkEmptyBaseSQL(conn);
-  bool emptyResult = true;
-
-  // если база пустая, то мы ее заполняем
-  if (emptyResult) {
-
-    // очищаем
+  // очищаем
     clearBaseSQL(conn);
 
     // заполняем
@@ -50,6 +44,9 @@ bool initDatabaseOnServer(PGconn *conn) {
     sqlRequests.insert({9, createChatFirstSQL().begin()->second});
     result = execTransactionToSQL(conn, sqlRequests, sqlDescription);
 
+    if (result) { PQclear(result); result = nullptr; }   // <-- закрыли первый PGresult
+    else return false;
+
     sqlRequests.clear();
     sqlRequests.insert({10, createChatSecondSQL().begin()->second});
     result = execTransactionToSQL(conn, sqlRequests, sqlDescription);
@@ -58,45 +55,6 @@ bool initDatabaseOnServer(PGconn *conn) {
     if (result)
       PQclear(result);
     return ok;
-    // если база не пустая, то мы проверяем ее целостность
-  } else {
-    return true;
-    // если база битая, предлагаем пользователю либо пересоздать ее либо выйти
-    clearBaseSQL(conn);
-  }
-  return true;
-
-}
-
-bool checkEmptyBaseSQL(PGconn *conn) {
-
-  std::string sql = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';";
-  PGresult *result = PQexec(conn, sql.c_str());
-  std::string error = "";
-  try {
-    if (!result) {
-      error = PQerrorMessage(conn);
-      throw exc::SQLEmptyBaseException(error);
-    }
-    if (PQresultStatus(result) != PGRES_TUPLES_OK) {
-      error = PQresultErrorMessage(result);
-      PQclear(result);
-      throw exc::SQLEmptyBaseException(error);
-    }
-
-    long count = std::stol(PQgetvalue(result, 0, 0));
-
-    PQclear(result);
-
-    if (count > 0)
-      return false;
-    else
-      return true;
-  } // try
-  catch (exc::SQLEmptyBaseException &ex) {
-    std::cerr << ex.what() << "\n";
-    return false;
-  }
 }
 //
 //
@@ -114,7 +72,12 @@ bool clearBaseSQL(PGconn *conn) {
   std::string sql =
       R"(DROP OWNED BY CURRENT_USER CASCADE;
 	  )";
+
+
   result = execSQL(conn, sql);
+
+  if (!result) return false;
+  PQclear(result);
 
   sql =
       R"(CREATE SCHEMA public AUTHORIZATION CURRENT_USER;
@@ -125,104 +88,11 @@ SET search_path TO public;)";
   if (result)
     PQclear(result);
   return ok;
-  return true;
-}
-
-//
-//
-//
-bool checkBaseTablesSQL(PGconn *conn, std::multimap<int, std::string> sqlMultimap,
-                        std::multimap<int, std::string> sqlDescription) {
-
-  using json = nlohmann::json;
-
-  std::ifstream file_schema(std::string(CONFIG_DIR) + "/schema_db.conf");
-  if (!file_schema.is_open()) {
-    std::cerr << "schema_db.conf: файл не открыт\n";
-    return false;
-  }
-  json config;
-  try {
-    file_schema >> config;
-  } catch (const std::exception &e) {
-    throw exc::SQLReadConfigException(" schema_db.conf: : ошибка JSON: ");
-  }
-
-  int quantity = 0;
-  try {
-    quantity = config.at("database").at("quantity").get<int>();
-
-  } catch (const std::exception &e) {
-    throw exc::SQLReadConfigException(" schema_db.conf: quantity ");
-  }
-
-  if (quantity <= 0) {
-    throw exc::SQLReadConfigException(" schema_db.conf: quantity ");
-  }
-
-  try {
-    for (int i = 1; i <= quantity; ++i) {
-
-      // взяли очередную таблицу
-      std::string tableKey = "table" + std::to_string(i);
-      std::string tableName;
-      try {
-        tableName = config.at("database").at(tableKey).get<std::string>();
-
-      } catch (const std::exception &e) {
-        throw exc::SQLCreateTableException("schema_db.conf: отсутствует или неверный тип ключа: " + tableKey);
-      }
-
-      // сформировали запрос
-      std::string sql = "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' "
-                        "     AND table_name = '" +
-                        tableName + "');";
-
-      // выполнили запрос
-      PGresult *result = execSQL(conn, sql);
-      if (!result) {
-        throw exc::SQLTableAbscentException(tableName);
-      }
-
-      if (PQresultStatus(result) != PGRES_TUPLES_OK || PQntuples(result) < 1 || PQnfields(result) < 1) {
-        PQclear(result);
-        throw exc::SQLTableAbscentException(tableName);
-      }
-
-      // правка №2: безопасная проверка NULL
-      if (PQgetisnull(result, 0, 0)) {
-        PQclear(result);
-        throw exc::SQLTableAbscentException(tableName);
-      }
-
-      const char *val = PQgetvalue(result, 0, 0);
-      bool exists = (val && std::string(val) == "t");
-
-      if (!exists) {
-        PQclear(result);
-        throw exc::SQLTableAbscentException(tableName);
-      }
-      PQclear(result);
-    }
-  } // try
-  catch (exc::SQLTableAbscentException &ex) {
-    std::cerr << ex.what() << "\n"
-              << " Переинициализируйте базу." << "\n";
-    return false;
-  } catch (exc::SQLReadConfigException &ex) {
-    std::cerr << ex.what() << "\n"
-              << " Переинициализируйте базу." << "\n";
-    return false;
-  } catch (exc::SQLCreateTableException &ex) {
-    std::cerr << ex.what() << "\n"
-              << " Переинициализируйте базу." << "\n";
-    return false;
-  }
-  return true;
+  
 }
 //
 //
-// sql command
+//
 
 PGresult *execTransactionToSQL(PGconn *conn, std::multimap<int, std::string> &sqlRequests,
                                std::multimap<int, std::string> &sqlDescription) {

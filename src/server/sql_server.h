@@ -10,8 +10,6 @@
 
 bool initDatabaseOnServer(PGconn *conn);
 
-bool checkEmptyBaseSQL(PGconn *conn);
-
 bool clearBaseSQL(PGconn *conn);
 
 bool checkBaseTablesSQL(PGconn *conn);

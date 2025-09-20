@@ -220,230 +220,235 @@ inline std::multimap<int, std::string> createChatSecondSQL() {
 
   // создаем второй чат
 
-  std::string t1 = R"(with
-  user_elena as (
-    select id as user_id from public.users where login = 'e'
+  std::string t1 = R"(WITH
+  user_elena AS (
+    SELECT id AS user_id FROM public.users WHERE login = 'e'
   ),
-  user_alex as (
-    select id as user_id from public.users where login = 'a'
+  user_alex AS (
+    SELECT id AS user_id FROM public.users WHERE login = 'a'
   ),
-  user_sergei as (
-    select id as user_id from public.users where login = 's'
+  user_sergei AS (
+    SELECT id AS user_id FROM public.users WHERE login = 's'
   ),
-  user_mariya as (
-    select id as user_id from public.users where login = 'm'
+  user_mariya AS (
+    SELECT id AS user_id FROM public.users WHERE login = 'm'
   ),
-  user_yakov as (
-    select id as user_id from public.users where login = 'y'
+  user_yakov AS (
+    SELECT id AS user_id FROM public.users WHERE login = 'y'
   ),
-  chat_created as (
-    insert into public.chats default values
-    returning id as chat_id
-  ),
-
-  message1_insert as (
-    insert into public.messages (chat_id, sender_id, message_text, time_stamp)
-    select chat_created.chat_id, user_elena.user_id, 'Всем Привееет!?', 1743512400000
-    from chat_created cross join user_elena
-    returning id as message_id
-  ),
-  message1_status_elena as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message1_insert.message_id, user_elena.user_id, 'READ', false
-    from message1_insert, user_elena
-    returning message_id
-  ),
-  message1_status_alex as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message1_insert.message_id, user_alex.user_id, 'READ', false
-    from message1_insert, user_alex
-    returning message_id
-  ),
-  message1_status_sergei as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message1_insert.message_id, user_sergei.user_id, 'READ', false
-    from message1_insert, user_sergei
-    returning message_id
-  ),
-  message1_status_mariya as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message1_insert.message_id, user_mariya.user_id, 'NOT DELIVERED', false
-    from message1_insert, user_mariya
-    returning message_id
-  ),
-  message1_status_yakov as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message1_insert.message_id, user_yakov.user_id, 'NOT DELIVERED', false
-    from message1_insert, user_yakov
-    returning message_id
+  chat_created AS (
+    INSERT INTO public.chats DEFAULT VALUES
+    RETURNING id AS chat_id
   ),
 
-  message2_insert as (
-    insert into public.messages (chat_id, sender_id, message_text, time_stamp)
-    select chat_created.chat_id, user_alex.user_id, 'И тебе не хворать!?', 1743512520000
-    from chat_created cross join user_alex
-    returning id as message_id
+  message1_insert AS (
+    INSERT INTO public.messages (chat_id, sender_id, message_text, time_stamp)
+    SELECT chat_created.chat_id, user_elena.user_id, 'Всем Привееет!?', 1743512400000
+    FROM chat_created CROSS JOIN user_elena
+    RETURNING id AS message_id
   ),
-  message2_status_elena as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message2_insert.message_id, user_elena.user_id, 'READ', false
-    from message2_insert, user_elena
-    returning message_id
+  message1_status_elena AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message1_insert.message_id, user_elena.user_id, 'READ', false
+    FROM message1_insert, user_elena
+    RETURNING message_id
   ),
-  message2_status_alex as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message2_insert.message_id, user_alex.user_id, 'READ', false
-    from message2_insert, user_alex
-    returning message_id
+  message1_status_alex AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message1_insert.message_id, user_alex.user_id, 'READ', false
+    FROM message1_insert, user_alex
+    RETURNING message_id
   ),
-  message2_status_sergei as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message2_insert.message_id, user_sergei.user_id, 'READ', false
-    from message2_insert, user_sergei
-    returning message_id
+  message1_status_sergei AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message1_insert.message_id, user_sergei.user_id, 'READ', false
+    FROM message1_insert, user_sergei
+    RETURNING message_id
   ),
-  message2_status_mariya as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message2_insert.message_id, user_mariya.user_id, 'NOT DELIVERED', false
-    from message2_insert, user_mariya
-    returning message_id
+  message1_status_mariya AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message1_insert.message_id, user_mariya.user_id, 'NOT DELIVERED', false
+    FROM message1_insert, user_mariya
+    RETURNING message_id
   ),
-  message2_status_yakov as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message2_insert.message_id, user_yakov.user_id, 'NOT DELIVERED', false
-    from message2_insert, user_yakov
-    returning message_id
-  ),
-
-  message3_insert as (
-    insert into public.messages (chat_id, sender_id, message_text, time_stamp)
-    select chat_created.chat_id, user_sergei.user_id, 'Всем здрассьте.', 1743513015000
-    from chat_created cross join user_sergei
-    returning id as message_id
-  ),
-  message3_status_elena as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message3_insert.message_id, user_elena.user_id, 'READ', false
-    from message3_insert, user_elena
-    returning message_id
-  ),
-  message3_status_alex as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message3_insert.message_id, user_alex.user_id, 'NOT DELIVERED', false
-    from message3_insert, user_alex
-    returning message_id
-  ),
-  message3_status_sergei as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message3_insert.message_id, user_sergei.user_id, 'READ', false
-    from message3_insert, user_sergei
-    returning message_id
-  ),
-  message3_status_mariya as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message3_insert.message_id, user_mariya.user_id, 'NOT DELIVERED', false
-    from message3_insert, user_mariya
-    returning message_id
-  ),
-  message3_status_yakov as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message3_insert.message_id, user_yakov.user_id, 'NOT DELIVERED', false
-    from message3_insert, user_yakov
-    returning message_id
+  message1_status_yakov AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message1_insert.message_id, user_yakov.user_id, 'NOT DELIVERED', false
+    FROM message1_insert, user_yakov
+    RETURNING message_id
   ),
 
-  message4_insert as (
-    insert into public.messages (chat_id, sender_id, message_text, time_stamp)
-    select chat_created.chat_id, user_elena.user_id, 'Куда идем?', 1743513129000
-    from chat_created cross join user_elena
-    returning id as message_id
+  message2_insert AS (
+    INSERT INTO public.messages (chat_id, sender_id, message_text, time_stamp)
+    SELECT chat_created.chat_id, user_alex.user_id, 'И тебе не хворать!?', 1743512520000
+    FROM chat_created CROSS JOIN user_alex
+    RETURNING id AS message_id
   ),
-  message4_status_elena as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message4_insert.message_id, user_elena.user_id, 'READ', false
-    from message4_insert, user_elena
-    returning message_id
+  message2_status_elena AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message2_insert.message_id, user_elena.user_id, 'READ', false
+    FROM message2_insert, user_elena
+    RETURNING message_id
   ),
-  message4_status_alex as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message4_insert.message_id, user_alex.user_id, 'NOT DELIVERED', false
-    from message4_insert, user_alex
-    returning message_id
+  message2_status_alex AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message2_insert.message_id, user_alex.user_id, 'READ', false
+    FROM message2_insert, user_alex
+    RETURNING message_id
   ),
-  message4_status_sergei as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message4_insert.message_id, user_sergei.user_id, 'READ', false
-    from message4_insert, user_sergei
-    returning message_id
+  message2_status_sergei AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message2_insert.message_id, user_sergei.user_id, 'READ', false
+    FROM message2_insert, user_sergei
+    RETURNING message_id
   ),
-  message4_status_mariya as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message4_insert.message_id, user_mariya.user_id, 'NOT DELIVERED', false
-    from message4_insert, user_mariya
-    returning message_id
+  message2_status_mariya AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message2_insert.message_id, user_mariya.user_id, 'NOT DELIVERED', false
+    FROM message2_insert, user_mariya
+    RETURNING message_id
   ),
-  message4_status_yakov as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message4_insert.message_id, user_yakov.user_id, 'NOT DELIVERED', false
-    from message4_insert, user_yakov
-    returning message_id
-  ),
-
-  message5_insert as (
-    insert into public.messages (chat_id, sender_id, message_text, time_stamp)
-    select chat_created.chat_id, user_sergei.user_id, 'Пойдем мы с тобою за тридевять земель, в тридесятое царство, искать там мудрость и счастье, чтобы испытать силу свою и судьбу проверить, а что ждёт впереди — лишь дорога покажет', 1743514380000
-    from chat_created cross join user_sergei
-    returning id as message_id
-  ),
-  message5_status_elena as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message5_insert.message_id, user_elena.user_id, 'NOT DELIVERED', false
-    from message5_insert, user_elena
-    returning message_id
-  ),
-  message5_status_alex as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message5_insert.message_id, user_alex.user_id, 'NOT DELIVERED', false
-    from message5_insert, user_alex
-    returning message_id
-  ),
-  message5_status_sergei as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message5_insert.message_id, user_sergei.user_id, 'READ', false
-    from message5_insert, user_sergei
-    returning message_id
-  ),
-  message5_status_mariya as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message5_insert.message_id, user_mariya.user_id, 'NOT DELIVERED', false
-    from message5_insert, user_mariya
-    returning message_id
-  ),
-  message5_status_yakov as (
-    insert into public.message_status (message_id, user_id, status, status_deleted)
-    select message5_insert.message_id, user_yakov.user_id, 'NOT DELIVERED', false
-    from message5_insert, user_yakov
-    returning message_id
+  message2_status_yakov AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message2_insert.message_id, user_yakov.user_id, 'NOT DELIVERED', false
+    FROM message2_insert, user_yakov
+    RETURNING message_id
   ),
 
-  participants_insert as (
-    insert into public.participants (chat_id, user_id, last_read_message_id, deleted_from_chat)
-    select chat_created.chat_id, user_elena.user_id, message4_insert.message_id, false
-    from chat_created, user_elena, message4_insert
-    union all
-    select chat_created.chat_id, user_alex.user_id, message2_insert.message_id, false
-    from chat_created, user_alex, message2_insert
-    union all
-    select chat_created.chat_id, user_sergei.user_id, message5_insert.message_id, false
-    from chat_created, user_sergei, message5_insert
-    union all
-    select chat_created.chat_id, user_mariya.user_id, null, false
-    from chat_created, user_mariya
-    union all
-    select chat_created.chat_id, user_yakov.user_id, null, false
-    from chat_created, user_yakov
-  )
-select 1;
+  message3_insert AS (
+    INSERT INTO public.messages (chat_id, sender_id, message_text, time_stamp)
+    SELECT chat_created.chat_id, user_sergei.user_id, 'Всем здрассьте.', 1743513015000
+    FROM chat_created CROSS JOIN user_sergei
+    RETURNING id AS message_id
+  ),
+  message3_status_elena AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message3_insert.message_id, user_elena.user_id, 'READ', false
+    FROM message3_insert, user_elena
+    RETURNING message_id
+  ),
+  message3_status_alex AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message3_insert.message_id, user_alex.user_id, 'NOT DELIVERED', false
+    FROM message3_insert, user_alex
+    RETURNING message_id
+  ),
+  message3_status_sergei AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message3_insert.message_id, user_sergei.user_id, 'READ', false
+    FROM message3_insert, user_sergei
+    RETURNING message_id
+  ),
+  message3_status_mariya AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message3_insert.message_id, user_mariya.user_id, 'NOT DELIVERED', false
+    FROM message3_insert, user_mariya
+    RETURNING message_id
+  ),
+  message3_status_yakov AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message3_insert.message_id, user_yakov.user_id, 'NOT DELIVERED', false
+    FROM message3_insert, user_yakov
+    RETURNING message_id
+  ),
+
+  message4_insert AS (
+    INSERT INTO public.messages (chat_id, sender_id, message_text, time_stamp)
+    SELECT chat_created.chat_id, user_elena.user_id, 'Куда идем?', 1743513129000
+    FROM chat_created CROSS JOIN user_elena
+    RETURNING id AS message_id
+  ),
+  message4_status_elena AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message4_insert.message_id, user_elena.user_id, 'READ', false
+    FROM message4_insert, user_elena
+    RETURNING message_id
+  ),
+  message4_status_alex AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message4_insert.message_id, user_alex.user_id, 'NOT DELIVERED', false
+    FROM message4_insert, user_alex
+    RETURNING message_id
+  ),
+  message4_status_sergei AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message4_insert.message_id, user_sergei.user_id, 'READ', false
+    FROM message4_insert, user_sergei
+    RETURNING message_id
+  ),
+  message4_status_mariya AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message4_insert.message_id, user_mariya.user_id, 'NOT DELIVERED', false
+    FROM message4_insert, user_mariya
+    RETURNING message_id
+  ),
+  message4_status_yakov AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message4_insert.message_id, user_yakov.user_id, 'NOT DELIVERED', false
+    FROM message4_insert, user_yakov
+    RETURNING message_id
+  ),
+
+  message5_insert AS (
+    INSERT INTO public.messages (chat_id, sender_id, message_text, time_stamp)
+    SELECT chat_created.chat_id, user_sergei.user_id,
+           'Пойдем мы с тобою за тридевять земель, в тридесятое царство, искать там мудрость и счастье, чтобы испытать силу свою и судьбу проверить, а что ждёт впереди — лишь дорога покажет',
+           1743514380000
+    FROM chat_created CROSS JOIN user_sergei
+    RETURNING id AS message_id
+  ),
+  message5_status_elena AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message5_insert.message_id, user_elena.user_id, 'NOT DELIVERED', false
+    FROM message5_insert, user_elena
+    RETURNING message_id
+  ),
+  message5_status_alex AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message5_insert.message_id, user_alex.user_id, 'NOT DELIVERED', false
+    FROM message5_insert, user_alex
+    RETURNING message_id
+  ),
+  message5_status_sergei AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message5_insert.message_id, user_sergei.user_id, 'READ', false
+    FROM message5_insert, user_sergei
+    RETURNING message_id
+  ),
+  message5_status_mariya AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message5_insert.message_id, user_mariya.user_id, 'NOT DELIVERED', false
+    FROM message5_insert, user_mariya
+    RETURNING message_id
+  ),
+  message5_status_yakov AS (
+    INSERT INTO public.message_status (message_id, user_id, status, status_deleted)
+    SELECT message5_insert.message_id, user_yakov.user_id, 'NOT DELIVERED', false
+    FROM message5_insert, user_yakov
+    RETURNING message_id
+  ),
+
+  participants_insert AS (
+    INSERT INTO public.participants (chat_id, user_id, last_read_message_id, deleted_from_chat)
+    (
+      SELECT chat_created.chat_id, user_elena.user_id, message4_insert.message_id, false
+        FROM chat_created, user_elena, message4_insert
+      UNION ALL
+      SELECT chat_created.chat_id, user_alex.user_id, message2_insert.message_id, false
+        FROM chat_created, user_alex, message2_insert
+      UNION ALL
+      SELECT chat_created.chat_id, user_sergei.user_id, message5_insert.message_id, false
+        FROM chat_created, user_sergei, message5_insert
+      UNION ALL
+      SELECT chat_created.chat_id, user_mariya.user_id, NULL::bigint, false
+        FROM chat_created, user_mariya
+      UNION ALL
+      SELECT chat_created.chat_id, user_yakov.user_id, NULL::bigint, false
+        FROM chat_created, user_yakov
+    )
+    RETURNING 1 AS ok
+)
+SELECT 1;
 )";
 
   result.insert({1, t1});

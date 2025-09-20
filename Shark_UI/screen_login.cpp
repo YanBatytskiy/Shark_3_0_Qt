@@ -156,6 +156,7 @@ void ScreenLogin::on_passwordEdit_returnPressed() {
 }
 
 void ScreenLogin::on_baseReInitialisationPushButton_clicked() {
+
   bool result = _sessionPtr->reInitilizeBaseQt();
 
   if (!result)
