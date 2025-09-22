@@ -19,12 +19,18 @@ MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr,
 
   connect(ui->pageLogin, &ScreenLogin::registrationRequested, this,
           &MainWindow::setRegistrationForm);
+
   connect(ui->pageLogin, &ScreenLogin::rejected, this,
           &MainWindow::slotonRejectedRequested);
+
   connect(ui->pageLogin, &ScreenLogin::accepted, this, &MainWindow::onLoggedIn);
 
   connect(ui->pageRegister, &ScreenRegister::loginRequested, this,
           &MainWindow::setLoginForm);
+
+  connect(ui->pageRegister, &ScreenRegister::signalLoggedIn, this,
+          &MainWindow::onLoggedIn);
+
   connect(ui->pageRegister, &ScreenRegister::rejected, this,
           &MainWindow::slotonRejectedRequested);
 

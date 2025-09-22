@@ -48,6 +48,13 @@ bool ClientSession::reInitilizeBaseQt() {
   return reInitilizeBaseCl();
 }
 
+  bool ClientSession::checkLoginQt(std::string login){
+
+    return checkUserLoginCl(login);
+
+  }
+
+
 bool ClientSession::checkLoginPsswordQt(std::string login, std::string password) {
 
   auto passHash = picosha2::hash256_hex_string(password);
@@ -57,8 +64,7 @@ bool ClientSession::checkLoginPsswordQt(std::string login, std::string password)
 
 bool ClientSession::registerClientOnDeviceQt(std::string login) { return registerClientToSystemCl(login); }
 
-bool ClientSession::inputNewLoginValidationQt(std::string inputData, std::size_t dataLengthMin,
-                                              std::size_t dataLengthMax) {
+bool ClientSession::inputNewLoginValidationQt(std::string inputData) {
 
   // проверяем только на англ буквы и цифры
   if (!engAndFiguresCheck(inputData))
@@ -217,7 +223,18 @@ bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std:
   return result;
 }
 
-    bool ClientSession::createUserQt(std::shared_ptr<User> &user){}
+    bool ClientSession::createUserQt(UserDTO userDTO){
+    if (createUserCl(userDTO)) return true;
+    else return false;
+    }
+
+        bool ClientSession::changeUserDataQt(UserDTO userDTO){}
+
+    bool ClientSession::changeUserPasswordQt(UserDTO userDTO){}
+
+    bool ClientSession::blockUnblockUserQt(std::string login, bool isBlocked, std::string disableReason){}
+
+    bool ClientSession::bunUnbunUserQt(std::string login, bool isBanned, std::int64_t bunnedTo){}
 
 
 // threads
@@ -1059,19 +1076,7 @@ bool ClientSession::registerClientToSystemCl(const std::string &login) {
 //
 //
 
-bool ClientSession::createUserCl(std::shared_ptr<User> &user) {
-
-  UserDTO userDTO;
-
-  userDTO.userName = user->getUserName();
-  userDTO.login = user->getLogin();
-  userDTO.passwordhash = user->getPasswordHash();
-  userDTO.email = user->getEmail();
-  userDTO.phone = user->getPhone();
-  userDTO.ban_until = user->getBunUntil();
-  userDTO.disable_reason = user->getDisableReason();
-  userDTO.is_active = user->getIsActive();
-  userDTO.disabled_at = user->getDisabledAt();
+bool ClientSession::createUserCl(const UserDTO& userDTO) {
 
   PacketDTO packetDTO;
   packetDTO.requestType = RequestType::RqFrClientCreateUser;
@@ -1087,20 +1092,13 @@ bool ClientSession::createUserCl(std::shared_ptr<User> &user) {
 
   packetListDTOresult = processingRequestToServer(packetDTOListSend, packetDTO.requestType);
 
-  try {
-
     const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(*packetListDTOresult.packets[0].structDTOPtr)
                              .getStructDTOClass();
 
     if (packet.reqResult)
-      this->_instance.addUserToSystem(user);
+      return true;
     else
-      throw exc_qt::CreateUserException();
-  } catch (const exc_qt::NetworkException &ex) {
-    std::cerr << "Клиент: " << ex.what() << std::endl;
-    return false;
-  }
-  return true;
+      return false;
 }
 //
 //

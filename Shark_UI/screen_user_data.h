@@ -28,6 +28,9 @@ public:
 signals:
   void signalNewChatListBecameEnabled();
 
+private slots:
+  void on_unblockPushButton_clicked();
+
 private:
   Ui::ScreenUserData *ui;
   std::shared_ptr<ClientSession> _sessionPtr;

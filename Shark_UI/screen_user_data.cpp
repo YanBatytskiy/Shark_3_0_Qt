@@ -108,3 +108,7 @@ void ScreenUserData::setUserDataToLabels(const QModelIndex &index)
 }
 
 }
+
+void ScreenUserData::on_unblockPushButton_clicked() {
+  _sessionPtr->blockUnblockUserQt(ui->loginLineEdit->text().toStdString(), false, "");
+}

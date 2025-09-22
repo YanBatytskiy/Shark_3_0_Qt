@@ -1,11 +1,20 @@
 #ifndef SCREEN_USER_PROFILE_H
 #define SCREEN_USER_PROFILE_H
 
+#include <QString>
 #include <QWidget>
+
+#include "client_session.h"
 
 namespace Ui {
 class ScreenUserProfile;
 }
+
+struct UserDataQt {
+  QString _name;
+  QString _email;
+  QString _phone;
+};
 
 class ScreenUserProfile : public QWidget {
   Q_OBJECT
@@ -13,6 +22,11 @@ class ScreenUserProfile : public QWidget {
 public:
   explicit ScreenUserProfile(QWidget *parent = nullptr);
   ~ScreenUserProfile();
+  void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
+  const UserDataQt getUserData() const;
+
+  void fillDataToForm(const QString &name, const QString &email, const QString &phone);
+  void clearDataOnForm();
 
 signals:
   void signalCloseUserProfile();
@@ -22,17 +36,26 @@ private slots:
 
   void on_savePushButton_clicked();
 
-  void on_nameLineEdit_textChanged(const QString &arg1);
+  void on_nameLineEdit_editingFinished();
 
-  void on_emailLineEdit_textChanged(const QString &arg1);
+  void on_emailLineEdit_editingFinished();
 
-  void on_phoneLineEdit_textChanged(const QString &arg1);
+  void on_phoneLineEdit_editingFinished();
 
-  void on_confirnPasswordLineEdit_textChanged(const QString &arg1);
+  void on_passwordLineEdit_editingFinished();
+
+  void on_confirnPasswordLineEdit_editingFinished();
+
+  void on_changePasswordPushButton_clicked();
 
 private:
   Ui::ScreenUserProfile *ui;
-  bool _isDataChanged{false};
+  bool _isNameChanged{false};
+  bool _isEmailChanged{false};
+  bool _isPhoneChanged{false};
+  bool _isPasswordChanged{false};
+  UserDataQt _userData;
+  std::shared_ptr<ClientSession> _sessionPtr;
 };
 
 #endif // SCREEN_USER_PROFILE_H

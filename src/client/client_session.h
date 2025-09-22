@@ -65,11 +65,13 @@ public:
 
   bool reInitilizeBaseQt();
 
+  bool checkLoginQt(std::string login);
+
   bool checkLoginPsswordQt(std::string login, std::string password);
 
   bool registerClientOnDeviceQt(std::string login);
 
-  bool inputNewLoginValidationQt(std::string inputData, std::size_t dataLengthMin, std::size_t dataLengthMax);
+  bool inputNewLoginValidationQt(std::string inputData);
 
   bool inputNewPasswordValidationQt(std::string inputData, std::size_t dataLengthMin, std::size_t dataLengthMax);
 
@@ -77,7 +79,15 @@ public:
 
   bool CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std::vector<UserDTO> &participants, Message &newMessage);
 
-    bool createUserQt(std::shared_ptr<User> &user);
+    bool createUserQt(UserDTO userDTO);
+
+    bool changeUserDataQt(UserDTO userDTO);
+
+    bool changeUserPasswordQt(UserDTO userDTO);
+
+    bool blockUnblockUserQt(std::string login, bool isBlocked, std::string disableReason);
+
+    bool bunUnbunUserQt(std::string login, bool isBanned, std::int64_t bunnedTo);
 
 
   // threads
@@ -146,7 +156,7 @@ public:
 
   bool registerClientToSystemCl(const std::string &login);
 
-  bool createUserCl(std::shared_ptr<User> &user);
+  bool createUserCl(const UserDTO& userDTO);
 
   bool createNewChatCl(std::shared_ptr<Chat> &chat, ChatDTO &chatDTO, MessageChatDTO &messageChatDTO);
 

@@ -23,6 +23,7 @@ public:
 signals:
   void loginRequested();
   void rejected();
+  void signalLoggedIn(QString login);
 
 public slots:
   void onConnectionStatusChanged(bool connectionStatus,
@@ -30,12 +31,25 @@ public slots:
 
 private slots:
   void on_toLoginButton_clicked();
-  void on_registerButtonBox_accepted();
-  void on_registerButtonBox_rejected();
+
+  void on_loginEdit_editingFinished();
+
+  void on_nameEdit_editingFinished();
+
+  void on_passwordEdit_editingFinished();
+
+  void on_passwordConfirmEdit_editingFinished();
+
+  void on_exitPushButton_clicked();
+
+  void on_registerPushButton_clicked();
 
 private:
   Ui::ScreenRegister *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
+  bool isLogin{false};
+  bool isName{false};
+  bool isPassword{false};
 };
 
 #endif // REGISTERSCREEN_H

@@ -90,25 +90,25 @@ std::string inputNewName() {
 //
 //
 void userCreation(ClientSession &clientSession) {
-  std::cout << "Регистрация нового пользователя." << std::endl;
-  UserData userData;
+  // std::cout << "Регистрация нового пользователя." << std::endl;
+  // UserData userData;
 
-  std::string newLogin = inputNewLogin(clientSession);
-  if (newLogin.empty() || newLogin == "0")
-    return;
+  // std::string newLogin = inputNewLogin(clientSession);
+  // if (newLogin.empty() || newLogin == "0")
+  //   return;
 
-  std::string passwordHash = inputNewPassword();
-  if (passwordHash.empty())
-    return;
+  // std::string passwordHash = inputNewPassword();
+  // if (passwordHash.empty())
+  //   return;
 
-  std::string newName = inputNewName();
-  if (newName.empty() || newName == "0")
-    return;
+  // std::string newName = inputNewName();
+  // if (newName.empty() || newName == "0")
+  //   return;
 
-  auto newUser = std::make_shared<User>(
-      UserData(newLogin, newName, passwordHash, "...@gmail.com", "+111","",true,0,0));
+  // auto newUser = std::make_shared<User>(
+  //     UserData(newLogin, newName, passwordHash, "...@gmail.com", "+111","",true,0,0));
 
-  clientSession.createUserCl(newUser);
+  // clientSession.createUserCl(newUser);
 
-  newUser->showUserData();
+  // newUser->showUserData();
 }

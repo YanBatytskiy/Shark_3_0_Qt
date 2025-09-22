@@ -84,6 +84,8 @@ target_include_directories(Shark_ui PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/dto
   ${CMAKE_CURRENT_SOURCE_DIR}/models
   ${CMAKE_CURRENT_SOURCE_DIR}/exceptions_qt
+
+  ${CMAKE_CURRENT_BINARY_DIR}/Shark_ui_autogen/include
 )
 
 # Линки

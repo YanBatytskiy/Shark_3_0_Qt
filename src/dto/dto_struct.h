@@ -40,6 +40,8 @@ enum class RequestType {
   // transport
   RqFrSrvSynchroUser = 16,
   RqFrClientReInitializeBase = 17,
+  RqFrClientChangeUserData = 18,
+  RqFrClientChangeUserPassword = 19
 };
 
 enum class StructDTOClassType {

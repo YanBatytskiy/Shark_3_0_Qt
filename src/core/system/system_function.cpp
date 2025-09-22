@@ -223,6 +223,7 @@ Message createOneMessage(const std::string &textContent, const std::shared_ptr<U
 
 // проверяем только на англ буквы и цифры
 bool engAndFiguresCheck(const std::string &inputData) {
+
   for (std::size_t i = 0; i < inputData.size();) {
     std::size_t charLen = getUtf8CharLen(static_cast<unsigned char>(inputData[i]));
 
