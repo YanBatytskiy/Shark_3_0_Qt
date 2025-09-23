@@ -40,9 +40,11 @@ MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr,
     connect(ui->pageWork, &ScreenMainWork::signalShowProfile, this, &MainWindow::slotShowProfile);
   }
 
-  auto w = ui->mainWindowstackedWidget->findChild<ScreenUserProfile*>("pageProfile");
+  auto profile = ui->mainWindowstackedWidget->findChild<ScreenUserProfile *>("pageProfile");
 
-      connect(w, &ScreenUserProfile::signalCloseUserProfile,this, &MainWindow::slotCloseProfile);
+  connect(profile, &ScreenUserProfile::signalCloseUserProfile, this, &MainWindow::setworkForm);
+
+  profile->setDatabase(_sessionPtr);
 
   setLoginForm();
 }
@@ -101,6 +103,7 @@ void MainWindow::slotShowProfile()
   b = w->findChild<QPushButton* >("changePasswordPushButton");
   b->setEnabled(false);
 
+  w->slotFillDataToForm();
 }
 
 void MainWindow::slotCloseProfile()

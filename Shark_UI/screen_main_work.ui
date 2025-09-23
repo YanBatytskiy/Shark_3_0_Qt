@@ -21,7 +21,7 @@
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout_6">
    <item>
-    <widget class="QWidget" name="leftPane" native="true">
+    <widget class="QWidget" name="leftPane">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
        <horstretch>0</horstretch>
@@ -244,7 +244,6 @@ border-radius: 8px;</string>
          <attribute name="title">
           <string>Чаты</string>
          </attribute>
-         <layout class="QVBoxLayout" name="mainWorkTabChatsListLayout"/>
         </widget>
         <widget class="QWidget" name="mainWorkTabUsersList">
          <property name="sizePolicy">
@@ -353,7 +352,6 @@ border-radius: 8px;</string>
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
-      <layout class="QVBoxLayout" name="mainWorkPageChattingLayout"/>
      </widget>
      <widget class="ScreenUserData" name="mainWorkPageUserDataView">
       <property name="sizePolicy">
@@ -362,7 +360,6 @@ border-radius: 8px;</string>
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
-      <layout class="QVBoxLayout" name="mainWorkPageUserDataViewLayout"/>
      </widget>
     </widget>
    </item>

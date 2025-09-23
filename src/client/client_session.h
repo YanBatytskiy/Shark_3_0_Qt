@@ -156,6 +156,8 @@ public:
 
   bool registerClientToSystemCl(const std::string &login);
 
+  bool changeUserDataCl(const UserDTO& userDTO);
+
   bool createUserCl(const UserDTO& userDTO);
 
   bool createNewChatCl(std::shared_ptr<Chat> &chat, ChatDTO &chatDTO, MessageChatDTO &messageChatDTO);

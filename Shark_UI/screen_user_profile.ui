@@ -41,8 +41,23 @@
     </spacer>
    </item>
    <item row="1" column="1">
-    <widget class="QWidget" name="widget" native="true">
+    <widget class="QWidget" name="widget">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="autoFillBackground">
+      <bool>false</bool>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(239, 237, 240);</string>
+     </property>
      <layout class="QVBoxLayout" name="verticalLayout">
+      <property name="sizeConstraint">
+       <enum>QLayout::SizeConstraint::SetFixedSize</enum>
+      </property>
       <item>
        <widget class="QLabel" name="changePasswordLabel_2">
         <property name="font">
@@ -86,10 +101,10 @@
         <item row="0" column="1">
          <widget class="QLineEdit" name="loginLineEdit">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -99,6 +114,18 @@
             <width>250</width>
             <height>0</height>
            </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>250</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color: black; border:1px solid #aaa; border-radius:4px; padding:2px;</string>
+          </property>
+          <property name="readOnly">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
@@ -114,11 +141,26 @@
           <property name="enabled">
            <bool>true</bool>
           </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="minimumSize">
            <size>
             <width>250</width>
             <height>0</height>
            </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>250</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color: black; border:1px solid #aaa; border-radius:4px; padding:2px;</string>
           </property>
          </widget>
         </item>
@@ -134,14 +176,29 @@
           <property name="enabled">
            <bool>true</bool>
           </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="minimumSize">
            <size>
             <width>250</width>
             <height>0</height>
            </size>
           </property>
+          <property name="maximumSize">
+           <size>
+            <width>250</width>
+            <height>16777215</height>
+           </size>
+          </property>
           <property name="toolTip">
            <string/>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color: black; border:1px solid #aaa; border-radius:4px; padding:2px;</string>
           </property>
          </widget>
         </item>
@@ -157,15 +214,58 @@
           <property name="enabled">
            <bool>true</bool>
           </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="minimumSize">
            <size>
             <width>250</width>
             <height>0</height>
            </size>
           </property>
+          <property name="maximumSize">
+           <size>
+            <width>250</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color: black; border:1px solid #aaa; border-radius:4px; padding:2px;</string>
+          </property>
          </widget>
         </item>
        </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="hintLabel">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>300</width>
+          <height>32</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>300</width>
+          <height>32</height>
+         </size>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
       </item>
       <item>
        <spacer name="verticalSpacer_5">
@@ -284,8 +384,29 @@
           <property name="enabled">
            <bool>true</bool>
           </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>250</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>250</width>
+            <height>16777215</height>
+           </size>
+          </property>
           <property name="toolTip">
            <string>Повторите ввод пароля</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color: black; border:1px solid #aaa; border-radius:4px; padding:2px;</string>
           </property>
           <property name="echoMode">
            <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
@@ -297,8 +418,29 @@
           <property name="enabled">
            <bool>true</bool>
           </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>250</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>250</width>
+            <height>16777215</height>
+           </size>
+          </property>
           <property name="toolTip">
            <string>Не менее 5 и не более 20 символов, Мнимум одна заглавная и одна цифра (только латинские буквы)</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color: black; border:1px solid #aaa; border-radius:4px; padding:2px;</string>
           </property>
           <property name="echoMode">
            <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
@@ -368,6 +510,17 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>loginLineEdit</tabstop>
+  <tabstop>nameLineEdit</tabstop>
+  <tabstop>emailLineEdit</tabstop>
+  <tabstop>phoneLineEdit</tabstop>
+  <tabstop>savePushButton</tabstop>
+  <tabstop>cancelPushButton</tabstop>
+  <tabstop>passwordLineEdit</tabstop>
+  <tabstop>confirnPasswordLineEdit</tabstop>
+  <tabstop>changePasswordPushButton</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

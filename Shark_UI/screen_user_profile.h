@@ -11,6 +11,7 @@ class ScreenUserProfile;
 }
 
 struct UserDataQt {
+  QString _login;
   QString _name;
   QString _email;
   QString _phone;
@@ -25,27 +26,24 @@ public:
   void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
   const UserDataQt getUserData() const;
 
-  void fillDataToForm(const QString &name, const QString &email, const QString &phone);
-  void clearDataOnForm();
+protected:
+  bool eventFilter(QObject *watched, QEvent *event) override;
 
 signals:
   void signalCloseUserProfile();
 
+public slots:
+  void slotFillDataToForm();
+  void slotClearDataOnForm();
+
 private slots:
   void on_cancelPushButton_clicked();
-
   void on_savePushButton_clicked();
-
   void on_nameLineEdit_editingFinished();
-
   void on_emailLineEdit_editingFinished();
-
   void on_phoneLineEdit_editingFinished();
-
   void on_passwordLineEdit_editingFinished();
-
   void on_confirnPasswordLineEdit_editingFinished();
-
   void on_changePasswordPushButton_clicked();
 
 private:

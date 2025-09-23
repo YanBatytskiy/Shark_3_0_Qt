@@ -10,6 +10,7 @@
 #include "system/system_function.h"
 #include <arpa/inet.h>
 #include <cstddef>
+#include <cstdlib>
 #include <cstring>
 #include <exception>
 #include <fcntl.h>
@@ -58,7 +59,7 @@ void ServerSession::runServer(int socketFd) {
       }
     }
     // создаем новое соединение
-    struct sockaddr_in client {};
+    struct sockaddr_in client{};
     socklen_t client_len = sizeof(client);
 
     _connection = accept(socketFd, (struct sockaddr *)&client, &client_len);
@@ -259,6 +260,15 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
 
   // check and registry User
   switch (packetDTOrequestType) {
+  case RequestType::RqFrClientChangeUserData:
+  case RequestType::RqFrClientChangeUserPassword: {
+    if (!processingRqFrClientchangeDataPassword(packetListReceived, packetDTOrequestType, connection))
+      return false;
+    break;
+
+    break;
+  }
+
   case RequestType::RqFrClientReInitializeBase: {
     if (!processingRqFrClientReInitializeBase(packetListReceived, packetDTOrequestType, connection))
       return false;
@@ -292,6 +302,53 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   }
   return true;
 }
+
+bool ServerSession::processingRqFrClientchangeDataPassword(PacketListDTO &packetListReceived, const RequestType &requestType,
+                                                           int connection) {
+  // создали структуру вектора пакетов для отправки
+  PacketListDTO packetDTOListForSend;
+  packetDTOListForSend.packets.clear();
+
+  switch (requestType) {
+  case RequestType::RqFrClientChangeUserData: {
+    // отдельный пакет для отправки
+    PacketDTO packetDTOForSend;
+    packetDTOForSend.requestType = requestType;
+    packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
+    packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
+
+    const auto &packet = static_cast<const StructDTOClass<UserDTO> &>(*packetListReceived.packets[0].structDTOPtr)
+                             .getStructDTOClass();
+
+    // пакет для отправки
+    ResponceDTO responceDTO;
+    responceDTO.anyNumber = 0;
+    responceDTO.anyString = "";
+
+    if (changeUserDataSrvSQL(packet)) {
+      responceDTO.reqResult = true;
+      responceDTO.anyString = packet.login;
+    } else {
+      responceDTO.reqResult = false;
+    }
+
+    packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
+
+    packetDTOListForSend.packets.push_back(packetDTOForSend);
+    break;
+  }
+  case RequestType::RqFrClientChangeUserPassword: {
+    break;
+  }
+  default:
+    break;
+  } // switch
+
+
+sendPacketListDTO(packetDTOListForSend, connection);
+return true;
+}
+
 
 bool ServerSession::processingRqFrClientReInitializeBase(PacketListDTO &packetListReceived, const RequestType &requestType,
                                                          int connection) {
@@ -689,6 +746,59 @@ bool ServerSession::processingGetUserData(PacketListDTO &packetListReceived, con
 //
 //
 //
+ bool ServerSession::changeUserDataSrvSQL(const UserDTO &userDTO){
+
+  PGresult *result = nullptr;
+
+  std::string sql = "";
+  std::string login = userDTO.login;
+  std::string name = userDTO.userName;
+  std::string email = userDTO.email;
+  std::string phone = userDTO.phone;
+
+  try {
+
+    for (std::size_t pos = 0; (pos = login.find('\'', pos)) != std::string::npos; pos += 2) {
+      login.replace(pos, 1, "''");
+    }
+    for (std::size_t pos = 0; (pos = name.find('\'', pos)) != std::string::npos; pos += 2) {
+      name.replace(pos, 1, "''");
+    }
+    for (std::size_t pos = 0; (pos = email.find('\'', pos)) != std::string::npos; pos += 2) {
+      email.replace(pos, 1, "''");
+    }
+    for (std::size_t pos = 0; (pos = phone.find('\'', pos)) != std::string::npos; pos += 2) {
+      phone.replace(pos, 1, "''");
+    }
+
+    sql = "UPDATE public.users SET name = '" + name + "', email = '" + email + "', phone = '" + phone + "' WHERE login = '" + login + "';";
+
+    result = execSQL(this->getPGConnection(), sql);
+
+    if (result == nullptr)
+      throw exc::SQLSelectException(", changeUserDataSrvSQL");
+
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+      PQclear(result);
+      return false;
+    }
+
+    const char *tuples = PQcmdTuples(result);
+    const long affectedRows = tuples != nullptr ? std::strtol(tuples, nullptr, 10) : 0;
+    PQclear(result);
+
+    return affectedRows > 0;
+  } // try
+  catch (const exc::SQLSelectException &ex) {
+    std::cerr << "Сервер: " << ex.what() << std::endl;
+    if (result != nullptr)
+      PQclear(result);
+    return false;
+  }
+
+ }
+
+
 bool ServerSession::checkUserLoginSrvSQL(const std::string &login) {
 
   PGresult *result;

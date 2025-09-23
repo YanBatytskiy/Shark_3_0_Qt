@@ -56,7 +56,7 @@ ScreenMainWork::ScreenMainWork(QWidget *parent)
   // связь: начало редактирования поиска контактов - очистка данных на форме пользователяя
   connect(this, &ScreenMainWork::signalClearUserDataToLabels,
           ui->mainWorkPageUserDataView, &ScreenUserData::slotClearUserDataToLabels,
-          Qt::UniqueConnection);  
+          Qt::UniqueConnection);
 }
 
 ScreenMainWork::~ScreenMainWork() { delete ui; }

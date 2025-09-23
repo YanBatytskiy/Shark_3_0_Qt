@@ -6,6 +6,42 @@
 ScreenRegister::ScreenRegister(QWidget *parent)
     : QWidget(parent), ui(new Ui::ScreenRegister) {
   ui->setupUi(this);
+
+  ui->loginEdit->installEventFilter(this);
+  ui->nameEdit->installEventFilter(this);
+  ui->emailLineEdit->installEventFilter(this);
+  ui->phoneLineEdit->installEventFilter(this);
+  ui->passwordEdit->installEventFilter(this);
+  ui->passwordConfirmEdit->installEventFilter(this);
+}
+
+bool ScreenRegister::eventFilter(QObject *watched, QEvent *event) {
+
+  const bool isEdit =
+      watched == ui->loginEdit ||
+      watched == ui->nameEdit ||
+      watched == ui->passwordEdit ||
+      watched == ui->passwordConfirmEdit;
+
+  if (isEdit) {
+    if (event->type() == QEvent::FocusIn) {
+      if (watched == ui->loginEdit || watched == ui->passwordEdit || watched == ui->passwordConfirmEdit) {
+        ui->hintLabel->setText("Не менее 5 и не более 20 символов, только английские буквы и цифры");
+      } else if (watched == ui->nameEdit) {
+        ui->hintLabel->setText("Не менее 2 и не более 20 символов, только английские буквы и цифры");
+      } else if (watched == ui->emailLineEdit || watched == ui->phoneLineEdit) {
+        ui->hintLabel->clear();
+      }
+    }
+    return false;
+  }
+
+  if (event->type() == QEvent::FocusOut) {
+    ui->hintLabel->clear();
+    return false;
+  }
+
+  return QWidget::eventFilter(watched, event);
 }
 
 ScreenRegister::~ScreenRegister() { delete ui; }
@@ -47,6 +83,9 @@ void ScreenRegister::on_toLoginButton_clicked() {
 
 void ScreenRegister::on_loginEdit_editingFinished() {
 
+  if (ui->loginEdit->text().size() == 0)
+    return;
+
   if (ui->loginEdit->text().size() < 5 || ui->loginEdit->text().size() > 20) {
     QMessageBox::critical(this, "Ошибка", "Некорректная длина логина. Длина должна быть от 5 до 20 символов.");
     ui->loginEdit->setStyleSheet("QLineEdit { color: red; }");
@@ -64,6 +103,9 @@ void ScreenRegister::on_loginEdit_editingFinished() {
 }
 
 void ScreenRegister::on_nameEdit_editingFinished() {
+
+  if (ui->nameEdit->text().size() == 0)
+    return;
 
   if (ui->nameEdit->text().size() < 2 || ui->nameEdit->text().size() > 20) {
     QMessageBox::critical(this, "Ошибка", "Некорректная длина имени. Длина должна быть от 2 до 20 символов.");
@@ -83,6 +125,9 @@ void ScreenRegister::on_nameEdit_editingFinished() {
 }
 
 void ScreenRegister::on_passwordEdit_editingFinished() {
+
+  if (ui->passwordEdit->text().size() == 0)
+    return;
 
   if (ui->passwordEdit->text().size() < 5 || ui->passwordEdit->text().size() > 20) {
     QMessageBox::critical(this, "Ошибка", "Некорректная длина пароля. Длина должна быть от 5 до 20 символов.");
@@ -167,4 +212,7 @@ void ScreenRegister::on_registerPushButton_clicked() {
     emit signalLoggedIn(ui->loginEdit->text());
 
   } // if else checkLogin
+}
+
+void ScreenRegister::on_passwordConfirmEdit_cursorPositionChanged(int arg1, int arg2) {
 }

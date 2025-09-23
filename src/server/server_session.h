@@ -1,7 +1,7 @@
 #pragma once
-#include <libpq-fe.h>
 #include "dto/dto_struct.h"
 #include <cstdint>
+#include <libpq-fe.h>
 #include <optional>
 #include <vector>
 
@@ -56,9 +56,11 @@ public:
 
   bool routingRequestsFromClient(PacketListDTO &packetListReceived, const RequestType &requestType, int connection);
 
-  bool processingRqFrClientReInitializeBase(PacketListDTO &packetListReceived, const RequestType &requestType,
-                                                   int connection);
+  bool processingRqFrClientchangeDataPassword(PacketListDTO &packetListReceived, const RequestType &requestType,
+                                              int connection);
 
+  bool processingRqFrClientReInitializeBase(PacketListDTO &packetListReceived, const RequestType &requestType,
+                                            int connection);
 
   bool processingCheckAndRegistryUser(PacketListDTO &packetListReceived, const RequestType &requestType,
                                       int connection);
@@ -73,6 +75,8 @@ public:
   bool processingReceivedtWithoutUser(std::vector<PacketDTO> &packetListReceived, int connection);
 
   // utilities
+  bool changeUserDataSrvSQL(const UserDTO &userDTO);
+
   bool checkUserLoginSrvSQL(const std::string &login);
 
   bool checkUserPasswordSrvSql(const UserLoginPasswordDTO &userLoginPasswordDTO);

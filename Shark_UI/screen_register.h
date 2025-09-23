@@ -20,6 +20,9 @@ public:
   void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
   void clearFields();
 
+protected:
+  bool eventFilter(QObject *watched, QEvent *event) override;
+
 signals:
   void loginRequested();
   void rejected();
@@ -31,18 +34,14 @@ public slots:
 
 private slots:
   void on_toLoginButton_clicked();
-
   void on_loginEdit_editingFinished();
-
   void on_nameEdit_editingFinished();
-
   void on_passwordEdit_editingFinished();
-
   void on_passwordConfirmEdit_editingFinished();
-
   void on_exitPushButton_clicked();
-
   void on_registerPushButton_clicked();
+
+  void on_passwordConfirmEdit_cursorPositionChanged(int arg1, int arg2);
 
 private:
   Ui::ScreenRegister *ui;

@@ -228,7 +228,9 @@ bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std:
     else return false;
     }
 
-        bool ClientSession::changeUserDataQt(UserDTO userDTO){}
+    bool ClientSession::changeUserDataQt(UserDTO userDTO){
+      return changeUserDataCl(userDTO);
+    }
 
     bool ClientSession::changeUserPasswordQt(UserDTO userDTO){}
 
@@ -1075,6 +1077,33 @@ bool ClientSession::registerClientToSystemCl(const std::string &login) {
 //
 //
 //
+
+  bool ClientSession::changeUserDataCl(const UserDTO& userDTO){
+
+  PacketDTO packetDTO;
+  packetDTO.requestType = RequestType::RqFrClientChangeUserData;
+  packetDTO.structDTOClassType = StructDTOClassType::userDTO;
+  packetDTO.reqDirection = RequestDirection::ClientToSrv;
+  packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserDTO>>(userDTO);
+
+  std::vector<PacketDTO> packetDTOListSend;
+  packetDTOListSend.push_back(packetDTO);
+
+  PacketListDTO packetListDTOresult;
+  packetListDTOresult.packets.clear();
+
+  packetListDTOresult = processingRequestToServer(packetDTOListSend, packetDTO.requestType);
+
+    const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(*packetListDTOresult.packets[0].structDTOPtr)
+                             .getStructDTOClass();
+
+    if (packet.reqResult)
+      return true;
+    else
+      return false;
+
+  }
+
 
 bool ClientSession::createUserCl(const UserDTO& userDTO) {
 
