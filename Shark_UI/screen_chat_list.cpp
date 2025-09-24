@@ -26,8 +26,8 @@ ScreenChatList::ScreenChatList(QWidget *parent)
   ui->chatListView->setWordWrap(false);
   ui->chatListView->setTextElideMode(Qt::ElideNone);
 
-
-  ui->chatListView->setStyleSheet("QListView { background-color: #FFFFF0; }");
+  // ui->chatListView->setStyleSheet("QListView { background-color: #FFFFF0; }");
+  ui->chatListView->setStyleSheet("background-color: #FFFFF0;");
 }
 
 ScreenChatList::~ScreenChatList() { delete ui; }

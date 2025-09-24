@@ -26,23 +26,25 @@
      <verstretch>0</verstretch>
     </sizepolicy>
    </property>
-   <widget class="QStackedWidget" name="mainWindowstackedWidget">
-    <property name="geometry">
-     <rect>
-      <x>12</x>
-      <y>12</y>
-      <width>1175</width>
-      <height>800</height>
-     </rect>
-    </property>
-    <property name="currentIndex">
-     <number>2</number>
-    </property>
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QStackedWidget" name="mainWindowstackedWidget">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="currentIndex">
+       <number>2</number>
+      </property>
     <widget class="ScreenLogin" name="pageLogin"/>
     <widget class="ScreenRegister" name="pageRegister"/>
     <widget class="ScreenMainWork" name="pageWork"/>
     <widget class="ScreenUserProfile" name="pageProfile"/>
-   </widget>
+     </widget>
+    </item>
+   </layout>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="userProfileAction">
