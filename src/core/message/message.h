@@ -50,6 +50,4 @@ public:
 
   void addContent(const std::shared_ptr<IMessageContent> &content);
 
-  // utilities
-  void printMessage(const std::shared_ptr<User> &currentUser);
 };

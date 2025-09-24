@@ -130,8 +130,6 @@ public:
 
   // transport
 
-  //   void reidentifyClientAfterConnection();
-
   bool findServerAddress(ServerConnectionConfig &serverConnectionConfig, ServerConnectionMode &serverConnectionMode);
 
   int createConnection(ServerConnectionConfig &serverConnectionConfig, ServerConnectionMode &serverConnectionMode);
@@ -191,9 +189,4 @@ public:
 
   // заполнение на отправку пакета Chat
   std::optional<ChatDTO> fillChatDTOQt(const std::shared_ptr<Chat> &chat);
-
-  // MessageDTO FillForSendOneMessageDTOFromClient(const std::shared_ptr<Message> &message, const std::size_t &chatId);
-
-  // // передаем сообщения пользователя конкретного чата
-  // MessageChatDTO fillChatMessageDTOFromClient(const std::shared_ptr<Chat> &chat);
 };

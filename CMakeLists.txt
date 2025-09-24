@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
 project(Shark3_0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -55,15 +55,14 @@ endif()
 
 # ===== client как библиотека для Qt =====
 file(GLOB_RECURSE CLIENT_SRC CONFIGURE_DEPENDS ${SRC_DIR}/client/*.cpp)
-list(FILTER CLIENT_SRC EXCLUDE REGEX ".*/client.cpp$")
 
 add_library(clientlib STATIC ${CLIENT_SRC})
 target_include_directories(clientlib PUBLIC
   ${SRC_DIR} ${SRC_DIR}/client ${NLOHMANN_JSON_INCLUDE_DIR}
   ${CMAKE_CURRENT_LIST_DIR}/Shark_UI
 )
-# target_sources(clientlib PRIVATE Shark_UI/errorbus.h)  # УДАЛИТЬ
-target_link_libraries(clientlib PUBLIC core dto sqlite3 Threads::Threads Qt6::Core)
+
+target_link_libraries(clientlib PUBLIC core dto Threads::Threads Qt6::Core)
 
 
 # ===== server =====

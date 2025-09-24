@@ -4,7 +4,6 @@
 #include "user/user.h"
 #include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <memory> 
 #include <set>
 #include <string>
@@ -25,13 +24,7 @@ private:
   std::unordered_map<std::string, std::shared_ptr<User>> _loginUserMap; //!!!
   std::map<std::size_t, std::shared_ptr<Chat>> _chatIdChatMap;          //!!!
 
-  std::set<std::size_t> _freeChatServerIdSet; ///< Set of released chat IDs available for reuse.
-  std::size_t _nextChatIdClient = 1;          ///< Next available sequential chat ID.
-
   bool _isServerStatus = false;
-
-  std::deque<std::pair<PacketDTO, std::string>> _packetReceivedDeque;
-  std::deque<std::pair<PacketListDTO, std::string>> _packetForSendDeque;
 
 public:
   /**
@@ -48,40 +41,14 @@ public:
 
   const bool &getIsServerStatus() const;
 
-  std::size_t &getNextChatId();
-  const std::size_t &getNextChatId() const;
-
-  std::set<std::size_t> &getFreeChatServerIdSet();
-  const std::set<std::size_t> &getFreeChatServerIdSet() const;
-
   std::shared_ptr<Chat> getChatById(std::size_t chatId) const;
 
-  std::deque<std::pair<PacketDTO, std::string>> &getPacketReceivedDeque();
-
-  std::deque<std::pair<PacketListDTO, std::string>> &getPacketForSendDeque();
-
-  /**
-  s thChatMessagesf users.
-  * @return Const reference to the vector of users.
-  */
   const std::vector<std::shared_ptr<User>> &getUsers() const;
 
-  /**
-   * @brief Gets the list of chats.
-   * @return Const reference to the vector of chats.
-   */
   const std::vector<std::shared_ptr<Chat>> &getChats() const;
 
-  /**
-   * @brief Gets the active user.
-   * @return Const reference to the active user.
-   */
   const std::shared_ptr<User> &getActiveUser() const;
 
-  /**
-   * @brief Gets the login user map.
-   * @return Const reference to the unordered map.
-   */
   const std::unordered_map<std::string, std::shared_ptr<User>> &getLoginUserMap() const;
   //
   //
@@ -90,14 +57,6 @@ public:
 
   void setIsServerStatus(const bool &serverStatus);
 
-  void setNextChatIdClient(const std::size_t &nextChatId);
-
-  void setFreeChatServerId(const std::size_t &freeChatId);
-
-  void moveToFreeChatIdSrv(std::size_t chatId);
-
-  void releaseFreeChatIdSrv(std::size_t chatId);
-
   void setActiveUser(const std::shared_ptr<User> &user);
 
   void addUserToSystem(std::shared_ptr<User> &user);
@@ -105,11 +64,7 @@ public:
   bool addChatToInstance(const std::shared_ptr<Chat> &chat);
 
   // utilities
-  std::size_t createNewChatId(const std::shared_ptr<Chat> &chat_ptr);
-
   std::vector<std::shared_ptr<User>> findUserByTextPart(const std::string &textToFind) const; // поиск пользователя
-
-  std::size_t showUserList(const bool showActiveUser); // вывод на экрын списка пользователей
 
   std::shared_ptr<User> findUserByLogin(const std::string &userLogin) const;
 

@@ -94,10 +94,4 @@ public:
   bool checkPassword(const std::string &passwordHash) const;
 
   bool RqFrClientCheckLogin(const std::string &login) const;
-
-  void printChatList(const std::shared_ptr<User> &user) const;
-
-  void showUserData() const;
-
-  void showUserDataInit() const;
 };

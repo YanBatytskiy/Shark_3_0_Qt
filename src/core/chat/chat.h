@@ -101,8 +101,6 @@ public:
   void addMessageToChat(const std::shared_ptr<Message> &message, const std::shared_ptr<User> &sender,
                         const bool &isServerSession);
 
-  void setUserDeletedFromChat(const std::shared_ptr<User> &user);
-
   void setLastReadMessageId(const std::shared_ptr<User> &user, std::size_t newLastReadMessageId);
 
   bool setDeletedMessageMap(const std::string &userLogin, const std::size_t &deletedMessageId);
@@ -111,9 +109,6 @@ public:
 
   bool clearChat();
 
-  std::size_t createNewMessageId(bool isServerStatus);
-
   std::size_t getUnreadMessageCount(const std::shared_ptr<User> &user_ptr);
 
-  void printChat(const std::shared_ptr<User> &currentUser);
-};
+  };
