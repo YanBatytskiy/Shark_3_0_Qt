@@ -1,5 +1,5 @@
 #include "screen_register.h"
-#include "System/picosha2.h"
+#include "system/picosha2.h"
 #include "ui_screen_register.h"
 #include <QMessageBox>
 

@@ -27,6 +27,7 @@ void ScreenUserData::slotClearUserDataToLabels() {
 
   ui->unblockPushButton->setEnabled(false);
   ui->banPushButton->setEnabled(false);
+  ui->unBunPushButton->setEnabled(false);
   ui->blockPushButton->setEnabled(false);
 }
 

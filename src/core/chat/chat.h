@@ -37,9 +37,6 @@ private:
   // global list of messageId
   std::set<std::size_t> _messageIdMap;
 
-  // Next available sequential message ID.
-  std::size_t _nextMessageId = 1;
-
   // userLogin - MessageId
   std::unordered_map<std::string, std::size_t> _lastReadMessageMap;
 
@@ -64,9 +61,6 @@ public:
   std::set<std::size_t> &getMessageIdMap();
   const std::set<std::size_t> &getMessageIdMap() const;
 
-  std::size_t &getNextMessageIdClient();
-  const std::size_t &getNextMessageIdClient() const;
-
   const std::size_t &getChatId() const;
 
   const std::unordered_map<std::size_t, int64_t> &getMessageIdToTimeStamp() const;
@@ -88,8 +82,6 @@ public:
   // setters
 
   void setMessageIdMap(const std::size_t &messageId);
-
-  void setNextMessageIdClient(const std::size_t &nextMessageId);
 
   void setChatId(const std::size_t &chatId);
 

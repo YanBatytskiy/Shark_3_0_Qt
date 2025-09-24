@@ -799,6 +799,8 @@ void ScreenMainWork::on_mainWorkChatUserTabWidget_currentChanged(int index) {
   if (index == 1) {
     // userData
 
+    emit signalClearUserDataToLabels();
+
     ui->addUserToChatPushButton->setVisible(false);
 
     const auto userDataView = ui->mainWorkPageUserDataView->findChild<ScreenUserData *>(

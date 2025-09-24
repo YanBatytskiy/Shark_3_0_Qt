@@ -14,9 +14,6 @@ const std::size_t &Chat::getChatId() const { return _chatId; };
 std::set<std::size_t> &Chat::getMessageIdMap() { return _messageIdMap; }
 const std::set<std::size_t> &Chat::getMessageIdMap() const { return _messageIdMap; }
 
-std::size_t &Chat::getNextMessageIdClient() { return _nextMessageId; }
-const std::size_t &Chat::getNextMessageIdClient() const { return _nextMessageId; }
-
 const std::unordered_map<std::size_t, int64_t> &Chat::getMessageIdToTimeStamp() const { return _messageIdToTimeStamp; };
 
 const std::multimap<int64_t, std::shared_ptr<Message>> &Chat::getMessages() const { return _messages; }
@@ -47,8 +44,6 @@ std::size_t Chat::getLastReadMessageId(const std::shared_ptr<User> &user) const 
 
 // setters
 void Chat::setMessageIdMap(const std::size_t &messageId) { _messageIdMap.insert(messageId); }
-
-void Chat::setNextMessageIdClient(const std::size_t &nextMessageId) { _nextMessageId = nextMessageId; }
 
 void Chat::setChatId(const std::size_t &chatId) { _chatId = chatId; }
 //
@@ -143,7 +138,6 @@ bool Chat::clearChat() {
   _participants.clear();
   _messages.clear();
   _messageIdMap.clear();
-  _nextMessageId = 1;
   _lastReadMessageMap.clear();
   _messageIdToTimeStamp.clear();
   _deletedMessagesMap.clear();

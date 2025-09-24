@@ -1709,7 +1709,7 @@ std::optional<ChatDTO> ClientSession::fillChatDTOQt(const std::shared_ptr<Chat> 
           }
         }
 
-        participantsDTO.deletedFromChat = chat_ptr->getUserDeletedFromChat(user_ptr);
+        participantsDTO.deletedFromChat = false;
 
         chatDTO.participants.push_back(participantsDTO);
 
