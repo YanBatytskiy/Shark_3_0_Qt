@@ -46,8 +46,11 @@ bool ScreenRegister::eventFilter(QObject *watched, QEvent *event) {
 
 ScreenRegister::~ScreenRegister() { delete ui; }
 
-void ScreenRegister::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
+void ScreenRegister::setDatabase(std::shared_ptr<ClientSession> sessionPtr,
+                                 std::shared_ptr<Logger> loggerPtr) {
   _sessionPtr = sessionPtr;
+  _loggerPtr = loggerPtr;
+
   connect(_sessionPtr.get(), &ClientSession::serverStatusChanged, this,
           &ScreenRegister::onConnectionStatusChanged, Qt::QueuedConnection);
 }

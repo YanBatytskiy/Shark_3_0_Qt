@@ -1,19 +1,27 @@
 #include "exceptions_qt/errorbus.h"
 
+#include "logger.h"
 #include "screen_login.h"
 #include "ui_screen_login.h"
 
 #include <sys/utsname.h>
 
 #include <QMessageBox>
+#include <QPushButton>
 
-ScreenLogin::ScreenLogin(QWidget *parent) : QWidget(parent), ui(new Ui::ScreenLogin) { ui->setupUi(this); }
+ScreenLogin::ScreenLogin(QWidget *parent) : QWidget(parent), ui(new Ui::ScreenLogin) {
+  ui->setupUi(this);
+
+  connect(ui->logFileClearPushButton, &QPushButton::clicked,
+          this, &ScreenLogin::slotOn_logFileClearPushButton_clicked);
+}
 
 ScreenLogin::~ScreenLogin() { delete ui; }
 
-void ScreenLogin::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
+void ScreenLogin::setDatabase(std::shared_ptr<ClientSession> sessionPtr, std::shared_ptr<Logger> loggerPtr) {
 
   _sessionPtr = sessionPtr;
+  _loggerPtr = loggerPtr;
 
   connect(_sessionPtr.get(), &ClientSession::serverStatusChanged, this, &ScreenLogin::onConnectionStatusChanged,
           Qt::QueuedConnection);
@@ -164,4 +172,13 @@ void ScreenLogin::on_baseReInitialisationPushButton_clicked() {
   else {
     QMessageBox::information(this, "Успешно.", "Можно входить.");
   }
+}
+
+void ScreenLogin::slotOn_logFileClearPushButton_clicked() {
+  bool result = _loggerPtr->slotClearLogFile();
+
+  if (result)
+    QMessageBox::information(this, "Сообщение", "Файл логов очищен.");
+  else
+    QMessageBox::warning(this, "Ошибка", "Ошибка доступа к файлу.");
 }

@@ -2,6 +2,7 @@
 #define REGISTERSCREEN_H
 
 #include "client_session.h"
+#include "logger.h"
 
 #include <QWidget>
 
@@ -17,7 +18,7 @@ class ScreenRegister : public QWidget {
 public:
   explicit ScreenRegister(QWidget *parent = nullptr);
   ~ScreenRegister();
-  void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
+  void setDatabase(std::shared_ptr<ClientSession> sessionPtr, std::shared_ptr<Logger> loggerPtr);
   void clearFields();
 
 protected:
@@ -46,6 +47,8 @@ private slots:
 private:
   Ui::ScreenRegister *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
+  std::shared_ptr<Logger> _loggerPtr;
+
   bool isLogin{false};
   bool isName{false};
   bool isPassword{false};

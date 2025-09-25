@@ -33,7 +33,8 @@ else()
   endIf()
   if(NOT TARGET Qt6::Widgets)
     find_package(Qt6 REQUIRED COMPONENTS Widgets)
-  endif()
+  find_package(Qt6 REQUIRED COMPONENTS Core)
+endif()
 endif()
 
 set(CMAKE_AUTOMOC ON)
@@ -72,6 +73,7 @@ qt_add_executable(Shark_ui
   screen_user_data.h screen_user_data.cpp screen_user_data.ui
   screen_user_profile.h screen_user_profile.cpp screen_user_profile.ui
   screen_new_chat_participants.h screen_new_chat_participants.cpp screen_new_chat_participants.ui
+  logger.h logger.cpp
 )
 
 # Инклуды проекта
@@ -96,3 +98,4 @@ target_link_libraries(Shark_ui PRIVATE
   core
   dto
 )
+target_link_libraries(Shark_ui PRIVATE Qt6::Core)

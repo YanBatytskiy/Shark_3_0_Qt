@@ -3,6 +3,7 @@
 
 #include "client_session.h"
 
+#include "logger.h"
 #include "models/model_chat_list.h"
 #include "models/model_chat_messages.h"
 #include "models/model_user_list.h"
@@ -23,7 +24,7 @@ class ScreenMainWork : public QWidget {
 public:
   explicit ScreenMainWork(QWidget *parent = nullptr);
   ~ScreenMainWork();
-  void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
+  void setDatabase(std::shared_ptr<ClientSession> sessionPtr, std::shared_ptr<Logger> loggerPtr);
 
   void fillOneChatListModelWithData(const std::pair<std::size_t, ChatDTO> chat, bool newChatBool);
   void fillChatListModelWithData(bool allChats);
@@ -89,6 +90,7 @@ private slots:
 private:
   Ui::ScreenMainWork *ui;
   std::shared_ptr<ClientSession> _sessionPtr;
+  std::shared_ptr<Logger> _loggerPtr;
 
   QButtonGroup *_findRadoButtonGroup{nullptr};
   ChatListModel *_ChatListModel;

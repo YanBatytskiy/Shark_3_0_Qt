@@ -61,9 +61,12 @@ ScreenMainWork::ScreenMainWork(QWidget *parent)
 
 ScreenMainWork::~ScreenMainWork() { delete ui; }
 
-void ScreenMainWork::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
+void ScreenMainWork::setDatabase(std::shared_ptr<ClientSession> sessionPtr,
+                                 std::shared_ptr<Logger> loggerPtr) {
 
   _sessionPtr = sessionPtr;
+  _loggerPtr = loggerPtr;
+
   ui->findLineEdit->setEnabled(false);
   ui->mainWorkChatUserTabWidget->setCurrentIndex(0);
   ui->mainWorkRightStackedWidget->setCurrentIndex(0);

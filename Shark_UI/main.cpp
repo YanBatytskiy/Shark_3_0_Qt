@@ -1,6 +1,7 @@
 #include "chat_system/chat_system.h"
 #include "client/client_session.h"
 #include "errorbus.h"
+#include "logger.h"
 #include "screen_main_window.h"
 #include <QApplication>
 #include <QMessageBox>
@@ -23,7 +24,6 @@ int main(int argc, char *argv[]) {
                    });
 
   ChatSystem clientSystem;
-
   auto sessionPtr = std::make_shared<ClientSession>(clientSystem);
 
   sessionPtr->startConnectionThread();
@@ -31,7 +31,12 @@ int main(int argc, char *argv[]) {
   QObject::connect(&app, &QCoreApplication::aboutToQuit,
                    [&] { sessionPtr->stopConnectionThread(); });
 
-  auto w = new MainWindow(sessionPtr);
+  auto loggerPtr = std::make_shared<Logger>();
+
+  QObject::connect(&app, &QCoreApplication::aboutToQuit,
+                   loggerPtr.get(), &Logger::slotStopLogger);
+
+  auto w = new MainWindow(sessionPtr, loggerPtr);
   w->show();
   auto result = app.exec();
 

@@ -8,9 +8,6 @@ void ConnectionMonitor::run() {
     bool online = false;
     ServerConnectionMode mode = ServerConnectionMode::Offline;
 
-    // const bool ok = _session->initServerConnection();
-    // emit connectionStateChanged(ok, _session->getserverConnectionModeCl());
-
     while (_run.load(std::memory_order_acquire)) {
 
       if (!online) {

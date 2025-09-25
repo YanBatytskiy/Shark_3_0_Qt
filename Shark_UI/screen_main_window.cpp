@@ -1,4 +1,5 @@
 #include "screen_main_window.h"
+#include "logger.h"
 #include "screen_login.h"
 #include "ui_screen_main_window.h"
 
@@ -6,16 +7,18 @@
 #include <QPushButton>
 
 MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr,
+                       std::shared_ptr<Logger> loggerPtr,
                        QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
 
   _sessionPtr = std::move(sessionPtr);
+  _loggerPtr = std::move(loggerPtr);
 
   ui->setupUi(this);
 
-  ui->pageLogin->setDatabase(_sessionPtr);
-  ui->pageRegister->setDatabase(_sessionPtr);
-  ui->pageWork->setDatabase(_sessionPtr);
+  ui->pageLogin->setDatabase(_sessionPtr, _loggerPtr);
+  ui->pageRegister->setDatabase(_sessionPtr, _loggerPtr);
+  ui->pageWork->setDatabase(_sessionPtr, _loggerPtr);
 
   connect(ui->pageLogin, &ScreenLogin::registrationRequested, this,
           &MainWindow::setRegistrationForm);

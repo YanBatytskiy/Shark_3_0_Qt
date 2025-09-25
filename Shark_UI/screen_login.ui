@@ -450,6 +450,27 @@ border-color: rgb(0, 0, 0);</string>
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="logFileClearPushButton">
+        <property name="text">
+         <string>Очистить файл логов</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="lookLogLastLinePushButton">
+        <property name="text">
+         <string>Посмотреть последнюю строку файла</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="lookLogSeveralLinePushButton">
+        <property name="text">
+         <string>Посмотреть несколько последних строк лога</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="verticalSpacer_6">
         <property name="orientation">
          <enum>Qt::Orientation::Vertical</enum>
