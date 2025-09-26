@@ -17,6 +17,7 @@ class MainWindow : public QMainWindow {
 
 public:
   MainWindow(std::shared_ptr<ClientSession> sessionPtr,
+
              std::shared_ptr<Logger> loggerPtr, QWidget *parent = nullptr);
   ~MainWindow();
 

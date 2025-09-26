@@ -30,8 +30,8 @@ signals:
 public slots:
   void slotStopLogger();
   bool slotWriteLine(const QString &logLine);
-  QVector<QString> slotReadLastLine();
-  QVector<QString> slotReadSeveralLines(qint64 linesToRead);
+  std::multimap<qint64, QString> slotReadLastLine();
+  std::multimap<qint64, QString> slotReadSeveralLines(qint64 linesToRead);
   bool slotClearLogFile();
 
 private slots:
@@ -39,3 +39,21 @@ private slots:
 };
 
 #endif // LOGGER_H
+
+/*
+Уровни логгирования:
+TRACE - детальная отладка
+DEBUG - отладочная информация
+INFO - обычные события
+WARN - предупреждения
+ERROR - ошибки
+CRITICAL - критические ошибки
+
+Ключевые модули для чата:
+NETWORK - соединения, пакеты
+AUTH - аутентификация
+CHAT - сообщения, комнаты
+DATABASE - работа с БД
+SESSION - управление сессиями
+
+ */

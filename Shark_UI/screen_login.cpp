@@ -6,6 +6,7 @@
 
 #include <sys/utsname.h>
 
+#include <QInputDialog>
 #include <QMessageBox>
 #include <QPushButton>
 
@@ -14,6 +15,12 @@ ScreenLogin::ScreenLogin(QWidget *parent) : QWidget(parent), ui(new Ui::ScreenLo
 
   connect(ui->logFileClearPushButton, &QPushButton::clicked,
           this, &ScreenLogin::slotOn_logFileClearPushButton_clicked);
+
+  connect(ui->lookLogSeveralLinePushButton, &QPushButton::clicked,
+          this, &ScreenLogin::slotOn_lookLogSeveralLinePushButton_clicked);
+
+  connect(ui->lookLogLastLinePushButton, &QPushButton::clicked,
+          this, &ScreenLogin::slotOn_lookLogLastLinePushButton_clicked);
 }
 
 ScreenLogin::~ScreenLogin() { delete ui; }
@@ -109,6 +116,17 @@ void ScreenLogin::onConnectionStatusChanged(bool connectionStatus, ServerConnect
   }
 }
 
+void ScreenLogin::slot_show_logger_form(const std::multimap<qint64, QString> &logger_model) {
+  if (logger_form_ == nullptr)
+    logger_form_ = new ScreenLoggerForm(_sessionPtr, _loggerPtr, this);
+
+  logger_form_->slot_fill_logger_model(logger_model);
+
+  logger_form_->setWindowModality(Qt::ApplicationModal);
+  logger_form_->setWindowFlags(Qt::Dialog | Qt::WindowMinMaxButtonsHint);
+  logger_form_->show();
+}
+
 void ScreenLogin::on_registerModeButton_clicked() {
 
   if (!_sessionPtr->getIsServerOnline()) {
@@ -175,10 +193,57 @@ void ScreenLogin::on_baseReInitialisationPushButton_clicked() {
 }
 
 void ScreenLogin::slotOn_logFileClearPushButton_clicked() {
-  bool result = _loggerPtr->slotClearLogFile();
 
-  if (result)
+  QMessageBox message(this);
+  message.setWindowTitle("Подтверждение.");
+  message.setText("Вы уверены, что хотите очистить файл логов?");
+  auto clearButton = message.addButton("Очистить", QMessageBox::AcceptRole);
+  message.addButton("Отмена", QMessageBox::RejectRole);
+
+  message.exec();
+
+  const auto clicked = message.clickedButton();
+  if (clicked != clearButton)
+    return;
+
+  if (!_loggerPtr) {
+    QMessageBox::warning(this, "Ошибка", "Логгер недоступен.");
+    return;
+  }
+
+  const bool cleared = _loggerPtr->slotClearLogFile();
+  if (cleared)
     QMessageBox::information(this, "Сообщение", "Файл логов очищен.");
   else
     QMessageBox::warning(this, "Ошибка", "Ошибка доступа к файлу.");
+}
+
+void ScreenLogin::slotOn_lookLogSeveralLinePushButton_clicked() {
+
+  QMessageBox message(this);
+  message.setWindowTitle("Выберите сколько строк выводить.");
+  message.setText("Выберите некоторое количиство последних строк либо весь лог");
+  message.addButton("Ввести количество строк", QMessageBox::AcceptRole);
+  message.addButton("Вывести все строки", QMessageBox::AcceptRole);
+  message.addButton("Отмена", QMessageBox::RejectRole);
+
+  message.exec();
+
+  if (message.clickedButton()->text() == "Ввести количество строк") {
+    bool ok;
+    int count = QInputDialog::getInt(this, "Количество:", "Ведите количество:", 10, 1, 1000, 1, &ok);
+    if (ok) {
+      const auto &model_data = _loggerPtr->slotReadSeveralLines(count);
+      slot_show_logger_form(model_data);
+    }
+  } else if (message.clickedButton()->text() == "Вывести все строки") {
+    const auto &model_data = _loggerPtr->slotReadSeveralLines(0);
+    slot_show_logger_form(model_data);
+  }
+}
+
+void ScreenLogin::slotOn_lookLogLastLinePushButton_clicked() {
+  const auto &model_data = _loggerPtr->slotReadLastLine();
+
+  slot_show_logger_form(model_data);
 }

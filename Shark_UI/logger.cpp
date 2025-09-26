@@ -42,13 +42,15 @@ bool Logger::slotWriteLine(const QString &logLine) {
   return true;
 }
 
-QVector<QString> Logger::slotReadLastLine() {
+std::multimap<qint64, QString> Logger::slotReadLastLine() {
 
-  QVector<QString> result;
+  std::multimap<qint64, QString> result;
   result.clear();
 
   if (!_reader.is_open())
     return result;
+
+  const qint64 quantity = slotgetLineCount();
 
   std::shared_lock<std::shared_mutex> lk(_mutex);
 
@@ -60,7 +62,7 @@ QVector<QString> Logger::slotReadLastLine() {
     return result;
 
   // шаг назад от конца
-  pos = -std::streamoff(1);
+  pos -= std::streamoff(1);
 
   // если в конце стоит '\n', пропускаем хвостовые переводы строки
   char ch = '\0';
@@ -91,22 +93,25 @@ QVector<QString> Logger::slotReadLastLine() {
   if (str.empty())
     return result;
 
-  result.push_back(QString::fromStdString(str));
+  result.insert(std::pair{quantity, QString::fromStdString(str)});
 
   return result;
 }
 
-QVector<QString> Logger::slotReadSeveralLines(qint64 linesToRead) {
+std::multimap<qint64, QString> Logger::slotReadSeveralLines(qint64 linesToRead) {
 
-  QVector<QString> result;
+  std::multimap<qint64, QString> result;
   result.clear();
 
-  if (!_reader.is_open() || linesToRead <= 0)
+  if (!_reader.is_open() || linesToRead < 0)
     return result;
 
   const auto quantityLines = slotgetLineCount();
   if (quantityLines <= 0)
     return result;
+
+  if (linesToRead == 0)
+    linesToRead = quantityLines;
 
   std::shared_lock<std::shared_mutex> lk(_mutex);
 
@@ -119,20 +124,22 @@ QVector<QString> Logger::slotReadSeveralLines(qint64 linesToRead) {
   // начать с последнего байта
   pos -= std::streamoff(1);
 
-  // пропустить хвостовые '\n'
   char ch = '\0';
   _reader.seekg(pos);
   _reader.get(ch);
 
-  while (pos > std::streampos(0) && ch == '\n') {
-    pos -= std::streamoff(1);
-    _reader.seekg(pos);
-    _reader.get(ch);
-  }
-
   // собрать последние N строк, двигаясь назад
   std::vector<std::string> lines; // временно в прямом виде
   while (true) {
+    // пропустить хвостовые переводы строки между итерациями
+    while (pos > std::streampos(0) && ch == '\n') {
+      pos -= std::streamoff(1);
+      _reader.seekg(pos);
+      _reader.get(ch);
+    }
+    if (pos == std::streampos(0) && ch == '\n')
+      break;
+
     // дойти до начала строки или файла
     while (pos > std::streampos(0) && ch != '\n') {
       pos -= std::streamoff(1);
@@ -167,8 +174,14 @@ QVector<QString> Logger::slotReadSeveralLines(qint64 linesToRead) {
   }
 
   // вернуть в правильном порядке от старой к новой
+
+  qint64 row_number = quantityLines > static_cast<qint64>(lines.size())
+                          ? (quantityLines - static_cast<qint64>(lines.size()))
+                          : 0;
+
   for (auto it = lines.rbegin(); it != lines.rend(); ++it) {
-    result.push_back(QString::fromStdString(*it));
+    result.insert(std::pair{row_number, QString::fromStdString(*it)});
+    ++row_number;
   }
   return result;
 }
@@ -180,9 +193,24 @@ qint64 Logger::slotgetLineCount() {
   std::shared_lock<std::shared_mutex> lk(_mutex);
 
   _reader.clear();
+  _reader.seekg(0, std::ios::end);
+  std::streampos end = _reader.tellg();
+  if (end == std::streampos(0))
+    return 0; // пустой файл
+
+  // посчитать количество '\n'
   _reader.seekg(0, std::ios::beg);
-  return std::count(std::istreambuf_iterator<char>(_reader),
-                    std::istreambuf_iterator<char>(), '\n');
+  qint64 newlines = std::count(std::istreambuf_iterator<char>(_reader),
+                               std::istreambuf_iterator<char>(), '\n');
+
+  // проверить, заканчивается ли файл на '\n'
+  _reader.clear();
+  _reader.seekg(end - std::streamoff(1));
+  char last = '\0';
+  _reader.get(last);
+
+  // если последний символ '\n', то строк ровно newlines, иначе +1
+  return (last == '\n') ? newlines : (newlines + 1);
 }
 
 bool Logger::slotClearLogFile() {

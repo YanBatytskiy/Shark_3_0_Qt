@@ -74,6 +74,7 @@ qt_add_executable(Shark_ui
   screen_user_profile.h screen_user_profile.cpp screen_user_profile.ui
   screen_new_chat_participants.h screen_new_chat_participants.cpp screen_new_chat_participants.ui
   logger.h logger.cpp
+  screen_logger_form.h screen_logger_form.cpp screen_logger_form.ui
 )
 
 # Инклуды проекта
