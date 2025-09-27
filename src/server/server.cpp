@@ -1,5 +1,6 @@
 #include "postgres_db.h"
 #include "server_session.h"
+#include "sql_server.h"
 #include "system/system_function.h"
 #include <arpa/inet.h>
 #include <cstring>
@@ -49,7 +50,7 @@ int main() {
   std::cout << "Port: " << postgress.getPort() << std::endl;
   std::cout << "Base: " << postgress.getBaseName() << std::endl << std::endl;
 
-  ServerSession serverSession;
+  ServerSession serverSession(SQLRequests{});
   serverSession.setPgConnection(conn);
 
   // if (!systemInitForTest(serverSession, conn)) {

@@ -21,9 +21,6 @@ public:
 public slots:
   void slot_fill_logger_model(const std::multimap<qint64, QString> &logger_data);
 
-  // protected:
-  //   void ShowEvent(QShowEvent *event);
-
 private slots:
   void on_ExitPushButton_clicked();
 

@@ -27,9 +27,16 @@ public:
 
 signals:
   void signalNewChatListBecameEnabled();
+  void signal_on_block_push_button_clicked();
+  void signal_on_unblock_push_button_clicked();
+  void signal_on_bun_push_button_clicked();
+  void signal_on_unbun_push_button_clicked();
 
 private slots:
-  void on_unblockPushButton_clicked();
+  void slot_on_block_push_button_clicked();
+  void slot_on_unblock_push_button_clicked();
+  void slot_on_bun_push_button_clicked();
+  void slot_on_unbun_push_button_clicked();
 
 private:
   Ui::ScreenUserData *ui;

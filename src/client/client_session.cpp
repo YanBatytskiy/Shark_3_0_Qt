@@ -2,7 +2,9 @@
 #include "chat/chat.h"
 #include "chat_system/chat_system.h"
 #include "dto/dto_struct.h"
+#include "exceptions_cpp/login_exception.h"
 #include "message/message_content_struct.h"
+#include "system/date_time_utils.h"
 #include "system/serialize.h"
 #include "system/system_function.h"
 #include "user/user.h"
@@ -13,6 +15,7 @@
 #include "exceptions_qt/exception_router.h"
 #include "nw_connection_monitor.h"
 #include <QCoreApplication>
+#include <QString>
 #include <atomic>
 #include <cerrno>
 #include <qnamespace.h>
@@ -29,6 +32,7 @@
 #include <memory>
 #include <netdb.h>
 #include <optional>
+#include <string>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <vector>
@@ -48,12 +52,10 @@ bool ClientSession::reInitilizeBaseQt() {
   return reInitilizeBaseCl();
 }
 
-  bool ClientSession::checkLoginQt(std::string login){
+bool ClientSession::checkLoginQt(std::string login) {
 
-    return checkUserLoginCl(login);
-
-  }
-
+  return checkUserLoginCl(login);
+}
 
 bool ClientSession::checkLoginPsswordQt(std::string login, std::string password) {
 
@@ -215,29 +217,93 @@ bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std:
           chat_ptr->addParticipant(user_ptr, 0, false);
       } // if activeuser
     } // for
-    
-      // затем добавляем чат в систему
+
+    // затем добавляем чат в систему
     this->getInstance().addChatToInstance(chat_ptr);
   } // if
 
   return result;
 }
 
-    bool ClientSession::createUserQt(UserDTO userDTO){
-    if (createUserCl(userDTO)) return true;
-    else return false;
+bool ClientSession::createUserQt(UserDTO userDTO) {
+  if (createUserCl(userDTO))
+    return true;
+  else
+    return false;
+}
+
+bool ClientSession::changeUserDataQt(UserDTO userDTO) {
+  return changeUserDataCl(userDTO);
+}
+
+bool ClientSession::changeUserPasswordQt(UserDTO userDTO) {}
+
+bool ClientSession::blockUnblockUserQt(std::string login, bool isBlocked, std::string disableReason) {
+
+  const auto user_ptr = _instance.findUserByLogin(login);
+
+  try {
+
+    if (!user_ptr)
+      throw exc::UserNotFoundException();
+
+    UserDTO userDTO;
+
+    userDTO.login = login;
+    userDTO.userName = "";
+    userDTO.email = "";
+    userDTO.phone = "";
+    userDTO.passwordhash = "";
+    userDTO.ban_until = 0;
+    userDTO.disabled_at = 0;
+
+    PacketDTO packetDTO;
+    packetDTO.structDTOClassType = StructDTOClassType::userDTO;
+    packetDTO.reqDirection = RequestDirection::ClientToSrv;
+
+    if (isBlocked) {
+      userDTO.is_active = false;
+      userDTO.disable_reason = disableReason;
+      packetDTO.requestType = RequestType::RqFrClientBlockUser;
+    } else {
+      userDTO.is_active = true;
+      userDTO.disable_reason = "";
+      packetDTO.requestType = RequestType::RqFrClientUnBlockUser;
     }
 
-    bool ClientSession::changeUserDataQt(UserDTO userDTO){
-      return changeUserDataCl(userDTO);
-    }
+    packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserDTO>>(userDTO);
 
-    bool ClientSession::changeUserPasswordQt(UserDTO userDTO){}
+    std::vector<PacketDTO> packetDTOListSend;
+    packetDTOListSend.push_back(packetDTO);
 
-    bool ClientSession::blockUnblockUserQt(std::string login, bool isBlocked, std::string disableReason){}
+    PacketListDTO packetListDTOresult;
+    packetListDTOresult.packets.clear();
 
-    bool ClientSession::bunUnbunUserQt(std::string login, bool isBanned, std::int64_t bunnedTo){}
+    packetListDTOresult = processingRequestToServer(packetDTOListSend, packetDTO.requestType);
 
+    const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(*packetListDTOresult.packets[0].structDTOPtr)
+                             .getStructDTOClass();
+
+    if (packet.reqResult)
+      return true;
+    else
+      return false;
+
+  } // try
+  catch (const exc::UserNotFoundException &ex) {
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto userLoginQt = QString::fromStdString(login);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [AUTH]   [user=%2]   changeUserPasswordQt   ")
+                                         .arg(timeStampQt, userLoginQt));
+    return false;
+  }
+}
+
+bool ClientSession::bunUnbunUserQt(std::string login, bool isBanned, std::int64_t bunnedTo) {}
 
 // threads
 void ClientSession::startConnectionThread() {
@@ -363,17 +429,6 @@ const std::vector<UserDTO> ClientSession::findUserByTextPartOnServerCl(const std
     default:
       break;
     } // switch
-
-    // } else
-    //   throw exc_qt::WrongPacketSizeException();
-
-    //   } catch (const exc_qt::WrongresponceTypeException &ex) {
-    //     std::cout << "Клиент. Поиск пользователей по части слова. " << ex.what() << std::endl;
-    //     result.clear();
-    //   } catch (const std::exception &ex) {
-    //     std::cout << "Клиент. Неизвестная ошибка. " << ex.what() << std::endl;
-    //     result.clear();
-    //   }
   }
   return result;
 }
@@ -420,10 +475,25 @@ bool ClientSession::checkUserLoginCl(const std::string &userLogin) {
     }
 
   } catch (const exc_qt::WrongPacketSizeException &ex) {
-    std::cout << "Клиент. Проверка логина. Неправильное количество пакетов в ответе." << ex.what() << std::endl;
+
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto userLoginQt = QString::fromStdString(userLogin);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=]   [msg=]   checkUserLoginCl   wrong quantity packets in answer")
+                                         .arg(timeStampQt, userLoginQt));
     return false;
   } catch (const std::exception &ex) {
-    std::cout << "Клиент. Неизвестная ошибка. " << ex.what() << std::endl;
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto userLoginQt = QString::fromStdString(userLogin);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=]   [msg=]   checkUserLoginCl   uknown mistake")
+                                         .arg(timeStampQt, userLoginQt));
     return false;
   }
   return true;
@@ -474,21 +544,38 @@ bool ClientSession::checkUserPasswordCl(const std::string &userLogin, const std:
     }
 
   } catch (const exc_qt::WrongPacketSizeException &ex) {
+
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto userLoginQt = QString::fromStdString(userLogin);
+
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
                                      QStringLiteral(
-                                         "Клиент. Проверка пароля. Неправильное количество пакетов в ответе."));
-
-    throw;
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   checkUserPasswordCl   ")
+                                         .arg(timeStampQt, userLoginQt));
+    return false;
   } catch (const exc_qt::WrongresponceTypeException &ex) {
+
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto userLoginQt = QString::fromStdString(userLogin);
+
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
                                      QStringLiteral(
-                                         "Клиент. Проверка пароля. Неправильное тип пакета в ответе сервера."));
-
-    throw;
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   checkUserPasswordCl   ")
+                                         .arg(timeStampQt, userLoginQt));
+    return false;
   } catch (const std::exception &ex) {
+
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto userLoginQt = QString::fromStdString(userLogin);
+
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral("Клиент.Проверка пароля. Неизвестная ошибка."));
-    throw;
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2].  checkUserPasswordCl   ")
+                                         .arg(timeStampQt, userLoginQt));
+    return false;
   }
 }
 // transport
@@ -531,7 +618,14 @@ bool ClientSession::findServerAddress(ServerConnectionConfig &serverConnectionCo
     }
   } // try
   catch (const exc_qt::CreateSocketTypeException &ex) {
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()), QStringLiteral("Клиент. Поиск сервера."));
+
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   findServerAddress   search of server")
+                                         .arg(timeStampQt));
   }
 
   close(socketTmp);
@@ -589,7 +683,14 @@ int ClientSession::createConnection(ServerConnectionConfig &serverConnectionConf
     }
   } // try
   catch (const exc_qt::NetworkException &ex) {
-    std::cerr << "Client: " << ex.what() << std::endl;
+
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   createConnection   uknown mistake")
+                                         .arg(timeStampQt));
     close(socketTmp);
     return -1;
   }
@@ -642,7 +743,13 @@ bool ClientSession::discoverServerOnLAN(ServerConnectionConfig &serverConnection
     return true;
   } catch (const exc_qt::CreateSocketTypeException &ex) {
 
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()), QStringLiteral("Клиент. Поиск в LAN."));
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   discoverServerOnLAN   search in LAN")
+                                         .arg(timeStampQt));
     serverConnectionConfig.found = false;
     throw;
   }
@@ -822,40 +929,40 @@ PacketListDTO ClientSession::getDatafromServer(const std::vector<std::uint8_t> &
       throw;
     }
 
-    // проверка
-    // std::cout << "[DEBUG] buffer.size() = " << buffer.size() << std::endl;
-    // for (std::size_t i = 0; i < buffer.size(); ++i)
-    //   std::cout << std::hex << static_cast<int>(buffer[i]) << " ";
-    // std::cout << std::dec << std::endl;
-
-    // проверка
-    // std::cerr << "[DEBUG] Получено от сервера: " << bytesReceived << " байт" << std::endl;
-    // for (std::size_t i = 0; i < buffer.size(); ++i) {
-    //   std::cerr << static_cast<int>(buffer[i]) << " ";
-    // }
-    // std::cerr << std::endl;
-
     for (const auto &pct : responcePacketListDTOVector)
       packetListDTOresult.packets.push_back(pct);
-
-    // for (const auto &packet : packetListDTOresult.packets) {
-    //   std::cerr << "[CLIENT DEBUG] Получен пакет requestType = " << static_cast<int>(packet.requestType) <<
-    //   std::endl;
-    // }
 
     if (packetListDTOresult.packets.empty())
       throw exc_qt::ReceiveDataException();
   } // try
   catch (const exc_qt::ConnectionToServerException &ex) {
+
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral("Клиент. Потеряно соединение с сервером."));
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   getDatafromServer   lost connection with server")
+                                         .arg(timeStampQt));
     return packetListDTOresult;
   } catch (const exc_qt::SendDataException &ex) {
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()), QStringLiteral("Клиент getDatafromServer: ."));
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]    getDatafromServer   lost connection with server")
+                                         .arg(timeStampQt));
     packetListDTOresult.packets.clear();
     return packetListDTOresult;
   } catch (const exc_qt::ReceiveDataException &ex) {
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()), QStringLiteral("Клиент getDatafromServer: ."));
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   getDatafromServer   lost connection with server")
+                                         .arg(timeStampQt));
     packetListDTOresult.packets.clear();
     return packetListDTOresult;
   }
@@ -872,8 +979,15 @@ PacketListDTO ClientSession::processingRequestToServer(std::vector<PacketDTO> &p
 
   // ГАРД: офлайн/битый сокет → мгновенный отказ без сети
   if (!_statusOnline.load(std::memory_order_acquire) || _socketFd < 0) {
-    emit exc_qt::ErrorBus::i().error(QStringLiteral("Нет соединения с сервером"),
-                                     QStringLiteral("Клиент processingRequestToServer"));
+
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(""),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=]   [chat_Id=]   [msg=]   processingRequestToServer   no connection with server")
+                                         .arg(timeStampQt));
+
     return packetListDTOresult; // пустой ответ
   }
 
@@ -985,9 +1099,14 @@ bool ClientSession::reInitilizeBaseCl() {
       return false;
   } // try
   catch (const exc_qt::WrongresponceTypeException &ex) {
+
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
                                      QStringLiteral(
-                                         "Клиент: Переинициализация базы. Неверный тип ответа с сервера."));
+                                         "[%1]   [ERROR]   [NETWORK]   [user=]   [chat_Id=]   [msg=]   reInitilizeBaseCl   wrong type of answer from server")
+                                         .arg(timeStampQt));
     return false;
   }
 }
@@ -1061,13 +1180,26 @@ bool ClientSession::registerClientToSystemCl(const std::string &login) {
 
   } // try
   catch (const exc_qt::WrongresponceTypeException &ex) {
+
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto loginQt = QString::fromStdString(login);
+
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
                                      QStringLiteral(
-                                         "Клиент: регистрация на устройстве. Неверный тип пакета с сервера."));
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   registerClientToSystemCl   wrong type packet from server")
+                                         .arg(timeStampQt, loginQt));
     return false;
   } catch (const exc_qt::NetworkException &ex) {
+
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto loginQt = QString::fromStdString(login);
+
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral("Клиент: регистрация на устройстве. Неизвестная ошибка."));
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   registerClientToSystemCl   uknown mistake")
+                                         .arg(timeStampQt, loginQt));
     return false;
   }
 
@@ -1078,7 +1210,7 @@ bool ClientSession::registerClientToSystemCl(const std::string &login) {
 //
 //
 
-  bool ClientSession::changeUserDataCl(const UserDTO& userDTO){
+bool ClientSession::changeUserDataCl(const UserDTO &userDTO) {
 
   PacketDTO packetDTO;
   packetDTO.requestType = RequestType::RqFrClientChangeUserData;
@@ -1094,18 +1226,16 @@ bool ClientSession::registerClientToSystemCl(const std::string &login) {
 
   packetListDTOresult = processingRequestToServer(packetDTOListSend, packetDTO.requestType);
 
-    const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(*packetListDTOresult.packets[0].structDTOPtr)
-                             .getStructDTOClass();
+  const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(*packetListDTOresult.packets[0].structDTOPtr)
+                           .getStructDTOClass();
 
-    if (packet.reqResult)
-      return true;
-    else
-      return false;
+  if (packet.reqResult)
+    return true;
+  else
+    return false;
+}
 
-  }
-
-
-bool ClientSession::createUserCl(const UserDTO& userDTO) {
+bool ClientSession::createUserCl(const UserDTO &userDTO) {
 
   PacketDTO packetDTO;
   packetDTO.requestType = RequestType::RqFrClientCreateUser;
@@ -1121,13 +1251,13 @@ bool ClientSession::createUserCl(const UserDTO& userDTO) {
 
   packetListDTOresult = processingRequestToServer(packetDTOListSend, packetDTO.requestType);
 
-    const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(*packetListDTOresult.packets[0].structDTOPtr)
-                             .getStructDTOClass();
+  const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(*packetListDTOresult.packets[0].structDTOPtr)
+                           .getStructDTOClass();
 
-    if (packet.reqResult)
-      return true;
-    else
-      return false;
+  if (packet.reqResult)
+    return true;
+  else
+    return false;
 }
 //
 //
@@ -1174,11 +1304,8 @@ bool ClientSession::createNewChatCl(std::shared_ptr<Chat> &chat, ChatDTO &chatDT
         if (!packetDTO.reqResult)
           throw exc_qt::CreateChatException();
         else {
-          //   std::cout << "[DEBUG] anyNumber = '" << packetDTO.anyNumber << "'" << std::endl;
           auto generalChatId = packetDTO.anyNumber;
           chat->setChatId(generalChatId);
-
-          //   std::cout << "[DEBUG] anyString = '" << packetDTO.anyString << "'" << std::endl;
 
           auto generalMessageId = parseGetlineToSizeT(packetDTO.anyString);
 
@@ -1188,30 +1315,81 @@ bool ClientSession::createNewChatCl(std::shared_ptr<Chat> &chat, ChatDTO &chatDT
             throw exc_qt::CreateMessageException();
 
           chat->getMessages().begin()->second->setMessageId(generalMessageId);
-
-          // добавляем чат в систему
-          // _instance.addChatToInstance(chat);
         }
       }
     }
   } // try
   catch (const exc_qt::WrongresponceTypeException &ex) {
-    std::cout << "Клиент. createNewChatCl. " << ex.what() << std::endl;
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto senderLoginQt = QString::fromStdString(chatDTO.senderLogin);
+    const auto chatIdQt = QString::number(static_cast<long long>(chatDTO.chatId));
+    const auto messageIdQt = QString::number(0);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   createNewChatCl   ")
+                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
     return false;
   } catch (const exc_qt::EmptyPacketException &ex) {
-    std::cout << "Клиент. createNewChatCl. " << ex.what() << std::endl;
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto senderLoginQt = QString::fromStdString(chatDTO.senderLogin);
+    const auto chatIdQt = QString::number(static_cast<long long>(chatDTO.chatId));
+    const auto messageIdQt = QString::number(0);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   createNewChatCl   ")
+                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
     return false;
   } catch (const exc_qt::CreateChatException &ex) {
-    std::cout << "Клиент. createNewChatCl. " << ex.what() << std::endl;
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto senderLoginQt = QString::fromStdString(chatDTO.senderLogin);
+    const auto chatIdQt = QString::number(static_cast<long long>(chatDTO.chatId));
+    const auto messageIdQt = QString::number(0);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   createNewChatCl   ")
+                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
     return false;
   } catch (const exc_qt::CreateChatIdException &ex) {
-    std::cout << "Клиент. createNewChatCl. " << ex.what() << std::endl;
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto senderLoginQt = QString::fromStdString(chatDTO.senderLogin);
+    const auto chatIdQt = QString::number(static_cast<long long>(chatDTO.chatId));
+    const auto messageIdQt = QString::number(0);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   createNewChatCl   ")
+                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
     return false;
   } catch (const exc_qt::CreateMessageIdException &ex) {
-    std::cout << "Клиент. createNewChatCl. " << ex.what() << std::endl;
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto senderLoginQt = QString::fromStdString(chatDTO.senderLogin);
+    const auto chatIdQt = QString::number(static_cast<long long>(chatDTO.chatId));
+    const auto messageIdQt = QString::number(0);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   createNewChatCl   ")
+                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
     return false;
   } catch (const exc_qt::CreateMessageException &ex) {
-    std::cout << "Клиент. createNewChatCl. " << ex.what() << std::endl;
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto senderLoginQt = QString::fromStdString(chatDTO.senderLogin);
+    const auto chatIdQt = QString::number(static_cast<long long>(chatDTO.chatId));
+    const auto messageIdQt = QString::number(0);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   createNewChatCl   ")
+                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
     return false;
   }
 
@@ -1303,19 +1481,64 @@ std::size_t ClientSession::createMessageCl(const Message &message, std::shared_p
       chat_ptr->addMessageToChat(message_ptr, user, false);
     }
   } catch (const exc_qt::EmptyPacketException &ex) {
-    std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto senderLoginQt = QString::fromStdString(messageDTO.senderLogin);
+    const auto chatIdQt = QString::number(static_cast<long long>(messageDTO.chatId));
+    const auto messageIdQt = QString::number(static_cast<long long>(messageDTO.messageId));
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   createMessageCl   ")
+                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
     return 0;
   } catch (const exc_qt::WrongPacketSizeException &ex) {
-    std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto senderLoginQt = QString::fromStdString(messageDTO.senderLogin);
+    const auto chatIdQt = QString::number(static_cast<long long>(messageDTO.chatId));
+    const auto messageIdQt = QString::number(static_cast<long long>(messageDTO.messageId));
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   createMessageCl   ")
+                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
     return 0;
   } catch (const exc_qt::WrongresponceTypeException &ex) {
-    std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto senderLoginQt = QString::fromStdString(messageDTO.senderLogin);
+    const auto chatIdQt = QString::number(static_cast<long long>(messageDTO.chatId));
+    const auto messageIdQt = QString::number(static_cast<long long>(messageDTO.messageId));
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   createMessageCl   ")
+                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
     return 0;
   } catch (const exc_qt::CreateMessageException &ex) {
-    std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto senderLoginQt = QString::fromStdString(messageDTO.senderLogin);
+    const auto chatIdQt = QString::number(static_cast<long long>(messageDTO.chatId));
+    const auto messageIdQt = QString::number(static_cast<long long>(messageDTO.messageId));
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   createMessageCl   ")
+                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
     return 0;
   } catch (const exc_qt::ValidationException &ex) {
-    std::cerr << "Клиент: createMessageCl" << ex.what() << std::endl;
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto senderLoginQt = QString::fromStdString(messageDTO.senderLogin);
+    const auto chatIdQt = QString::number(static_cast<long long>(messageDTO.chatId));
+    const auto messageIdQt = QString::number(static_cast<long long>(messageDTO.messageId));
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   createMessageCl   ")
+                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
     return 0;
   }
   return newMessageId;
@@ -1368,13 +1591,41 @@ bool ClientSession::sendLastReadMessageFromClient(const std::shared_ptr<Chat> &c
     }
   } // try
   catch (const exc_qt::WrongresponceTypeException &ex) {
-    std::cout << "Клиент. sendLastReadMessageFromClient. " << ex.what() << std::endl;
+
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto senderLoginQt = QString::fromStdString(messageDTO.senderLogin);
+    const auto chatIdQt = QString::number(static_cast<long long>(messageDTO.chatId));
+    const auto messageIdQt = QString::number(static_cast<long long>(messageDTO.messageId));
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   sendLastReadMessageFromClient   ")
+                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
     return false;
   } catch (const exc_qt::EmptyPacketException &ex) {
-    std::cout << "Клиент. sendLastReadMessageFromClient. " << ex.what() << std::endl;
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto senderLoginQt = QString::fromStdString(messageDTO.senderLogin);
+    const auto chatIdQt = QString::number(static_cast<long long>(messageDTO.chatId));
+    const auto messageIdQt = QString::number(static_cast<long long>(messageDTO.messageId));
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   sendLastReadMessageFromClient   ")
+                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
     return false;
   } catch (const exc_qt::LastReadMessageException &ex) {
-    std::cout << "Клиент. sendLastReadMessageFromClient. " << ex.what() << std::endl;
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto senderLoginQt = QString::fromStdString(messageDTO.senderLogin);
+    const auto chatIdQt = QString::number(static_cast<long long>(messageDTO.chatId));
+    const auto messageIdQt = QString::number(static_cast<long long>(messageDTO.messageId));
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   sendLastReadMessageFromClient   ")
+                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
     return false;
   }
   return true;
@@ -1408,8 +1659,6 @@ void ClientSession::setUserDTOFromSrv(const UserDTO &userDTO) const {
 
   if (!_instance.findUserByLogin(userDTO.login))
     _instance.addUserToSystem(user_ptr);
-  //   std::cout << "В систему добавлен Пользователь Имя / Логин " << user_ptr->getUserName() << " / "
-  //             << user_ptr->getLogin() << std::endl;
 }
 //
 //
@@ -1421,42 +1670,10 @@ void ClientSession::setOneMessageDTO(const MessageDTO &messageDTO, const std::sh
 
   // упрощенная передача только одного текстового сообщения
 
-  if (messageDTO.messageContent.empty())
-    throw exc_qt::UnknownException("DTO-сообщение не содержит содержимого");
-
   auto message = createOneMessage(messageDTO.messageContent[0].payload, sender, messageDTO.timeStamp,
                                   messageDTO.messageId);
 
   chat->addMessageToChat(std::make_shared<Message>(message), sender, false);
-
-  //   std::cout << "В систему добавлено сообщение MessageId " << message.getMessageId() << " в чат chatId "
-  //             << chat->getChatId() << std::endl;
-
-  // ⬇⬇⬇ Вставка проверки
-  // std::cout << "[DEBUG] Добавлено сообщение:\n";
-  // std::cout << "- msgId: " << message.getMessageId();
-
-  // if (sender) {
-  //   std::cout << ", sender: " << sender->getLogin();
-  // } else {
-  //   std::cout << ", sender: [unknown]";
-  // }
-
-  // std::cout << ", timeStamp: "
-  //           << formatTimeStampToString(message.getTimeStamp(), true)
-  //           << ", content: ";
-
-  // for (const auto &content_ptr : message.getContent()) {
-  //   auto textContent_ptr =
-  //       std::dynamic_pointer_cast<MessageContent<TextContent>>(content_ptr);
-  //   if (textContent_ptr) {
-  //     std::cout << textContent_ptr->getMessageContent()._text << " ";
-  //   } else {
-  //     std::cout << "[non-text content] ";
-  //   }
-  // }
-
-  // std::cout << std::endl;
 }
 //
 //
@@ -1477,40 +1694,6 @@ bool ClientSession::setOneChatMessageDTO(const MessageChatDTO &messageChatDTO) c
       for (const auto &message : messageChatDTO.messageDTO) {
         setOneMessageDTO(message, chat_ptr);
       }
-
-      //   // ⬇⬇⬇ Вставка проверки
-      //   const auto &messages = chat_ptr->getMessages();
-
-      //   std::cout << "\n[DEBUG] Чат " << chat_ptr->getChatId()
-      //             << ", всего сообщений: " << messages.size() << std::endl;
-
-      //   for (const auto &[timeStamp, message_ptr] : messages) {
-      //     std::cout << "- msgId: " << message_ptr->getMessageId();
-
-      //     auto sender_ptr = message_ptr->getSender().lock();
-      //     if (sender_ptr) {
-      //       std::cout << ", sender: " << sender_ptr->getLogin();
-      //     } else {
-      //       std::cout << ", sender: [unknown]";
-      //     }
-
-      //     std::cout << ", timeStamp: " << formatTimeStampToString(timeStamp,
-      //     true)
-      //               << ", content: ";
-
-      //     for (const auto &content_ptr : message_ptr->getContent()) {
-      //       auto textContent_ptr =
-      //           std::dynamic_pointer_cast<MessageContent<TextContent>>(
-      //               content_ptr);
-      //       if (textContent_ptr) {
-      //         std::cout << textContent_ptr->getMessageContent()._text << " ";
-      //       } else {
-      //         std::cout << "[non-text content] ";
-      //       }
-      //     }
-
-      //     std::cout << std::endl;
-      //   }
     }
   }
   return true;
@@ -1552,7 +1735,6 @@ bool ClientSession::checkAndAddParticipantToSystem(const std::vector<std::string
       packetListDTOresult.packets.clear();
 
       packetListDTOresult = processingRequestToServer(packetDTOListSend, RequestType::RqFrClientGetUsersData);
-      // доделать очередь
 
       {
         // добавляем недостающих пользователей
@@ -1571,14 +1753,16 @@ bool ClientSession::checkAndAddParticipantToSystem(const std::vector<std::string
                                                              userDTO.disabled_at, userDTO.ban_until));
 
           _instance.addUserToSystem(newUser_ptr);
-          std::cout << "В систему добавлен участник чата. Имя/Логин: " << newUser_ptr->getUserName() << " / "
-                    << newUser_ptr->getLogin() << std::endl;
         }
       }
     } else { // если не пришел ответ с сервера
-      std::cerr << "Ошибка. Не сомгли получить пользователей с сервера. Будут "
-                   "временно добавлены в систему только логины."
-                << std::endl;
+      const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+      const auto timeStampQt = QString::fromStdString(time_sdtamp);
+
+      emit exc_qt::ErrorBus::i().error("",
+                                       QStringLiteral(
+                                           "[%1]   checkAndAddParticipantToSystem   server answer did not come")
+                                           .arg(timeStampQt));
 
       for (const auto &packetDTO : packetDTOListSend) {
 
@@ -1593,6 +1777,15 @@ bool ClientSession::checkAndAddParticipantToSystem(const std::vector<std::string
     }
   } // try
   catch (const exc_qt::WrongresponceTypeException &ex) {
+
+    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+
+    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
+                                     QStringLiteral(
+                                         "[%1]   [ERROR]   [NETWORK]   [user=]   checkAndAddParticipantToSystem   Wrong responce type")
+                                         .arg(timeStampQt));
+
     std::cerr << "Клиент: добавление участников. " << ex.what() << std::endl;
     return false;
   }
@@ -1637,32 +1830,8 @@ void ClientSession::setOneChatDTOFromSrv(const ChatDTO &chatDTO) {
   }
 
   this->_instance.addChatToInstance(chat_ptr);
-
-  std::cout << "В систему добавлен чат. ChatId: " << chat_ptr->getChatId() << std::endl;
-
-  // ⬇⬇⬇ Проверка
-  // std::cout << "\n[DEBUG] Добавлен чат в клиента:\n";
-  // std::cout << "chatId = " << chat_ptr->getChatId() << std::endl;
-  // std::cout << "lastMessageTime = "
-  //           << formatTimeStampToString(
-  //                  chat_ptr->getTimeStampForLastMessage(
-  //                      chat_ptr->getLastReadMessageId(
-  //                          this->_instance.getActiveUser())),
-  //                  true)
-
-  //           << std::endl;
-
-  // std::cout << "участники:" << std::endl;
-  // for (const auto &participant : chat_ptr->getParticipants()) {
-  //   auto user = participant._user.lock();
-  //   if (user) {
-  //     std::cout << "- " << user->getLogin()
-  //               << " | deleted: " << participant._deletedFromChat <<
-  //               std::endl;
-  //   } else {
-  //     std::cout << "- удалённый пользователь" << std::endl;
-  //   }
 }
+
 std::optional<ChatDTO> ClientSession::fillChatDTOQt(const std::shared_ptr<Chat> &chat_ptr) {
   ChatDTO chatDTO;
 
@@ -1673,54 +1842,50 @@ std::optional<ChatDTO> ClientSession::fillChatDTOQt(const std::shared_ptr<Chat> 
     return std::nullopt;
   chatDTO.senderLogin = _instance.getActiveUser()->getLogin();
 
-  try {
-    // получаем список участников
-    auto participants = chat_ptr->getParticipants();
+  // получаем список участников
+  auto participants = chat_ptr->getParticipants();
 
-    if (participants.empty())
-      return std::nullopt;
+  if (participants.empty())
+    return std::nullopt;
 
-    // перебираем участников
-    for (const auto &participant : participants) {
+  // перебираем участников
+  for (const auto &participant : participants) {
 
-      // получили указатель на юзера
-      const auto user_ptr = participant._user.lock();
+    // получили указатель на юзера
+    const auto user_ptr = participant._user.lock();
 
-      // временная структура для заполнения
-      ParticipantsDTO participantsDTO;
+    // временная структура для заполнения
+    ParticipantsDTO participantsDTO;
 
-      if (user_ptr) {
+    if (user_ptr) {
 
-        // заполняем данные на юзера для регистрации в системе
+      // заполняем данные на юзера для регистрации в системе
 
-        participantsDTO.login = user_ptr->getLogin();
+      participantsDTO.login = user_ptr->getLogin();
 
-        // заполняем lastReadMessage
-        participantsDTO.lastReadMessage = chat_ptr->getLastReadMessageId(user_ptr);
+      // заполняем lastReadMessage
+      participantsDTO.lastReadMessage = chat_ptr->getLastReadMessageId(user_ptr);
 
-        // заполняем deletedMessageIds
-        participantsDTO.deletedMessageIds.clear();
-        const auto &delMessMap = chat_ptr->getDeletedMessagesMap();
-        const auto &it = delMessMap.find(participantsDTO.login);
+      // заполняем deletedMessageIds
+      participantsDTO.deletedMessageIds.clear();
+      const auto &delMessMap = chat_ptr->getDeletedMessagesMap();
+      const auto &it = delMessMap.find(participantsDTO.login);
 
-        if (it != delMessMap.end()) {
-          for (const auto &delMessId : it->second) {
-            participantsDTO.deletedMessageIds.push_back(delMessId);
-          }
+      if (it != delMessMap.end()) {
+        for (const auto &delMessId : it->second) {
+          participantsDTO.deletedMessageIds.push_back(delMessId);
         }
+      }
 
-        participantsDTO.deletedFromChat = false;
+      participantsDTO.deletedFromChat = false;
 
-        chatDTO.participants.push_back(participantsDTO);
+      chatDTO.participants.push_back(participantsDTO);
 
-      } // if user_ptr
-      else
-        continue;
-    } // for participants
-  }
-  // try
-  catch (const exc_qt::UserNotFoundException &ex) {
-  }
+    } // if user_ptr
+    else
+      continue;
+  } // for participants
+
   if (chatDTO.participants.empty())
     return std::nullopt;
   return chatDTO;

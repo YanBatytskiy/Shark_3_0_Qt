@@ -41,7 +41,13 @@ enum class RequestType {
   RqFrSrvSynchroUser = 16,
   RqFrClientReInitializeBase = 17,
   RqFrClientChangeUserData = 18,
-  RqFrClientChangeUserPassword = 19
+  RqFrClientChangeUserPassword = 19,
+  
+  //bun and block command
+  RqFrClientBlockUser = 20,
+  RqFrClientUnBlockUser = 21,
+  RqFrClientBunUser = 22,
+  RqFrClientUnBunUser = 23
 };
 
 enum class StructDTOClassType {

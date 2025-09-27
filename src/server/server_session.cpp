@@ -82,36 +82,16 @@ void ServerSession::runServer(int socketFd) {
 void ServerSession::listeningClients() {
 
   try {
-    // std::vector<std::uint8_t> buffer(MESSAGE_LENGTH);
-
-    // // проверка
-    // // std::cerr << "[DEBUG] buffer.size() = " << buffer.size() << std::endl;
-
-    // if (buffer.empty()) {
-    //   std::cerr << "[Ошибка] Буфер пустой (buffer.size() == 0)" << std::endl;
-    //   std::exit(1);
-    // }
-
-    // if (buffer.data() == nullptr) {
-    //   std::cerr << "[Ошибка] buffer.data() == nullptr" << std::endl;
-    //   std::exit(1);
-    // }
 
     if (_connection <= 0) {
       throw exc::SocketInvalidException();
     }
 
-    // проверка
-    // if (MESSAGE_LENGTH == 0)
-    //   throw exc::CreateBufferException();
 
     if (_connection <= 0 || fcntl(_connection, F_GETFD) == -1) {
       throw exc::SocketInvalidException();
     }
 
-    // проверка
-
-    // std::cerr << "[DEBUG] connection fd = " << connection << std::endl;
 
     // 1. читаем 4 байта длины
     std::uint8_t lenBuf[4];
@@ -297,9 +277,85 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
     processingGetUserData(packetListReceived, packetDTOrequestType, connection);
     break;
   }
+  case RequestType::RqFrClientBlockUser:
+  case RequestType::RqFrClientUnBlockUser:
+  case RequestType::RqFrClientBunUser:
+  case RequestType::RqFrClientUnBunUser: {
+    processingRqFrClientBunBlockUser(packetListReceived, packetDTOrequestType, connection);
+    break;
+  }
   default:
     break;
   }
+  return true;
+}
+
+bool ServerSession::processingRqFrClientBunBlockUser(PacketListDTO &packetListReceived, const RequestType &requestType,
+                                                     int connection) {
+  // создали структуру вектора пакетов для отправки
+  PacketListDTO packetDTOListForSend;
+  packetDTOListForSend.packets.clear();
+
+  // отдельный пакет для отправки
+  PacketDTO packetDTOForSend;
+  packetDTOForSend.requestType = requestType;
+  packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
+  packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
+
+  const auto &packet = static_cast<const StructDTOClass<UserDTO> &>(*packetListReceived.packets[0].structDTOPtr)
+                           .getStructDTOClass();
+
+  // пакет для отправки
+  ResponceDTO responceDTO;
+  responceDTO.anyNumber = 0;
+  responceDTO.anyString = "";
+
+  switch (requestType) {
+  case RequestType::RqFrClientBlockUser: {
+    if (sql_requests_.block_user_srv_sql(packet, this->getPGConnection())) {
+      responceDTO.reqResult = true;
+      responceDTO.anyString = packet.login;
+    } else {
+      responceDTO.reqResult = false;
+    }
+    break;    
+} // case RqFrClientBlockUser
+case RequestType::RqFrClientUnBlockUser: {
+    if (sql_requests_.unblock_user_srv_sql(packet, this->getPGConnection())) {
+      responceDTO.reqResult = true;
+      responceDTO.anyString = packet.login;
+    } else {
+      responceDTO.reqResult = false;
+    }
+    break;
+} // case RqFrClientUnBlockUser
+case RequestType::RqFrClientBunUser: {
+    if (sql_requests_.bun_user_srv_sql(packet, this->getPGConnection())) {
+      responceDTO.reqResult = true;
+      responceDTO.anyString = packet.login;
+    } else {
+      responceDTO.reqResult = false;
+    }
+    break;
+} // case RqFrClientBunUser
+case RequestType::RqFrClientUnBunUser: {
+    if (sql_requests_.unbun_user_srv_sql(packet, this->getPGConnection())) {
+      responceDTO.reqResult = true;
+      responceDTO.anyString = packet.login;
+    } else {
+      responceDTO.reqResult = false;
+    }
+    break;
+} // case RqFrClientUnBunUser
+default:
+break;
+} // switch
+
+packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
+
+packetDTOListForSend.packets.push_back(packetDTOForSend);
+
+  sendPacketListDTO(packetDTOListForSend, connection);
   return true;
 }
 
@@ -344,16 +400,14 @@ bool ServerSession::processingRqFrClientchangeDataPassword(PacketListDTO &packet
     break;
   } // switch
 
-
-sendPacketListDTO(packetDTOListForSend, connection);
-return true;
+  sendPacketListDTO(packetDTOListForSend, connection);
+  return true;
 }
-
 
 bool ServerSession::processingRqFrClientReInitializeBase(PacketListDTO &packetListReceived, const RequestType &requestType,
                                                          int connection) {
 
-  bool result = initDatabaseOnServer(_pqConnection);
+  bool result = sql_requests_.initDatabaseOnServer(_pqConnection);
 
   // создали структуру вектора пакетов для отправки
   PacketListDTO packetDTOListForSend;
@@ -472,7 +526,7 @@ bool ServerSession::processingCheckAndRegistryUser(PacketListDTO &packetListRece
                              *packetListReceived.packets[0].structDTOPtr)
                              .getStructDTOClass();
 
-    auto userDTOVector = getUsersByTextPartSQL(this->getPGConnection(), packet);
+    auto userDTOVector = sql_requests_.getUsersByTextPartSQL(this->getPGConnection(), packet);
 
     if (userDTOVector.has_value() && !userDTOVector->empty()) {
 
@@ -511,7 +565,7 @@ bool ServerSession::processingCheckAndRegistryUser(PacketListDTO &packetListRece
     const auto &packet = static_cast<const StructDTOClass<MessageDTO> &>(*packetListReceived.packets[0].structDTOPtr)
                              .getStructDTOClass();
 
-    auto value = setLastReadMessageSQL(this->getPGConnection(), packet);
+    auto value = sql_requests_.setLastReadMessageSQL(this->getPGConnection(), packet);
 
     ResponceDTO responceDTO;
     responceDTO.anyNumber = 0;
@@ -575,7 +629,7 @@ bool ServerSession::processingCreateObjects(PacketListDTO &packetListReceived, c
       responceDTO.anyNumber = 0;
       responceDTO.anyString = "";
 
-      if (createUserSQL(this->getPGConnection(), packet)) {
+      if (sql_requests_.createUserSQL(this->getPGConnection(), packet)) {
         responceDTO.reqResult = true;
       } else
         responceDTO.reqResult = false;
@@ -604,7 +658,7 @@ bool ServerSession::processingCreateObjects(PacketListDTO &packetListReceived, c
       // пакет для отправки
       ResponceDTO responceDTO;
 
-      const auto &result = (createChatAndMessageSQL(this->getPGConnection(), packetChat, packetMessage));
+      const auto &result = (sql_requests_.createChatAndMessageSQL(this->getPGConnection(), packetChat, packetMessage));
 
       if (result.size() > 0) {
 
@@ -641,7 +695,7 @@ bool ServerSession::processingCreateObjects(PacketListDTO &packetListReceived, c
                                    *packetListReceived.packets[0].structDTOPtr)
                                    .getStructDTOClass();
 
-      const auto &result = createMessageSQL(this->getPGConnection(), messageDTO);
+      const auto &result = sql_requests_.createMessageSQL(this->getPGConnection(), messageDTO);
 
       if (result) {
         responceDTO.reqResult = true;
@@ -746,7 +800,7 @@ bool ServerSession::processingGetUserData(PacketListDTO &packetListReceived, con
 //
 //
 //
- bool ServerSession::changeUserDataSrvSQL(const UserDTO &userDTO){
+bool ServerSession::changeUserDataSrvSQL(const UserDTO &userDTO) {
 
   PGresult *result = nullptr;
 
@@ -773,7 +827,7 @@ bool ServerSession::processingGetUserData(PacketListDTO &packetListReceived, con
 
     sql = "UPDATE public.users SET name = '" + name + "', email = '" + email + "', phone = '" + phone + "' WHERE login = '" + login + "';";
 
-    result = execSQL(this->getPGConnection(), sql);
+    result = sql_requests_.execSQL(this->getPGConnection(), sql);
 
     if (result == nullptr)
       throw exc::SQLSelectException(", changeUserDataSrvSQL");
@@ -795,9 +849,7 @@ bool ServerSession::processingGetUserData(PacketListDTO &packetListReceived, con
       PQclear(result);
     return false;
   }
-
- }
-
+}
 
 bool ServerSession::checkUserLoginSrvSQL(const std::string &login) {
 
@@ -815,7 +867,7 @@ bool ServerSession::checkUserLoginSrvSQL(const std::string &login) {
     sql = R"(select id from public.users as u where u.login = ')";
     sql += loginEsc + "';";
 
-    result = execSQL(this->getPGConnection(), sql);
+    result = sql_requests_.execSQL(this->getPGConnection(), sql);
 
     if (result == nullptr)
       throw exc::SQLSelectException(", FindUserByLoginSrv");
@@ -862,7 +914,7 @@ bool ServerSession::checkUserPasswordSrvSql(const UserLoginPasswordDTO &userLogi
 	.user_id = ur.user_id where password_hash = ')";
     sql += passwordHashEsc + "';";
 
-    result = execSQL(this->getPGConnection(), sql);
+    result = sql_requests_.execSQL(this->getPGConnection(), sql);
 
     if (result == nullptr)
       throw exc::SQLSelectException(", checkUserPasswordSrvSql");
@@ -909,7 +961,7 @@ std::string ServerSession::getUserPasswordSrvSql(const UserLoginPasswordDTO &use
 	.user_id = ur.user_id where password_hash = ')";
     sql += passwordHashEsc + "';";
 
-    result = execSQL(this->getPGConnection(), sql);
+    result = sql_requests_.execSQL(this->getPGConnection(), sql);
 
     if (result == nullptr)
       throw exc::SQLSelectException(", checkUserPasswordSrvSql");
@@ -952,7 +1004,7 @@ std::optional<UserDTO> ServerSession::FillForSendUserDTOFromSrvSQL(const std::st
 		where us.login = ')";
     sql += loginEsc + "';";
 
-    result = execSQL(this->getPGConnection(), sql);
+    result = sql_requests_.execSQL(this->getPGConnection(), sql);
 
     if (result == nullptr)
       throw exc::SQLSelectException(", FillForSendUserDTOFromSrvSQL");
@@ -990,7 +1042,7 @@ std::optional<UserDTO> ServerSession::FillForSendUserDTOFromSrvSQL(const std::st
 std::optional<std::vector<UserDTO>> ServerSession::FillForSendSeveralUsersDTOFromSrvSQL(
     const std::vector<std::string> logins) {
 
-  auto value = getSeveralUsersDTOFromSrvSQL(this->getPGConnection(), logins);
+  auto value = sql_requests_.getSeveralUsersDTOFromSrvSQL(this->getPGConnection(), logins);
 
   if (!value.has_value())
     return std::nullopt;
@@ -1011,7 +1063,7 @@ std::optional<ChatDTO> ServerSession::FillForSendOneChatDTOFromSrvSQL(const std:
   chatDTO.senderLogin = login;
 
   // получаем список участников
-  auto participants = getChatParticipantsSQL(this->getPGConnection(), chat_id);
+  auto participants = sql_requests_.getChatParticipantsSQL(this->getPGConnection(), chat_id);
 
   try {
 
@@ -1019,7 +1071,7 @@ std::optional<ChatDTO> ServerSession::FillForSendOneChatDTOFromSrvSQL(const std:
       throw exc::ChatListNotFoundException(login);
     }
 
-    auto deletedMessagesMultiset = getChatMessagesDeletedStatusSQL(this->getPGConnection(), chat_id);
+    auto deletedMessagesMultiset = sql_requests_.getChatMessagesDeletedStatusSQL(this->getPGConnection(), chat_id);
 
     if (deletedMessagesMultiset.has_value() && deletedMessagesMultiset.value().size() > 0) {
 
@@ -1062,7 +1114,7 @@ std::optional<ChatDTO> ServerSession::FillForSendOneChatDTOFromSrvSQL(const std:
 std::optional<std::vector<ChatDTO>> ServerSession::FillForSendAllChatDTOFromSrvSQL(const std::string &login) {
 
   // взяли чат лист
-  auto chatList = getChatListSQL(this->getPGConnection(), login);
+  auto chatList = sql_requests_.getChatListSQL(this->getPGConnection(), login);
 
   if (chatList.size() == 0)
     return std::nullopt;
@@ -1089,7 +1141,7 @@ std::optional<std::vector<ChatDTO>> ServerSession::FillForSendAllChatDTOFromSrvS
 // получаем сообщения пользователя конкретного чата
 std::optional<MessageChatDTO> ServerSession::fillForSendChatMessageDTOFromSrvSQL(const std::string &chat_id) {
 
-  auto messageChatDTO = getChatMessagesSQL(this->getPGConnection(), chat_id);
+  auto messageChatDTO = sql_requests_.getChatMessagesSQL(this->getPGConnection(), chat_id);
 
   if (!messageChatDTO.has_value())
     return std::nullopt;
@@ -1104,7 +1156,7 @@ std::optional<std::vector<MessageChatDTO>> ServerSession::fillForSendAllMessageD
   std::vector<MessageChatDTO> messageChatDTOVector;
 
   // взяли чат лист
-  auto chatList = getChatListSQL(this->getPGConnection(), login);
+  auto chatList = sql_requests_.getChatListSQL(this->getPGConnection(), login);
 
   if (chatList.size() == 0)
     return std::nullopt;

@@ -55,8 +55,7 @@ void ScreenLogin::setDatabase(std::shared_ptr<ClientSession> sessionPtr, std::sh
     const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
     const QString event = "Connection to Server established to local host " + QString::fromStdString(serverConnectionConfig.addressLocalHost) + "port: " + QString::number(serverConnectionConfig.port);
 
-    const QString log_line = QStringLiteral(
-                                 "[%1]   [%2]   [%3]   %4")
+    const QString log_line = QStringLiteral("[%1]   [%2]   [%3]   %4")
                                  .arg(time_stamp,
                                       "INFO",    // Уровни логгирования:
                                       "NETWORK", // Ключевые модули для чата
@@ -318,7 +317,7 @@ void ScreenLogin::on_baseReInitialisationPushButton_clicked() {
 
     emit _loggerPtr->signalWriteLine(log_line);
 
-    QMessageBox::information(this, "Успешно.", "Можно входить.");
+    QMessageBox::information(this, "Успешно.", "Можно входить");
   }
 }
 

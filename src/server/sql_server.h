@@ -8,11 +8,20 @@
 #include <string>
 #include <vector>
 
+class SQLRequests {
+    public:
+    //constructors
+    SQLRequests() = default;
+    ~SQLRequests() = default;
+
 bool initDatabaseOnServer(PGconn *conn);
 
 bool clearBaseSQL(PGconn *conn);
 
-bool checkBaseTablesSQL(PGconn *conn);
+bool block_user_srv_sql(const UserDTO &userDTO, PGconn *conn);
+bool unblock_user_srv_sql(const UserDTO &userDTO, PGconn *conn);
+bool bun_user_srv_sql(const UserDTO &userDTO, PGconn *conn);
+bool unbun_user_srv_sql(const UserDTO &userDTO, PGconn *conn);
 
 // sql command
 PGresult *execTransactionToSQL(PGconn *conn, std::multimap<int, std::string> &sqlRequests,
@@ -42,3 +51,5 @@ std::vector<std::string> createChatAndMessageSQL(PGconn *conn, const ChatDTO &ch
                                                  const MessageChatDTO &messageChatDTO);
 
 std::size_t createMessageSQL(PGconn *conn, const MessageDTO &messageDTO);
+
+};

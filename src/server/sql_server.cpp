@@ -1,7 +1,7 @@
 #include "sql_server.h"
 #include "dto_struct.h"
-#include "init_sql_requests.h"
 #include "exceptions_cpp/sql_exception.h"
+#include "init_sql_requests.h"
 #include "message/message_content.h"
 #include "message/message_content_struct.h"
 #include "system/system_function.h"
@@ -16,7 +16,7 @@
 #include <vector>
 
 // utilities
-bool initDatabaseOnServer(PGconn *conn) {
+bool SQLRequests::initDatabaseOnServer(PGconn *conn) {
 
   std::multimap<int, std::string> sqlRequests;
   std::multimap<int, std::string> temp_sql;
@@ -26,40 +26,44 @@ bool initDatabaseOnServer(PGconn *conn) {
   PGresult *result = nullptr;
 
   // очищаем
-    clearBaseSQL(conn);
+  clearBaseSQL(conn);
 
-    // заполняем
-    sqlRequests = createInitTablesSQL();
-    sqlDescription.insert({1, "chats"});
-    sqlDescription.insert({2, "users"});
-    sqlDescription.insert({3, "messages"});
-    sqlDescription.insert({4, "message_status"});
-    sqlDescription.insert({5, "users_passhash"});
-    sqlDescription.insert({6, "participants"});
-    sqlDescription.insert({7, "insert users"});
-    sqlDescription.insert({8, "users_buns"});
-    sqlDescription.insert({9, "Chat 1"});
-    sqlDescription.insert({10, "Chat 2"});
+  // заполняем
+  sqlRequests = createInitTablesSQL();
+  sqlDescription.insert({1, "chats"});
+  sqlDescription.insert({2, "users"});
+  sqlDescription.insert({3, "messages"});
+  sqlDescription.insert({4, "message_status"});
+  sqlDescription.insert({5, "users_passhash"});
+  sqlDescription.insert({6, "participants"});
+  sqlDescription.insert({7, "insert users"});
+  sqlDescription.insert({8, "users_buns"});
+  sqlDescription.insert({9, "Chat 1"});
+  sqlDescription.insert({10, "Chat 2"});
 
-    sqlRequests.insert({9, createChatFirstSQL().begin()->second});
-    result = execTransactionToSQL(conn, sqlRequests, sqlDescription);
+  sqlRequests.insert({9, createChatFirstSQL().begin()->second});
+  result = execTransactionToSQL(conn, sqlRequests, sqlDescription);
 
-    if (result) { PQclear(result); result = nullptr; }   // <-- закрыли первый PGresult
-    else return false;
+  if (result) {
+    PQclear(result);
+    result = nullptr;
+  } // <-- закрыли первый PGresult
+  else
+    return false;
 
-    sqlRequests.clear();
-    sqlRequests.insert({10, createChatSecondSQL().begin()->second});
-     result = execTransactionToSQL(conn, sqlRequests, sqlDescription);
+  sqlRequests.clear();
+  sqlRequests.insert({10, createChatSecondSQL().begin()->second});
+  result = execTransactionToSQL(conn, sqlRequests, sqlDescription);
 
-    bool ok = (result != nullptr);
-    if (result)
-      PQclear(result);
-    return ok;
+  bool ok = (result != nullptr);
+  if (result)
+    PQclear(result);
+  return ok;
 }
 //
 //
 //
-bool clearBaseSQL(PGconn *conn) {
+bool SQLRequests::clearBaseSQL(PGconn *conn) {
 
   std::multimap<int, std::string> sqlRequests;
   std::multimap<int, std::string> sqlDescription;
@@ -73,10 +77,10 @@ bool clearBaseSQL(PGconn *conn) {
       R"(DROP OWNED BY CURRENT_USER CASCADE;
 	  )";
 
-
   result = execSQL(conn, sql);
 
-  if (!result) return false;
+  if (!result)
+    return false;
   PQclear(result);
 
   sql =
@@ -88,14 +92,64 @@ SET search_path TO public;)";
   if (result)
     PQclear(result);
   return ok;
-  
 }
-//
-//
-//
 
-PGresult *execTransactionToSQL(PGconn *conn, std::multimap<int, std::string> &sqlRequests,
-                               std::multimap<int, std::string> &sqlDescription) {
+bool SQLRequests::block_user_srv_sql(const UserDTO &userDTO, PGconn *conn) {
+
+  PGresult *result = nullptr;
+
+  std::string sql = "";
+  std::string login = userDTO.login;
+  std::string disable_reason = userDTO.disable_reason;
+
+  try {
+
+    for (std::size_t pos = 0;
+         (pos = login.find('\'', pos)) != std::string::npos; pos += 2) {
+      login.replace(pos, 1, "''");
+    }
+    for (std::size_t pos = 0;
+         (pos = disable_reason.find('\'', pos)) != std::string::npos;
+         pos += 2) {
+      login.replace(pos, 1, "''");
+    }
+
+    sql = "UPDATE public.users SET is_active = false, disable_reason = '" +
+          disable_reason + "' WHERE login = '" + login + "';";
+
+    result = execSQL(conn, sql);
+
+    if (result == nullptr)
+      throw exc::SQLSelectException("block_user_srv_sql");
+
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+      PQclear(result);
+      return false;
+    }
+
+    const char *tuples = PQcmdTuples(result);
+    const long affectedRows =
+        tuples != nullptr ? std::strtol(tuples, nullptr, 10) : 0;
+    PQclear(result);
+
+    return affectedRows > 0;
+
+  } // try
+  catch (const exc::SQLSelectException &ex) {
+    std::cerr << "Сервер: " << ex.what() << std::endl;
+    if (result != nullptr)
+      PQclear(result);
+    return false;
+  }
+}
+
+bool SQLRequests::unblock_user_srv_sql(const UserDTO &userDTO, PGconn *conn) {}
+bool SQLRequests::bun_user_srv_sql(const UserDTO &userDTO, PGconn *conn) {}
+bool SQLRequests::unbun_user_srv_sql(const UserDTO &userDTO, PGconn *conn) {}
+
+PGresult *SQLRequests::execTransactionToSQL(
+    PGconn *conn, std::multimap<int, std::string> &sqlRequests,
+    std::multimap<int, std::string> &sqlDescription) {
 
   PGresult *result = PQexec(conn, "BEGIN");
   std::string errorTable;
@@ -120,7 +174,8 @@ PGresult *execTransactionToSQL(PGconn *conn, std::multimap<int, std::string> &sq
         auto it = sqlDescription.find(i);
         errorTable = (it != sqlDescription.end()) ? it->second : std::string();
 
-        throw exc::SQLCreateTableException("p" + std::to_string(i) + ", " + request.second);
+        throw exc::SQLCreateTableException("p" + std::to_string(i) + ", " +
+                                           request.second);
       }
 
       // определили результат
@@ -131,7 +186,8 @@ PGresult *execTransactionToSQL(PGconn *conn, std::multimap<int, std::string> &sq
         auto it = sqlDescription.find(i);
         errorTable = (it != sqlDescription.end()) ? it->second : std::string();
 
-        throw exc::SQLCreateTableException("p" + std::to_string(i) + ", " + request.second);
+        throw exc::SQLCreateTableException("p" + std::to_string(i) + ", " +
+                                           request.second);
       }
       PQclear(result);
       ++i;
@@ -162,7 +218,7 @@ PGresult *execTransactionToSQL(PGconn *conn, std::multimap<int, std::string> &sq
 //
 //
 //
-PGresult *execSQL(PGconn *conn, const std::string &sql) {
+PGresult *SQLRequests::execSQL(PGconn *conn, const std::string &sql) {
 
   PGresult *result = PQexec(conn, sql.c_str());
 
@@ -171,7 +227,8 @@ PGresult *execSQL(PGconn *conn, const std::string &sql) {
       std::string error = PQerrorMessage(conn);
       throw exc::SQLExecException(error);
     }
-    if (PQresultStatus(result) != PGRES_COMMAND_OK && PQresultStatus(result) != PGRES_TUPLES_OK) {
+    if (PQresultStatus(result) != PGRES_COMMAND_OK &&
+        PQresultStatus(result) != PGRES_TUPLES_OK) {
       std::string error = PQresultErrorMessage(result);
       PQclear(result);
       throw exc::SQLExecException(error);
@@ -188,7 +245,8 @@ PGresult *execSQL(PGconn *conn, const std::string &sql) {
 //
 //
 //
-std::vector<std::string> getChatListSQL(PGconn *conn, const std::string &login) {
+std::vector<std::string> SQLRequests::getChatListSQL(PGconn *conn,
+                                                     const std::string &login) {
 
   PGresult *result = nullptr;
   std::vector<std::string> value;
@@ -242,7 +300,8 @@ std::vector<std::string> getChatListSQL(PGconn *conn, const std::string &login) 
   }
 }
 
-std::optional<std::vector<ParticipantsDTO>> getChatParticipantsSQL(PGconn *conn, const std::string &chat_id) {
+std::optional<std::vector<ParticipantsDTO>>
+SQLRequests::getChatParticipantsSQL(PGconn *conn, const std::string &chat_id) {
 
   PGresult *result = nullptr;
   std::vector<ParticipantsDTO> value;
@@ -272,9 +331,11 @@ std::optional<std::vector<ParticipantsDTO>> getChatParticipantsSQL(PGconn *conn,
         participantsDTO.login = PQgetvalue(result, i, 0);
 
         if (PQgetisnull(result, i, 1) == 0) {
-          participantsDTO.lastReadMessage = static_cast<std::int64_t>(std::stoll(PQgetvalue(result, i, 1)));
+          participantsDTO.lastReadMessage =
+              static_cast<std::int64_t>(std::stoll(PQgetvalue(result, i, 1)));
         } else {
-          participantsDTO.lastReadMessage = 0; // или любое значение по умолчанию
+          participantsDTO.lastReadMessage =
+              0; // или любое значение по умолчанию
         }
 
         participantsDTO.deletedFromChat = (PQgetvalue(result, i, 2)[0] == 't');
@@ -296,8 +357,9 @@ std::optional<std::vector<ParticipantsDTO>> getChatParticipantsSQL(PGconn *conn,
   }
 }
 
-std::optional<std::multiset<std::pair<std::string, std::size_t>>> getChatMessagesDeletedStatusSQL(
-    PGconn *conn, const std::string &chat_id) {
+std::optional<std::multiset<std::pair<std::string, std::size_t>>>
+SQLRequests::getChatMessagesDeletedStatusSQL(PGconn *conn,
+                                             const std::string &chat_id) {
 
   PGresult *result = nullptr;
   std::multiset<std::pair<std::string, std::size_t>> value;
@@ -328,7 +390,9 @@ std::optional<std::multiset<std::pair<std::string, std::size_t>>> getChatMessage
       if (quantity > 0) {
 
         for (int i = 0; i < quantity; ++i) {
-          value.insert({PQgetvalue(result, i, 2), static_cast<std::int64_t>(std::stoll(PQgetvalue(result, i, 0)))});
+          value.insert({PQgetvalue(result, i, 2),
+                        static_cast<std::int64_t>(
+                            std::stoll(PQgetvalue(result, i, 0)))});
         }
       }
       PQclear(result);
@@ -351,7 +415,8 @@ std::optional<std::multiset<std::pair<std::string, std::size_t>>> getChatMessage
 //
 //
 //
-std::optional<MessageChatDTO> getChatMessagesSQL(PGconn *conn, const std::string &chat_id) {
+std::optional<MessageChatDTO>
+SQLRequests::getChatMessagesSQL(PGconn *conn, const std::string &chat_id) {
 
   PGresult *result = nullptr;
   MessageChatDTO value;
@@ -379,9 +444,12 @@ std::optional<MessageChatDTO> getChatMessagesSQL(PGconn *conn, const std::string
         MessageDTO messageDTO;
         messageDTO.senderLogin = PQgetvalue(result, i, 5);
 
-        messageDTO.chatId = static_cast<std::size_t>(std::stoull(PQgetvalue(result, i, 1)));
-        messageDTO.messageId = static_cast<std::int64_t>(std::stoll(PQgetvalue(result, i, 0)));
-        messageDTO.timeStamp = static_cast<std::int64_t>(std::stoll(PQgetvalue(result, i, 4)));
+        messageDTO.chatId =
+            static_cast<std::size_t>(std::stoull(PQgetvalue(result, i, 1)));
+        messageDTO.messageId =
+            static_cast<std::int64_t>(std::stoll(PQgetvalue(result, i, 0)));
+        messageDTO.timeStamp =
+            static_cast<std::int64_t>(std::stoll(PQgetvalue(result, i, 4)));
 
         MessageContentDTO temContent;
         temContent.messageContentType = MessageContentType::Text;
@@ -410,7 +478,9 @@ std::optional<MessageChatDTO> getChatMessagesSQL(PGconn *conn, const std::string
   }
 }
 
-std::optional<std::vector<UserDTO>> getUsersByTextPartSQL(PGconn *conn, const UserLoginPasswordDTO &packet) {
+std::optional<std::vector<UserDTO>>
+SQLRequests::getUsersByTextPartSQL(PGconn *conn,
+                                   const UserLoginPasswordDTO &packet) {
 
   PGresult *result = nullptr;
   std::vector<UserDTO> value;
@@ -479,7 +549,8 @@ std::optional<std::vector<UserDTO>> getUsersByTextPartSQL(PGconn *conn, const Us
   }
 }
 
-std::optional<std::vector<UserDTO>> getSeveralUsersDTOFromSrvSQL(PGconn *conn, const std::vector<std::string> &logins) {
+std::optional<std::vector<UserDTO>> SQLRequests::getSeveralUsersDTOFromSrvSQL(
+    PGconn *conn, const std::vector<std::string> &logins) {
 
   if (logins.empty())
     return std::nullopt;
@@ -532,7 +603,7 @@ std::optional<std::vector<UserDTO>> getSeveralUsersDTOFromSrvSQL(PGconn *conn, c
           userDTO.disabled_at = std::stoull(PQgetvalue(result, i, 5));
           userDTO.ban_until = std::stoull(PQgetvalue(result, i, 6));
           userDTO.disable_reason = PQgetvalue(result, i, 7);
- 
+
           value.push_back(userDTO);
         }
 
@@ -554,7 +625,8 @@ std::optional<std::vector<UserDTO>> getSeveralUsersDTOFromSrvSQL(PGconn *conn, c
   }
 }
 
-bool setLastReadMessageSQL(PGconn *conn, const MessageDTO &messageDTO) {
+bool SQLRequests::setLastReadMessageSQL(PGconn *conn,
+                                        const MessageDTO &messageDTO) {
 
   PGresult *result = nullptr;
   bool value = false;
@@ -625,7 +697,8 @@ bool setLastReadMessageSQL(PGconn *conn, const MessageDTO &messageDTO) {
 
     if (PQresultStatus(result) == PGRES_TUPLES_OK) {
 
-      int quantity = static_cast<int>(std::strtol(PQgetvalue(result, 0, 0), nullptr, 10));
+      int quantity =
+          static_cast<int>(std::strtol(PQgetvalue(result, 0, 0), nullptr, 10));
 
       if (quantity == 0)
         throw exc::SQLSelectException(", setLastReadMessageSQL");
@@ -647,7 +720,7 @@ bool setLastReadMessageSQL(PGconn *conn, const MessageDTO &messageDTO) {
   }
 }
 
-bool createUserSQL(PGconn *conn, const UserDTO &userDTO) {
+bool SQLRequests::createUserSQL(PGconn *conn, const UserDTO &userDTO) {
 
   PGresult *result = nullptr;
 
@@ -713,8 +786,9 @@ bool createUserSQL(PGconn *conn, const UserDTO &userDTO) {
   return true;
 }
 
-std::vector<std::string> createChatAndMessageSQL(PGconn *conn, const ChatDTO &chatDTO,
-                                                 const MessageChatDTO &messageChatDTO) {
+std::vector<std::string>
+SQLRequests::createChatAndMessageSQL(PGconn *conn, const ChatDTO &chatDTO,
+                                     const MessageChatDTO &messageChatDTO) {
 
   PGresult *result = nullptr;
   std::vector<std::string> value;
@@ -761,9 +835,13 @@ std::vector<std::string> createChatAndMessageSQL(PGconn *conn, const ChatDTO &ch
   		insert into public.messages (chat_id, sender_id, message_text, time_stamp)
   		select c.chat_id, ur.sender_id, ')";
 
-    sql += makeStringForSQL(messageChatDTO.messageDTO[0].messageContent[0].payload) + "', ";
+    sql += makeStringForSQL(
+               messageChatDTO.messageDTO[0].messageContent[0].payload) +
+           "', ";
 
-    sql += makeStringForSQL(std::to_string(messageChatDTO.messageDTO[0].timeStamp)) + "\n";
+    sql += makeStringForSQL(
+               std::to_string(messageChatDTO.messageDTO[0].timeStamp)) +
+           "\n";
 
     sql += R"(from chat_created c cross join user_record ur
 		  returning id as message_id, id, chat_id, sender_id, message_text, time_stamp
@@ -804,7 +882,8 @@ std::vector<std::string> createChatAndMessageSQL(PGconn *conn, const ChatDTO &ch
     if (result == nullptr)
       throw exc::SQLSelectException(", createChatSQL");
 
-    if (PQresultStatus(result) != PGRES_COMMAND_OK && PQresultStatus(result) != PGRES_TUPLES_OK)
+    if (PQresultStatus(result) != PGRES_COMMAND_OK &&
+        PQresultStatus(result) != PGRES_TUPLES_OK)
       throw exc::SQLSelectException(", createChatSQL");
 
     value.push_back(PQgetvalue(result, 0, 0));
@@ -822,7 +901,8 @@ std::vector<std::string> createChatAndMessageSQL(PGconn *conn, const ChatDTO &ch
   return value;
 }
 
-std::size_t createMessageSQL(PGconn *conn, const MessageDTO &messageDTO) {
+std::size_t SQLRequests::createMessageSQL(PGconn *conn,
+                                          const MessageDTO &messageDTO) {
 
   PGresult *result = nullptr;
   std::size_t value;
@@ -914,7 +994,8 @@ from message_insert;)";
     if (result == nullptr)
       throw exc::SQLSelectException(", createMessageSQL");
 
-    if (PQresultStatus(result) != PGRES_COMMAND_OK && PQresultStatus(result) != PGRES_TUPLES_OK)
+    if (PQresultStatus(result) != PGRES_COMMAND_OK &&
+        PQresultStatus(result) != PGRES_TUPLES_OK)
       throw exc::SQLSelectException(", createMessageSQL");
 
     value = static_cast<size_t>(std::stoul(PQgetvalue(result, 0, 0)));

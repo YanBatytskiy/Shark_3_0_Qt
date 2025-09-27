@@ -15,23 +15,27 @@
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
 
+  ChatSystem clientSystem;
+  auto sessionPtr = std::make_shared<ClientSession>(clientSystem);
+  auto loggerPtr = std::make_shared<Logger>();
+
   (void)exc_qt::ErrorBus::i();
 
   QObject::connect(&exc_qt::ErrorBus::i(), &exc_qt::ErrorBus::error, &app,
-                   [](const QString &m, const QString &ctx) {
+                   [loggerPtr](const QString &m, const QString &ctx) {
                      QMessageBox::critical(qApp->activeWindow(), "Ошибка",
                                            QString("[%1]\n%2").arg(ctx, m));
-                   });
 
-  ChatSystem clientSystem;
-  auto sessionPtr = std::make_shared<ClientSession>(clientSystem);
+                     // записать в лог
+                     QString log_line = QStringLiteral("%1   %2")
+                                            .arg(ctx, m);
+                     emit loggerPtr->signalWriteLine(log_line);
+                   });
 
   sessionPtr->startConnectionThread();
 
   QObject::connect(&app, &QCoreApplication::aboutToQuit,
                    [&] { sessionPtr->stopConnectionThread(); });
-
-  auto loggerPtr = std::make_shared<Logger>();
 
   QObject::connect(&app, &QCoreApplication::aboutToQuit,
                    loggerPtr.get(), &Logger::slotStopLogger);
@@ -43,6 +47,5 @@ int main(int argc, char *argv[]) {
   if (result == QDialog::Rejected)
     return 0;
 
-  w->setAttribute(Qt::WA_DeleteOnClose);
   return 0;
 }

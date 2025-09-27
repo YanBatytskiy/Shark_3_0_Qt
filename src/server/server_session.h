@@ -1,5 +1,6 @@
 #pragma once
 #include "dto/dto_struct.h"
+#include "sql_server.h"
 #include <cstdint>
 #include <libpq-fe.h>
 #include <optional>
@@ -20,10 +21,12 @@ private:
   int _connection;
   ServerConnectionConfig _serverConnectionConfig;
   PGconn *_pqConnection;
+  SQLRequests sql_requests_;
+  
 
 public:
   // constructors
-  ServerSession() = default;
+  ServerSession(SQLRequests sql_requests) : sql_requests_(sql_requests){};
 
   // getters
   PGconn *getPGConnection();
@@ -56,7 +59,10 @@ public:
 
   bool routingRequestsFromClient(PacketListDTO &packetListReceived, const RequestType &requestType, int connection);
 
-  bool processingRqFrClientchangeDataPassword(PacketListDTO &packetListReceived, const RequestType &requestType,
+  bool processingRqFrClientBunBlockUser(PacketListDTO &packetListReceived, const RequestType &requestType,
+    int connection);
+
+    bool processingRqFrClientchangeDataPassword(PacketListDTO &packetListReceived, const RequestType &requestType,
                                               int connection);
 
   bool processingRqFrClientReInitializeBase(PacketListDTO &packetListReceived, const RequestType &requestType,

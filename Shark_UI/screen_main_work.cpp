@@ -966,7 +966,7 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
       const QString content_str = newMessageText;
 
       const QString log_line = QStringLiteral(
-                                   "[%1]   [%2]   [%3]   [user=%4]   [chat_id=%5]   [msg_Id=%6   %7   Content: %8")
+                                   "[%1]   [%2]   [%3]   [user=%4]   [chat_id=%5]   [msg_Id=%6]   %7   Content: %8")
                                    .arg(time_stamp,
                                         "INFO",       // Уровни логгирования:
                                         "CHAT",       // Ключевые модули для чата
@@ -1007,7 +1007,7 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
       const QString content_str = newMessageText;
 
       const QString log_line = QStringLiteral(
-                                   "[%1]   [%2]   [%3]   [user=%4]   [chat_id=%5]   [msg_Id=%6   %7   Content: %8")
+                                   "[%1]   [%2]   [%3]   [user=%4]   [chat_id=%5]   [msg_Id=%6]   %7   Content: %8")
                                    .arg(time_stamp,
                                         "ERROR",      // Уровни логгирования:
                                         "CHAT",       // Ключевые модули для чата
@@ -1032,7 +1032,7 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
       const QString content_str = newMessageText;
 
       const QString log_line = QStringLiteral(
-                                   "[%1]   [%2]   [%3]   [user=%4]   [chat_id=%5]   [msg_Id=%6   %7   Content: %8")
+                                   "[%1]   [%2]   [%3]   [user=%4]   [chat_id=%5]   [msg_Id=%6]   %7   Content: %8")
                                    .arg(time_stamp,
                                         "INFO",       // Уровни логгирования:
                                         "CHAT",       // Ключевые модули для чата
