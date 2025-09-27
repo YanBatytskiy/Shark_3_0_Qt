@@ -55,7 +55,7 @@ std::string formatTimeStampToString(std::int64_t timeStamp, bool useLocalTime) {
   }
 
   char buffer[64];
-  std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tmBuf);
+  std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H : %M : %S", &tmBuf);
 
   return std::string(buffer);
 }

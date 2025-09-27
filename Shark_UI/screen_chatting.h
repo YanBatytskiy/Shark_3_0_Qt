@@ -25,7 +25,7 @@ public:
 
 signals:
   void signalSendMessage();
-  void signalSendNewMessage();
+  // void signalSendNewMessage();
 
 private slots:    
     void on_ScreenChattingSendMessagePushButton_clicked();

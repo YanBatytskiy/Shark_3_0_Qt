@@ -7,9 +7,30 @@
 #include <iterator>
 #include <vector>
 
+/*
+Уровни логгирования:
+TRACE - детальная отладка
+DEBUG - отладочная информация
+INFO - обычные события
+WARN - предупреждения
+ERROR - ошибки
+CRITICAL - критические ошибки
+
+Ключевые модули для чата:
+NETWORK - соединения, пакеты
+AUTH - аутентификация
+CHAT - сообщения, комнаты
+DATABASE - работа с БД
+SESSION - управление сессиями
+
+ */
+
 Logger::Logger() {
 
   QString path = QCoreApplication::applicationDirPath() + "/log.txt";
+
+  connect(this, &Logger::signalWriteLine, this, &Logger::slotWriteLine);
+
   _logFileName = path.toStdString();
 
   _writer.open(_logFileName, std::ios::out | std::ios::app);
@@ -30,16 +51,42 @@ Logger::~Logger() {
 
 bool Logger::slotWriteLine(const QString &logLine) {
 
-  if (!_writer.is_open())
+  if (!_writer.is_open() || !_reader.is_open())
     return false;
 
   std::unique_lock<std::shared_mutex> lk(_mutex);
 
-  _writer.seekp(0, std::ios::end);
-  _writer << logLine.toStdString() << '\n';
+  if (!_writer.good()) {
+    _writer.clear();
+    _writer.seekp(0, std::ios::end);
+    if (!_writer.good()) {
+      _writer.close();
+      _writer.open(_logFileName, std::ios::out | std::ios::app);
+      if (!_writer.good())
+        return false;
+    }
+  }
+
+  _reader.clear();
+  _reader.seekg(0, std::ios::end);
+  const std::streampos endPos = _reader.tellg();
+
+  if (endPos > std::streampos(0)) {
+    _reader.seekg(endPos - std::streamoff(1));
+    char lastChar = '\0';
+    _reader.get(lastChar);
+
+    if (lastChar != '\n')
+      _writer.put('\n');
+  }
+
+  const QByteArray utf8 = logLine.toUtf8();
+  _writer.write(utf8.constData(), utf8.size());
+  _writer.put('\n');
   _writer.flush();
 
-  return true;
+  return _writer.good();
+
 }
 
 std::multimap<qint64, QString> Logger::slotReadLastLine() {

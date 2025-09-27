@@ -1,4 +1,5 @@
 #include "exceptions_qt/errorbus.h"
+#include "system/date_time_utils.h"
 
 #include "logger.h"
 #include "screen_login.h"
@@ -44,18 +45,41 @@ void ScreenLogin::setDatabase(std::shared_ptr<ClientSession> sessionPtr, std::sh
 
   QString serverDataText;
 
+  ServerConnectionConfig serverConnectionConfig;
   serverDataText = _systemData;
 
   auto mode = _sessionPtr->getserverConnectionModeCl();
 
-  if (mode == ServerConnectionMode::Localhost)
+  if (mode == ServerConnectionMode::Localhost) {
     serverDataText += "\n\nПодключено к серверу внутри рабочей станции.";
-  else if (mode == ServerConnectionMode::LocalNetwork)
+    const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
+    const QString event = "Connection to Server established to local host " + QString::fromStdString(serverConnectionConfig.addressLocalHost) + "port: " + QString::number(serverConnectionConfig.port);
+
+    const QString log_line = QStringLiteral(
+                                 "[%1]   [%2]   [%3]   %4")
+                                 .arg(time_stamp,
+                                      "INFO",    // Уровни логгирования:
+                                      "NETWORK", // Ключевые модули для чата
+                                      event);    // Event
+
+    emit _loggerPtr->signalWriteLine(log_line);
+
+  } else if (mode == ServerConnectionMode::LocalNetwork) {
     serverDataText += "\n\nПодключено к серверу внути локальной сети.";
-  else if (mode == ServerConnectionMode::Offline)
+    const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
+    const QString event = "Connection to Server established to local network " + QString::fromStdString(serverConnectionConfig.addressLocalNetwork) + "port: " + QString::number(serverConnectionConfig.port);
+
+    const QString log_line = QStringLiteral(
+                                 "[%1]   [%2]   [%3]   %4")
+                                 .arg(time_stamp,
+                                      "INFO",    // Уровни логгирования:
+                                      "NETWORK", // Ключевые модули для чата
+                                      event);    // Event
+
+    emit _loggerPtr->signalWriteLine(log_line);
+  } else if (mode == ServerConnectionMode::Offline)
     serverDataText += "\n\nПодключение к серверу не удалось. Режим Offline.";
 
-  ServerConnectionConfig serverConnectionConfig;
 
   if (mode == ServerConnectionMode::Localhost) {
     serverDataText += QString::fromStdString("\nLocalHost address: ");
@@ -82,16 +106,53 @@ void ScreenLogin::onConnectionStatusChanged(bool connectionStatus, ServerConnect
 
   QString serverDataText;
 
+  ServerConnectionConfig serverConnectionConfig;
   serverDataText = _systemData;
 
-  if (mode == ServerConnectionMode::Localhost)
+  if (mode == ServerConnectionMode::Localhost) {
     serverDataText += "\n\nПодключено к серверу внутри рабочей станции.";
-  else if (mode == ServerConnectionMode::LocalNetwork)
-    serverDataText += "\n\nПодключено к серверу внути локальной сети.";
-  else if (mode == ServerConnectionMode::Offline)
-    serverDataText += "\n\nПодключение к серверу не удалось. Режим Offline.";
 
-  ServerConnectionConfig serverConnectionConfig;
+    const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
+    const QString event = "Connection to Server established to local host " + QString::fromStdString(serverConnectionConfig.addressLocalHost) + "port: " + QString::number(serverConnectionConfig.port);
+
+    const QString log_line = QStringLiteral(
+                                 "[%1]   [%2]   [%3]   %4")
+                                 .arg(time_stamp,
+                                      "INFO",    // Уровни логгирования:
+                                      "NETWORK", // Ключевые модули для чата
+                                      event);    // Event
+
+    emit _loggerPtr->signalWriteLine(log_line);
+
+  } else if (mode == ServerConnectionMode::LocalNetwork) {
+    serverDataText += "\n\nПодключено к серверу внути локальной сети.";
+
+    const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
+    const QString event = "Connection to Server established to local network " + QString::fromStdString(serverConnectionConfig.addressLocalNetwork) + "port: " + QString::number(serverConnectionConfig.port);
+
+    const QString log_line = QStringLiteral(
+                                 "[%1]   [%2]   [%3]   %4")
+                                 .arg(time_stamp,
+                                      "INFO",    // Уровни логгирования:
+                                      "NETWORK", // Ключевые модули для чата
+                                      event);    // Event
+
+    emit _loggerPtr->signalWriteLine(log_line);
+
+  } else if (mode == ServerConnectionMode::Offline) {
+    const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
+    const QString event = "Connection to Server lost";
+    const QString log_line = QStringLiteral(
+                                 "[%1]   [%2]   [%3]   %4")
+                                 .arg(time_stamp,
+                                      "ERROR",   // Уровни логгирования:
+                                      "NETWORK", // Ключевые модули для чата
+                                      event);    // Event
+
+    emit _loggerPtr->signalWriteLine(log_line);
+
+    serverDataText += "\n\nПодключение к серверу не удалось. Режим Offline.";
+  }
 
   if (mode == ServerConnectionMode::Localhost) {
     serverDataText += QString::fromStdString("\nLocalHost address: ");
@@ -151,6 +212,20 @@ void ScreenLogin::checkSignIn() {
       return;
 
     if (!_sessionPtr->getIsServerOnline()) {
+      const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
+      const QString event = "Server unavailable";
+      const QString user_login = ui->loginEdit->text();
+
+      const QString log_line = QStringLiteral(
+                                   "[%1]   [%2]   [%3]   [user=%4]   %5")
+                                   .arg(time_stamp,
+                                        "ERROR",    // Уровни логгирования:
+                                        "NETWORK",  // Ключевые модули для чата
+                                        user_login, // User
+                                        event);     // Event
+
+      emit _loggerPtr->signalWriteLine(log_line);
+
       QMessageBox::warning(this, tr("No!"), tr("Сервер не доступен."));
       return;
     }
@@ -159,9 +234,36 @@ void ScreenLogin::checkSignIn() {
                                                    ui->passwordEdit->text().toStdString());
 
     if (!result) {
+      const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
+      const QString event = "Authentication failed: invalid token";
+      const QString user_login = ui->loginEdit->text();
+
+      const QString log_line = QStringLiteral(
+                                   "[%1]   [%2]   [%3]   [user=%4]   %5")
+                                   .arg(time_stamp,
+                                        "ERROR",    // Уровни логгирования:
+                                        "AUTH",     // Ключевые модули для чата
+                                        user_login, // User
+                                        event);     // Event
+
+      emit _loggerPtr->signalWriteLine(log_line);
       emit exc_qt::ErrorBus::i().error(tr("Login or Password is wrong"), "login");
       return;
     }
+
+    const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
+    const QString event = "Authentification sucsessed";
+    const QString user_login = ui->loginEdit->text();
+
+    const QString log_line = QStringLiteral(
+                                 "[%1]   [%2]   [%3]   [user=%4]   %5")
+                                 .arg(time_stamp,
+                                      "INFO",     // Уровни логгирования:
+                                      "AUTH",     // Ключевые модули для чата
+                                      user_login, // User
+                                      event);     // Event
+
+    emit _loggerPtr->signalWriteLine(log_line);
 
     emit accepted(ui->loginEdit->text());
 
@@ -185,9 +287,37 @@ void ScreenLogin::on_baseReInitialisationPushButton_clicked() {
 
   bool result = _sessionPtr->reInitilizeBaseQt();
 
-  if (!result)
+  if (!result) {
+    const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
+    const QString event = "Base reinitialisation failed";
+    const QString user_login = "";
+
+    const QString log_line = QStringLiteral(
+                                 "[%1]   [%2]   [%3]   [user=%4]   %5")
+                                 .arg(time_stamp,
+                                      "ERROR",    // Уровни логгирования:
+                                      "DATABASE", // Ключевые модули для чата
+                                      user_login, // User
+                                      event);     // Event
+
+    emit _loggerPtr->signalWriteLine(log_line);
+
     QMessageBox::warning(this, "Ошибка", "Не удалось переинициализировать базу.");
-  else {
+  } else {
+    const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
+    const QString event = "Base reinitialisation sucsessed";
+    const QString user_login = "";
+
+    const QString log_line = QStringLiteral(
+                                 "[%1]   [%2]   [%3]   [user=%4]   %5")
+                                 .arg(time_stamp,
+                                      "INFO",     // Уровни логгирования:
+                                      "DATABASE", // Ключевые модули для чата
+                                      user_login, // User
+                                      event);     // Event
+
+    emit _loggerPtr->signalWriteLine(log_line);
+
     QMessageBox::information(this, "Успешно.", "Можно входить.");
   }
 }

@@ -293,10 +293,14 @@ void ScreenMainWork::clearMessageModelWithData() {
 
 void ScreenMainWork::onConnectionStatusChanged(bool connectionStatus,
                                                ServerConnectionMode mode) {
+
+  ServerConnectionConfig serverConnectionConfig;
+
   if (connectionStatus) {
     ui->serverStatusLabelRound->setStyleSheet(
         "background-color: green; border-radius: 8px;");
     ui->serverStatusLabel->setText("server online");
+
   } else {
     ui->serverStatusLabelRound->setStyleSheet(
         "background-color: red; border-radius: 8px;");
@@ -926,10 +930,53 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
     // отправляем на сервер и получаем результат
     bool result = _sessionPtr->CreateAndSendNewChatQt(chat_ptr, participants, newMessage);
 
-    // если ответ с сервера - окей
+    // если ответ с сервера - не окей
     if (!result) {
+
+      const auto time_stamp = QString::fromStdString(formatTimeStampToString(newMessageTimeStamp, true));
+      const QString user_login = QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin());
+      const QString chat_id_str = "new chat";
+      const QString event = "Message sending failed";
+      const QString content_str = newMessageText;
+
+      const QString log_line = QStringLiteral(
+                                   "[%1]   [%2]   [%3]   [user=%4]   [chat_id=%5]   %6   Content: %8")
+                                   .arg(time_stamp,
+                                        "ERROR",      // Уровни логгирования:
+                                        "CHAT",       // Ключевые модули для чата
+                                        user_login,   // User
+                                        chat_id_str,  // User
+                                        event,        // Event
+                                        content_str); // сообщение
+
+      emit _loggerPtr->signalWriteLine(log_line);
+
       QMessageBox::warning(this, tr("Ошибка!"), tr("Невозможно отправить сообщение."));
       return;
+    } else {
+      const auto time_stamp = QString::fromStdString(formatTimeStampToString(newMessageTimeStamp, true));
+      const QString user_login = QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin());
+      const QString chat_id_str = QString::number(chat_ptr->getChatId());
+
+      const auto &it = chat_ptr->getMessages().rbegin();
+      const auto &msg = it->second->getMessageId();
+      const QString msg_id_str = QString::number(msg);
+
+      const QString event = "Message sending sucsessed";
+      const QString content_str = newMessageText;
+
+      const QString log_line = QStringLiteral(
+                                   "[%1]   [%2]   [%3]   [user=%4]   [chat_id=%5]   [msg_Id=%6   %7   Content: %8")
+                                   .arg(time_stamp,
+                                        "INFO",       // Уровни логгирования:
+                                        "CHAT",       // Ключевые модули для чата
+                                        user_login,   // User
+                                        chat_id_str,  //
+                                        msg_id_str,   //
+                                        event,        // Event
+                                        content_str); // сообщение
+
+      emit _loggerPtr->signalWriteLine(log_line);
     }
 
     // заменили в модели чатов
@@ -951,8 +998,51 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
         _sessionPtr->createMessageCl(newMessage, chat_ptr, _sessionPtr->getInstance().getActiveUser());
 
     if (newMessageId == 0) {
+
+      const auto time_stamp = QString::fromStdString(formatTimeStampToString(newMessageTimeStamp, true));
+      const QString user_login = QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin());
+      const QString chat_id_str = QString::number(currentChatId);
+      const QString msg_id_str = "new";
+      const QString event = "Message sending failed";
+      const QString content_str = newMessageText;
+
+      const QString log_line = QStringLiteral(
+                                   "[%1]   [%2]   [%3]   [user=%4]   [chat_id=%5]   [msg_Id=%6   %7   Content: %8")
+                                   .arg(time_stamp,
+                                        "ERROR",      // Уровни логгирования:
+                                        "CHAT",       // Ключевые модули для чата
+                                        user_login,   // User
+                                        chat_id_str,  // User
+                                        msg_id_str,   //
+                                        event,        // Event
+                                        content_str); // сообщение
+
+      emit _loggerPtr->signalWriteLine(log_line);
+
       QMessageBox::warning(this, tr("Ошибка!"), tr("Невозможно отправить сообщение."));
       return;
+    } else {
+      const auto time_stamp = QString::fromStdString(formatTimeStampToString(newMessageTimeStamp, true));
+      const QString user_login = QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin());
+      const QString chat_id_str = QString::number(currentChatId);
+
+      const QString msg_id_str = QString::number(newMessageId);
+
+      const QString event = "Message sending sucsessed";
+      const QString content_str = newMessageText;
+
+      const QString log_line = QStringLiteral(
+                                   "[%1]   [%2]   [%3]   [user=%4]   [chat_id=%5]   [msg_Id=%6   %7   Content: %8")
+                                   .arg(time_stamp,
+                                        "INFO",       // Уровни логгирования:
+                                        "CHAT",       // Ключевые модули для чата
+                                        user_login,   // User
+                                        chat_id_str,  //
+                                        msg_id_str,   //
+                                        event,        // Event
+                                        content_str); // сообщение
+
+      emit _loggerPtr->signalWriteLine(log_line);
     }
   } // else - не новый чат
 
@@ -974,7 +1064,6 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
   // заменили в модели чатов
   _ChatListModel->setLastTime(idx.row(), newMessageTimeStamp);
 
-
   if (newChatBool) {
 
     slotMainWorkTransferrNewChatToMainChatList();
@@ -989,8 +1078,7 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
     clearChatListModelWithData();
     clearMessageModelWithData();
     fillChatListModelWithData(true);
-  }
-  else
+  } else
     refillChatListModelWithData(true);
 }
 
