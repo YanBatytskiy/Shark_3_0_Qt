@@ -1,11 +1,12 @@
 #include "client/processors/client_session_dto_writer.h"
 
+#include <QString>
 #include <memory>
 #include <vector>
 
 #include "chat/chat.h"
 #include "chat_system/chat_system.h"
-#include "client/core/client_core.h"
+#include "client/client_session.h"
 #include "core/system/system_function.h"
 #include "dto_struct.h"
 #include "message/message.h"
@@ -14,17 +15,18 @@
 #include "user/user.h"
 #include "user/user_chat_list.h"
 
-#include <QString>
+ClientSessionDtoWriter::ClientSessionDtoWriter(ClientSession &session)
+    : session_(session) {}
 
-ClientSessionDtoWriter::ClientSessionDtoWriter(ClientCore &core) : core_(core) {}
-
-void ClientSessionDtoWriter::setActiveUserDTOFromSrv(const UserDTO &user_dto) const {
-  auto user_ptr = std::make_shared<User>(UserData(user_dto.login, user_dto.userName, user_dto.passwordhash, user_dto.email,
-                                                  user_dto.phone, user_dto.disable_reason, user_dto.is_active,
-                                                  user_dto.disabled_at, user_dto.ban_until));
+void ClientSessionDtoWriter::setActiveUserDTOFromSrvProcessing(
+    const UserDTO &user_dto) const {
+  auto user_ptr = std::make_shared<User>(
+      UserData(user_dto.login, user_dto.userName, user_dto.passwordhash,
+               user_dto.email, user_dto.phone, user_dto.disable_reason,
+               user_dto.is_active, user_dto.disabled_at, user_dto.ban_until));
   user_ptr->createChatList(std::make_shared<UserChatList>(user_ptr));
 
-  auto &instance = core_.getInstance();
+  auto &instance = session_.getInstanceCl();
 
   if (!instance.findUserByLogin(user_dto.login)) {
     instance.addUserToSystem(user_ptr);
@@ -33,30 +35,35 @@ void ClientSessionDtoWriter::setActiveUserDTOFromSrv(const UserDTO &user_dto) co
   instance.setActiveUser(user_ptr);
 }
 
-void ClientSessionDtoWriter::setUserDTOFromSrv(const UserDTO &user_dto) const {
-  auto user_ptr = std::make_shared<User>(UserData(user_dto.login, user_dto.userName, "-1", user_dto.email, user_dto.phone,
-                                                  user_dto.disable_reason, user_dto.is_active, user_dto.disabled_at,
-                                                  user_dto.ban_until));
+void ClientSessionDtoWriter::setUserDTOFromSrvProcessing(
+    const UserDTO &user_dto) const {
+  auto user_ptr = std::make_shared<User>(
+      UserData(user_dto.login, user_dto.userName, "-1", user_dto.email,
+               user_dto.phone, user_dto.disable_reason, user_dto.is_active,
+               user_dto.disabled_at, user_dto.ban_until));
   user_ptr->createChatList();
 
-  auto &instance = core_.getInstance();
+  auto &instance = session_.getInstanceCl();
 
   if (!instance.findUserByLogin(user_dto.login)) {
     instance.addUserToSystem(user_ptr);
   }
 }
 
-void ClientSessionDtoWriter::setOneMessageDTO(const MessageDTO &message_dto, const std::shared_ptr<Chat> &chat) const {
-  auto sender = core_.getInstance().findUserByLogin(message_dto.senderLogin);
+void ClientSessionDtoWriter::setOneMessageDTOProcessing(
+    const MessageDTO &message_dto, const std::shared_ptr<Chat> &chat) const {
+  auto sender =
+      session_.getInstanceCl().findUserByLogin(message_dto.senderLogin);
 
-  auto message = createOneMessage(message_dto.messageContent[0].payload, sender, message_dto.timeStamp,
-                                  message_dto.messageId);
+  auto message = createOneMessage(message_dto.messageContent[0].payload, sender,
+                                  message_dto.timeStamp, message_dto.messageId);
 
   chat->addMessageToChat(std::make_shared<Message>(message), sender, false);
 }
 
-bool ClientSessionDtoWriter::setOneChatMessageDTO(const MessageChatDTO &message_chat_dto) const {
-  const auto &active_user = core_.getInstance().getActiveUser();
+bool ClientSessionDtoWriter::setOneChatMessageDTOProcessing(
+    const MessageChatDTO &message_chat_dto) const {
+  const auto &active_user = session_.getInstanceCl().getActiveUser();
   if (!active_user) {
     return false;
   }
@@ -74,16 +81,17 @@ bool ClientSessionDtoWriter::setOneChatMessageDTO(const MessageChatDTO &message_
 
     if (chat_ptr && chat_ptr->getChatId() == message_chat_dto.chatId) {
       for (const auto &message : message_chat_dto.messageDTO) {
-        setOneMessageDTO(message, chat_ptr);
+        setOneMessageDTOProcessing(message, chat_ptr);
       }
     }
   }
   return true;
 }
 
-void ClientSessionDtoWriter::setOneChatDTOFromSrv(const ChatDTO &chat_dto) {
+void ClientSessionDtoWriter::setOneChatDTOFromSrvProcessing(
+    const ChatDTO &chat_dto) {
   auto chat_ptr = std::make_shared<Chat>();
-  auto active_user = core_.getActiveUserCl();
+  auto active_user = session_.getActiveUserCl();
   if (!active_user || !active_user->getUserChatList()) {
     return;
   }
@@ -96,20 +104,21 @@ void ClientSessionDtoWriter::setOneChatDTOFromSrv(const ChatDTO &chat_dto) {
     participants.push_back(participant.login);
   }
 
-  core_.ensureParticipantsAvailable(participants);
+  session_.checkAndAddParticipantToSystemCl(participants);
 
   for (const auto &participant : chat_dto.participants) {
     for (const auto &deleted_message_id : participant.deletedMessageIds) {
       chat_ptr->setDeletedMessageMap(participant.login, deleted_message_id);
     }
 
-    auto user_ptr = core_.getInstance().findUserByLogin(participant.login);
+    auto user_ptr = session_.getInstanceCl().findUserByLogin(participant.login);
 
     if (user_ptr) {
       chat_ptr->setLastReadMessageId(user_ptr, participant.lastReadMessage);
-      chat_ptr->addParticipant(user_ptr, participant.lastReadMessage, participant.deletedFromChat);
+      chat_ptr->addParticipant(user_ptr, participant.lastReadMessage,
+                               participant.deletedFromChat);
     }
   }
 
-  core_.getInstance().addChatToInstance(chat_ptr);
+  session_.getInstanceCl().addChatToInstance(chat_ptr);
 }

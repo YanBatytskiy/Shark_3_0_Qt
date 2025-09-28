@@ -1,13 +1,15 @@
 #include "client/processors/client_session_modify_objects.h"
 
-#include "client/core/client_core.h"
-#include "dto_struct.h"
-
 #include <vector>
 
-ClientSessionModifyObjects::ClientSessionModifyObjects(ClientCore &core) : core_(core) {}
+#include "client/client_session.h"
+#include "dto_struct.h"
 
-bool ClientSessionModifyObjects::changeUserDataCl(const UserDTO &user_dto) {
+ClientSessionModifyObjects::ClientSessionModifyObjects(ClientSession &session)
+    : session_(session) {}
+
+bool ClientSessionModifyObjects::changeUserDataProcessing(
+    const UserDTO &user_dto) {
   PacketDTO packet_dto;
   packet_dto.requestType = RequestType::RqFrClientChangeUserData;
   packet_dto.structDTOClassType = StructDTOClassType::userDTO;
@@ -20,9 +22,11 @@ bool ClientSessionModifyObjects::changeUserDataCl(const UserDTO &user_dto) {
   PacketListDTO packet_list_result;
   packet_list_result.packets.clear();
 
-  packet_list_result = core_.processingRequestToServerCore(packet_list_send, packet_dto.requestType);
+  packet_list_result = session_.processingRequestToServerCl(
+      packet_list_send, packet_dto.requestType);
 
-  const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(*packet_list_result.packets[0].structDTOPtr)
+  const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(
+                           *packet_list_result.packets[0].structDTOPtr)
                            .getStructDTOClass();
 
   return packet.reqResult;

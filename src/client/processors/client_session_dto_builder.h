@@ -4,19 +4,21 @@
 #include <memory>
 #include <optional>
 
-class ClientCore;
+class ClientSession;
 class Chat;
 class Message;
 struct MessageDTO;
 struct ChatDTO;
 
 class ClientSessionDtoBuilder {
-public:
-  explicit ClientSessionDtoBuilder(ClientCore &core);
+ public:
+  explicit ClientSessionDtoBuilder(ClientSession &session);
 
-  MessageDTO fillOneMessageDTOFromCl(const std::shared_ptr<Message> &message, std::size_t chat_id);
-  std::optional<ChatDTO> fillChatDTOCl(const std::shared_ptr<Chat> &chat);
+  MessageDTO fillOneMessageDTOFromProcessing(
+      const std::shared_ptr<Message> &message, std::size_t chat_id);
+  std::optional<ChatDTO> fillChatDTOProcessing(
+      const std::shared_ptr<Chat> &chat);
 
-private:
-  ClientCore &core_;
+ private:
+  ClientSession &session_;
 };

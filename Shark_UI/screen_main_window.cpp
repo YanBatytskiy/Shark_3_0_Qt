@@ -1,16 +1,15 @@
 #include "screen_main_window.h"
+
+#include <QPushButton>
+#include <QTimeZone>
+
 #include "logger.h"
 #include "screen_login.h"
 #include "ui_screen_main_window.h"
 
-#include <QTimeZone>
-#include <QPushButton>
-
 MainWindow::MainWindow(std::shared_ptr<ClientSession> client_session_ptr,
-                       std::shared_ptr<Logger> logger_ptr,
-                       QWidget *parent)
+                       std::shared_ptr<Logger> logger_ptr, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
-
   client_session_ptr_ = std::move(client_session_ptr);
   logger_ptr_ = std::move(logger_ptr);
 
@@ -38,14 +37,18 @@ MainWindow::MainWindow(std::shared_ptr<ClientSession> client_session_ptr,
           &MainWindow::slotonRejectedRequested);
 
   if (auto w = ui->pageWork) {
-    connect(ui->pageWork, &ScreenMainWork::signalLogOut, this, &MainWindow::slotOnLogOut);
+    connect(ui->pageWork, &ScreenMainWork::signalLogOut, this,
+            &MainWindow::slotOnLogOut);
 
-    connect(ui->pageWork, &ScreenMainWork::signalShowProfile, this, &MainWindow::slotShowProfile);
+    connect(ui->pageWork, &ScreenMainWork::signalShowProfile, this,
+            &MainWindow::slotShowProfile);
   }
 
-  auto profile = ui->mainWindowstackedWidget->findChild<ScreenUserProfile *>("pageProfile");
+  auto profile = ui->mainWindowstackedWidget->findChild<ScreenUserProfile *>(
+      "pageProfile");
 
-  connect(profile, &ScreenUserProfile::signalCloseUserProfile, this, &MainWindow::setworkForm);
+  connect(profile, &ScreenUserProfile::signalCloseUserProfile, this,
+          &MainWindow::setworkForm);
 
   profile->setDatabase(client_session_ptr_);
 
@@ -64,7 +67,8 @@ void MainWindow::setLoginForm() {
 
 void MainWindow::setRegistrationForm() {
   ui->pageRegister->clearFields();
-  QWidget *page = ui->mainWindowstackedWidget->findChild<QWidget *>("pageRegister");
+  QWidget *page =
+      ui->mainWindowstackedWidget->findChild<QWidget *>("pageRegister");
 
   ui->mainWindowstackedWidget->setCurrentWidget(page);
 }
@@ -82,36 +86,35 @@ void MainWindow::onLoggedIn(QString login) {
 }
 
 void MainWindow::slotOnLogOut() {
-
-  client_session_ptr_->resetSessionData();
+  client_session_ptr_->resetSessionDataCl();
   setLoginForm();
 }
 
 void MainWindow::slotonRejectedRequested() {
   if (client_session_ptr_) {
-    client_session_ptr_->stopConnectionThread(); // ← остановка фонового соединения
+    client_session_ptr_
+        ->stopConnectionThreadCl();  // ← остановка фонового соединения
   }
   close();
 }
 
-void MainWindow::slotShowProfile()
-{
-  QWidget *page = ui->mainWindowstackedWidget->findChild<QWidget* >("pageProfile");
+void MainWindow::slotShowProfile() {
+  QWidget *page =
+      ui->mainWindowstackedWidget->findChild<QWidget *>("pageProfile");
   ui->mainWindowstackedWidget->setCurrentWidget(page);
 
-  auto w = ui->mainWindowstackedWidget->findChild<ScreenUserProfile*>("pageProfile");
-  auto b = w->findChild<QPushButton* >("savePushButton");
+  auto w = ui->mainWindowstackedWidget->findChild<ScreenUserProfile *>(
+      "pageProfile");
+  auto b = w->findChild<QPushButton *>("savePushButton");
   b->setEnabled(false);
 
-  b = w->findChild<QPushButton* >("changePasswordPushButton");
+  b = w->findChild<QPushButton *>("changePasswordPushButton");
   b->setEnabled(false);
 
   w->slotFillDataToForm();
 }
 
-void MainWindow::slotCloseProfile()
-{
-  QWidget *page = ui->mainWindowstackedWidget->findChild<QWidget* >("pageWork");
+void MainWindow::slotCloseProfile() {
+  QWidget *page = ui->mainWindowstackedWidget->findChild<QWidget *>("pageWork");
   ui->mainWindowstackedWidget->setCurrentWidget(page);
-
 }

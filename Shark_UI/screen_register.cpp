@@ -1,7 +1,9 @@
 #include "screen_register.h"
+
+#include <QMessageBox>
+
 #include "system/picosha2.h"
 #include "ui_screen_register.h"
-#include <QMessageBox>
 
 ScreenRegister::ScreenRegister(QWidget *parent)
     : QWidget(parent), ui(new Ui::ScreenRegister) {
@@ -16,19 +18,21 @@ ScreenRegister::ScreenRegister(QWidget *parent)
 }
 
 bool ScreenRegister::eventFilter(QObject *watched, QEvent *event) {
-
-  const bool isEdit =
-      watched == ui->loginEdit ||
-      watched == ui->nameEdit ||
-      watched == ui->passwordEdit ||
-      watched == ui->passwordConfirmEdit;
+  const bool isEdit = watched == ui->loginEdit || watched == ui->nameEdit ||
+                      watched == ui->passwordEdit ||
+                      watched == ui->passwordConfirmEdit;
 
   if (isEdit) {
     if (event->type() == QEvent::FocusIn) {
-      if (watched == ui->loginEdit || watched == ui->passwordEdit || watched == ui->passwordConfirmEdit) {
-        ui->hintLabel->setText("Не менее 5 и не более 20 символов, только английские буквы и цифры");
+      if (watched == ui->loginEdit || watched == ui->passwordEdit ||
+          watched == ui->passwordConfirmEdit) {
+        ui->hintLabel->setText(
+            "Не менее 5 и не более 20 символов, только английские буквы и "
+            "цифры");
       } else if (watched == ui->nameEdit) {
-        ui->hintLabel->setText("Не менее 2 и не более 20 символов, только английские буквы и цифры");
+        ui->hintLabel->setText(
+            "Не менее 2 и не более 20 символов, только английские буквы и "
+            "цифры");
       } else if (watched == ui->emailLineEdit || watched == ui->phoneLineEdit) {
         ui->hintLabel->clear();
       }
@@ -46,8 +50,9 @@ bool ScreenRegister::eventFilter(QObject *watched, QEvent *event) {
 
 ScreenRegister::~ScreenRegister() { delete ui; }
 
-void ScreenRegister::setDatabase(std::shared_ptr<ClientSession> client_session_ptr,
-                                 std::shared_ptr<Logger> logger_ptr) {
+void ScreenRegister::setDatabase(
+    std::shared_ptr<ClientSession> client_session_ptr,
+    std::shared_ptr<Logger> logger_ptr) {
   client_session_ptr_ = client_session_ptr;
   logger_ptr_ = logger_ptr;
 
@@ -67,7 +72,6 @@ void ScreenRegister::clearFields() {
 
 void ScreenRegister::onConnectionStatusChanged(bool connectionStatus,
                                                ServerConnectionMode mode) {
-
   if (connectionStatus) {
     ui->serverStatusLabelRound->setStyleSheet(
         "background-color: green; border-radius: 8px;");
@@ -85,18 +89,19 @@ void ScreenRegister::on_toLoginButton_clicked() {
 }
 
 void ScreenRegister::on_loginEdit_editingFinished() {
-
-  if (ui->loginEdit->text().size() == 0)
-    return;
+  if (ui->loginEdit->text().size() == 0) return;
 
   if (ui->loginEdit->text().size() < 5 || ui->loginEdit->text().size() > 20) {
-    QMessageBox::critical(this, "Ошибка", "Некорректная длина логина. Длина должна быть от 5 до 20 символов.");
+    QMessageBox::critical(
+        this, "Ошибка",
+        "Некорректная длина логина. Длина должна быть от 5 до 20 символов.");
     ui->loginEdit->setStyleSheet("QLineEdit { color: red; }");
     isLogin = false;
     return;
   }
 
-  if (!client_session_ptr_->inputNewLoginValidationQt(ui->loginEdit->text().toStdString())) {
+  if (!client_session_ptr_->inputNewLoginValidationQtCl(
+          ui->loginEdit->text().toStdString())) {
     ui->loginEdit->setStyleSheet("QLineEdit { color: red; }");
     isLogin = false;
   } else {
@@ -106,19 +111,22 @@ void ScreenRegister::on_loginEdit_editingFinished() {
 }
 
 void ScreenRegister::on_nameEdit_editingFinished() {
-
-  if (ui->nameEdit->text().size() == 0)
-    return;
+  if (ui->nameEdit->text().size() == 0) return;
 
   if (ui->nameEdit->text().size() < 2 || ui->nameEdit->text().size() > 20) {
-    QMessageBox::critical(this, "Ошибка", "Некорректная длина имени. Длина должна быть от 2 до 20 символов.");
+    QMessageBox::critical(
+        this, "Ошибка",
+        "Некорректная длина имени. Длина должна быть от 2 до 20 символов.");
     ui->nameEdit->setStyleSheet("QLineEdit { color: red; }");
     isName = false;
     return;
   }
 
-  if (!client_session_ptr_->inputNewLoginValidationQt(ui->nameEdit->text().toStdString())) {
-    QMessageBox::critical(this, "Ошибка", "Недопустимое имя. Наведи мышку на поле для полсказки.");
+  if (!client_session_ptr_->inputNewLoginValidationQtCl(
+          ui->nameEdit->text().toStdString())) {
+    QMessageBox::critical(
+        this, "Ошибка",
+        "Недопустимое имя. Наведи мышку на поле для полсказки.");
     ui->nameEdit->setStyleSheet("QLineEdit { color: red; }");
     isName = false;
   } else {
@@ -128,19 +136,23 @@ void ScreenRegister::on_nameEdit_editingFinished() {
 }
 
 void ScreenRegister::on_passwordEdit_editingFinished() {
+  if (ui->passwordEdit->text().size() == 0) return;
 
-  if (ui->passwordEdit->text().size() == 0)
-    return;
-
-  if (ui->passwordEdit->text().size() < 5 || ui->passwordEdit->text().size() > 20) {
-    QMessageBox::critical(this, "Ошибка", "Некорректная длина пароля. Длина должна быть от 5 до 20 символов.");
+  if (ui->passwordEdit->text().size() < 5 ||
+      ui->passwordEdit->text().size() > 20) {
+    QMessageBox::critical(
+        this, "Ошибка",
+        "Некорректная длина пароля. Длина должна быть от 5 до 20 символов.");
     ui->passwordEdit->setStyleSheet("QLineEdit { color: red; }");
     isPassword = false;
     return;
   }
 
-  if (!client_session_ptr_->inputNewPasswordValidationQt(ui->passwordEdit->text().toStdString(), 5, 20)) {
-    QMessageBox::critical(this, "Ошибка", "Недопустимый пароль. Наведи мышку на поле для полсказки.");
+  if (!client_session_ptr_->inputNewPasswordValidationQtCl(
+          ui->passwordEdit->text().toStdString(), 5, 20)) {
+    QMessageBox::critical(
+        this, "Ошибка",
+        "Недопустимый пароль. Наведи мышку на поле для полсказки.");
     ui->passwordEdit->setStyleSheet("QLineEdit { color: red; }");
   } else
     ui->passwordEdit->setStyleSheet("QLineEdit { color: black; }");
@@ -150,7 +162,6 @@ void ScreenRegister::on_passwordEdit_editingFinished() {
 }
 
 void ScreenRegister::on_passwordConfirmEdit_editingFinished() {
-
   if (ui->passwordEdit->text() != ui->passwordConfirmEdit->text()) {
     QMessageBox::critical(this, "Ошибка", "Пароли не совпадают.");
     ui->passwordConfirmEdit->setStyleSheet("QLineEdit { color: red; }");
@@ -167,9 +178,9 @@ void ScreenRegister::on_exitPushButton_clicked() {
 }
 
 void ScreenRegister::on_registerPushButton_clicked() {
-
   if (!isLogin || !isName || !isPassword) {
-    QMessageBox::critical(this, "Ошибка", "Поля логин, имя и пароль должны быть заполнены.");
+    QMessageBox::critical(this, "Ошибка",
+                          "Поля логин, имя и пароль должны быть заполнены.");
     return;
   }
   const auto &login = ui->loginEdit->text().toStdString();
@@ -184,7 +195,8 @@ void ScreenRegister::on_registerPushButton_clicked() {
     userDTO.email = ui->emailLineEdit->text().toStdString();
     userDTO.phone = ui->phoneLineEdit->text().toStdString();
 
-    const auto passHash = picosha2::hash256_hex_string(ui->passwordEdit->text().toStdString());
+    const auto passHash =
+        picosha2::hash256_hex_string(ui->passwordEdit->text().toStdString());
     userDTO.passwordhash = passHash;
     userDTO.ban_until = 0;
     userDTO.disable_reason = "";
@@ -192,30 +204,22 @@ void ScreenRegister::on_registerPushButton_clicked() {
     userDTO.disabled_at = 0;
 
     if (client_session_ptr_->createUserCl(userDTO)) {
-
       auto user_ptr = std::make_shared<User>(
-          UserData(
-              userDTO.login,
-              userDTO.userName,
-              userDTO.passwordhash,
-              userDTO.email,
-              userDTO.phone,
-              "",
-              true,
-              0,
-              0));
+          UserData(userDTO.login, userDTO.userName, userDTO.passwordhash,
+                   userDTO.email, userDTO.phone, "", true, 0, 0));
 
-      client_session_ptr_->getInstance().addUserToSystem(user_ptr);
+      client_session_ptr_->getInstanceCl().addUserToSystem(user_ptr);
 
-    } // if create
+    }  // if create
     else {
-      QMessageBox::critical(this, "Ошибка", "Регистрация не удалась. Попробуйте позже еще раз.");
+      QMessageBox::critical(
+          this, "Ошибка", "Регистрация не удалась. Попробуйте позже еще раз.");
     }
 
     emit signalLoggedIn(ui->loginEdit->text());
 
-  } // if else checkLogin
+  }  // if else checkLogin
 }
 
-void ScreenRegister::on_passwordConfirmEdit_cursorPositionChanged(int arg1, int arg2) {
-}
+void ScreenRegister::on_passwordConfirmEdit_cursorPositionChanged(int arg1,
+                                                                  int arg2) {}

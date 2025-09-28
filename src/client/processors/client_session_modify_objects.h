@@ -2,15 +2,15 @@
 
 #include <memory>
 
-class ClientCore;
+class ClientSession;
 struct UserDTO;
 
 class ClientSessionModifyObjects {
-public:
-  explicit ClientSessionModifyObjects(ClientCore &core);
+ public:
+  explicit ClientSessionModifyObjects(ClientSession &session);
 
-  bool changeUserDataCl(const UserDTO &user_dto);
+  bool changeUserDataProcessing(const UserDTO &user_dto);
 
-private:
-  ClientCore &core_;
+ private:
+  ClientSession &session_;
 };

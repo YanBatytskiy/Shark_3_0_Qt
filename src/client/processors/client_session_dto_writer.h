@@ -2,7 +2,7 @@
 
 #include <memory>
 
-class ClientCore;
+class ClientSession;
 class Chat;
 struct ChatDTO;
 struct MessageChatDTO;
@@ -10,15 +10,17 @@ struct MessageDTO;
 struct UserDTO;
 
 class ClientSessionDtoWriter {
-public:
-  explicit ClientSessionDtoWriter(ClientCore &core);
+ public:
+  explicit ClientSessionDtoWriter(ClientSession &session);
 
-  void setActiveUserDTOFromSrv(const UserDTO &user_dto) const;
-  void setUserDTOFromSrv(const UserDTO &user_dto) const;
-  void setOneMessageDTO(const MessageDTO &message_dto, const std::shared_ptr<Chat> &chat) const;
-  bool setOneChatMessageDTO(const MessageChatDTO &message_chat_dto) const;
-  void setOneChatDTOFromSrv(const ChatDTO &chat_dto);
+  void setActiveUserDTOFromSrvProcessing(const UserDTO &user_dto) const;
+  void setUserDTOFromSrvProcessing(const UserDTO &user_dto) const;
+  void setOneMessageDTOProcessing(const MessageDTO &message_dto,
+                                  const std::shared_ptr<Chat> &chat) const;
+  bool setOneChatMessageDTOProcessing(
+      const MessageChatDTO &message_chat_dto) const;
+  void setOneChatDTOFromSrvProcessing(const ChatDTO &chat_dto);
 
-private:
-  ClientCore &core_;
+ private:
+  ClientSession &session_;
 };
