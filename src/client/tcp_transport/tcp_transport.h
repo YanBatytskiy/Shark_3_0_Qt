@@ -1,6 +1,6 @@
 #pragma once
 
-#include "client/core/session_types.h"
+#include "session_types.h"
 #include "dto_struct.h"
 
 #include <atomic>
@@ -14,6 +14,6 @@ public:
   bool findServerAddress(ServerConnectionConfig &config, ServerConnectionMode &mode);
   int createConnection(const ServerConnectionConfig &config, ServerConnectionMode mode);
   bool discoverServerOnLAN(ServerConnectionConfig &config);
-  PacketListDTO exchangePackets(int socket_fd, std::atomic_bool &status_online,
-                                const std::vector<std::uint8_t> &payload);
+  PacketListDTO transportPackets(int socket_fd, std::atomic_bool &status_online,
+                                 const std::vector<std::uint8_t> &payload);
 };

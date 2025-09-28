@@ -3,7 +3,7 @@
 #include "chat_system/chat_system.h"
 #include "dto_struct.h"
 #include "request_dispatcher/request_dispatcher.h"
-#include "session_types.h"
+#include "tcp_transport/session_types.h"
 #include "tcp_transport/tcp_transport.h"
 
 #include <QThread>

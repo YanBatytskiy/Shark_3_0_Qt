@@ -113,7 +113,7 @@ void ScreenUserProfile::on_savePushButton_clicked() {
   _isPhoneChanged = false;
   _isPasswordChanged = false;
 
-  if (_sessionPtr->changeUserDataQt(userDTO))
+  if (_sessionPtr->changeUserDataCl(userDTO))
     QMessageBox::information(this, "Сообщение", "Данные изменены.");
   else
     QMessageBox::critical(this, "Ошибка", "Данные не изменены.");

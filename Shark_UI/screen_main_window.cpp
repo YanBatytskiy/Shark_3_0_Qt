@@ -76,7 +76,7 @@ void MainWindow::setworkForm() {
 }
 
 void MainWindow::onLoggedIn(QString login) {
-  _sessionPtr->registerClientOnDeviceQt(login.toStdString());
+  _sessionPtr->registerClientToSystemCl(login.toStdString());
   ui->pageWork->createSession();
   setworkForm();
 }

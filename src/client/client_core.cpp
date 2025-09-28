@@ -75,7 +75,7 @@ bool ClientCore::discoverServerOnLANCore(ServerConnectionConfig &config) {
 }
 
 PacketListDTO ClientCore::getDatafromServerCore(const std::vector<std::uint8_t> &payload) {
-  return transport_.exchangePackets(socket_fd_, status_online_, payload);
+  return transport_.transportPackets(socket_fd_, status_online_, payload);
 }
 
 PacketListDTO ClientCore::processingRequestToServerCore(std::vector<PacketDTO> &packets,
@@ -114,4 +114,3 @@ void ClientCore::resetSessionDataCore() {
   server_connection_mode_ = ServerConnectionMode::Offline;
   server_connection_config_.found = false;
 }
-

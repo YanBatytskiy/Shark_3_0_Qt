@@ -1,8 +1,10 @@
 #pragma once
-#include "client/core/client_core.h"
-#include "client/core/session_types.h"
-#include "client_session_dto_from_cl.h"
-#include "client_session_dto_from_srv.h"
+#include "client_core.h"
+#include "tcp_transport/session_types.h"
+#include "client/processors/client_session_dto_builder.h"
+#include "client/processors/client_session_create_objects.h"
+#include "client/processors/client_session_dto_writer.h"
+#include "client/processors/client_session_modify_objects.h"
 #include "chat_system/chat_system.h"
 #include "dto_struct.h"
 #include "message/message.h"
@@ -17,8 +19,10 @@ class ClientSession : public QObject {
 private:
   ChatSystem &_instance; // link to server
   ClientCore _core;
-  ClientSessionDtoFromSrv _dtoFromSrv;
-  ClientSessionDtoFromCl _dtoFromCl;
+  ClientSessionDtoWriter _dtoWriter;
+  ClientSessionDtoBuilder _dtoBuilder;
+  ClientSessionCreateObjects _createObjects;
+  ClientSessionModifyObjects _modifyObjects;
 
 signals:
   void serverStatusChanged(bool online, ServerConnectionMode mode);
@@ -40,12 +44,6 @@ public:
   // qt methods
   //  utilities
 
-  bool checkLoginQt(std::string login);
-
-  bool checkLoginPsswordQt(std::string login, std::string password);
-
-  bool registerClientOnDeviceQt(std::string login);
-
   bool inputNewLoginValidationQt(std::string inputData);
 
   bool inputNewPasswordValidationQt(std::string inputData, std::size_t dataLengthMin, std::size_t dataLengthMax);
@@ -54,12 +52,7 @@ public:
 
   bool CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std::vector<UserDTO> &participants, Message &newMessage);
 
-    bool createUserQt(UserDTO userDTO);
-
-    bool changeUserDataQt(UserDTO userDTO);
-
     bool changeUserPasswordQt(UserDTO userDTO);
-
     bool blockUnblockUserQt(std::string login, bool isBlocked, std::string disableReason);
 
     bool bunUnbunUserQt(std::string login, bool isBanned, std::int64_t bunnedTo);
@@ -138,25 +131,7 @@ public:
   // отправить на сервер lastReadMessage
   bool sendLastReadMessageFromClient(const std::shared_ptr<Chat> &chat_ptr, std::size_t messageId);
 
-  //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  // transport setters
-
-  // установка пользователя
-  void setActiveUserDTOFromSrv(const UserDTO &userDTO) const;
-
-  void setUserDTOFromSrv(const UserDTO &userDTO) const;
-
-  //   установка одного сообщения
-  void setOneMessageDTO(const MessageDTO &messageDTO, const std::shared_ptr<Chat> &chat) const;
-
-  // установка сообщений одного чата
-  bool setOneChatMessageDTO(const MessageChatDTO &messageChatDTO) const;
-
   bool checkAndAddParticipantToSystem(const std::vector<std::string> &participants);
-
-  // установка чат лист пльзователя
-
-  void setOneChatDTOFromSrv(const ChatDTO &chatDTO);
 
   MessageDTO fillOneMessageDTOFromCl(const std::shared_ptr<Message> &message, std::size_t chatId);
 

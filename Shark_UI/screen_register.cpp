@@ -174,7 +174,7 @@ void ScreenRegister::on_registerPushButton_clicked() {
   }
   const auto &login = ui->loginEdit->text().toStdString();
 
-  if (_sessionPtr->checkLoginQt(login))
+  if (_sessionPtr->checkUserLoginCl(login))
     QMessageBox::critical(this, "Ошибка", "Такой логин уже существует.");
   else {
     UserDTO userDTO;
@@ -191,7 +191,7 @@ void ScreenRegister::on_registerPushButton_clicked() {
     userDTO.is_active = true;
     userDTO.disabled_at = 0;
 
-    if (_sessionPtr->createUserQt(userDTO)) {
+    if (_sessionPtr->createUserCl(userDTO)) {
 
       auto user_ptr = std::make_shared<User>(
           UserData(

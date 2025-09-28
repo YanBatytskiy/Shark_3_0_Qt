@@ -1,25 +1,23 @@
 #pragma once
 
 #include <memory>
-#include <vector>
 
 class ClientSession;
 class Chat;
-struct UserDTO;
-struct MessageDTO;
-struct MessageChatDTO;
 struct ChatDTO;
+struct MessageChatDTO;
+struct MessageDTO;
+struct UserDTO;
 
-class ClientSessionDtoFromSrv {
+class ClientSessionDtoWriter {
 public:
-  explicit ClientSessionDtoFromSrv(ClientSession &session);
+  explicit ClientSessionDtoWriter(ClientSession &session);
 
   void setActiveUserDTOFromSrv(const UserDTO &userDTO) const;
   void setUserDTOFromSrv(const UserDTO &userDTO) const;
   void setOneMessageDTO(const MessageDTO &messageDTO, const std::shared_ptr<Chat> &chat) const;
   bool setOneChatMessageDTO(const MessageChatDTO &messageChatDTO) const;
   void setOneChatDTOFromSrv(const ChatDTO &chatDTO);
-  bool checkAndAddParticipantToSystem(const std::vector<std::string> &participants);
 
 private:
   ClientSession &_session;

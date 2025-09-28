@@ -1,7 +1,7 @@
 #ifndef NW_CONNECTION_MONITOR_H
 #define NW_CONNECTION_MONITOR_H
 
-#include "client/core/session_types.h"
+#include "client/tcp_transport/session_types.h"
 
 #include <QObject>
 #include <atomic>
@@ -50,4 +50,3 @@ private:
 };
 
 #endif // NW_CONNECTION_MONITOR_H
-

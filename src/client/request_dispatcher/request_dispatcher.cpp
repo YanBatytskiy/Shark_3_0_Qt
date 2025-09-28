@@ -1,7 +1,7 @@
 #include "request_dispatcher.h"
 
 #include "chat_system/chat_system.h"
-#include "client/core/tcp_transport/tcp_transport.h"
+#include "client/tcp_transport/tcp_transport.h"
 
 #include "exceptions_qt/exception_network.h"
 #include "exceptions_qt/errorbus.h"
@@ -52,7 +52,7 @@ PacketListDTO RequestDispatcher::process(int socket_fd, std::atomic_bool &status
     }
 
     auto payload = serializePacketList(send_list.packets);
-    result = transport_.exchangePackets(socket_fd, status_online, payload);
+    result = transport_.transportPackets(socket_fd, status_online, payload);
   } catch (const exc_qt::LostConnectionException &ex) {
     emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
                                      QStringLiteral("Клиент processingRequestToServer: "));
