@@ -357,14 +357,113 @@ const std::vector<UserDTO> ClientSession::findUserByTextPartOnServerCl(
 //
 //
 bool ClientSession::checkUserLoginCl(const std::string &user_login) {
-  return _core.checkUserLoginCore(user_login);
+  const auto is_on_client_device = _instance.findUserByLogin(user_login);
+  if (is_on_client_device != nullptr) {
+    return true;
+  }
+
+  UserLoginDTO user_login_dto;
+  user_login_dto.login = user_login;
+
+  PacketDTO packet_dto;
+  packet_dto.requestType = RequestType::RqFrClientCheckLogin;
+  packet_dto.structDTOClassType = StructDTOClassType::userLoginDTO;
+  packet_dto.reqDirection = RequestDirection::ClientToSrv;
+  packet_dto.structDTOPtr =
+      std::make_shared<StructDTOClass<UserLoginDTO>>(user_login_dto);
+
+  std::vector<PacketDTO> packet_list_send;
+  packet_list_send.push_back(packet_dto);
+
+  auto packet_list_result =
+      processingRequestToServerCl(packet_list_send, packet_dto.requestType);
+
+  try {
+    if (packet_list_result.packets.size() != 1) {
+      throw exc_qt::WrongPacketSizeException();
+    }
+
+    if (packet_list_result.packets[0].requestType !=
+        RequestType::RqFrClientCheckLogin) {
+      throw exc_qt::WrongresponceTypeException();
+    }
+
+    const auto &response = static_cast<const StructDTOClass<ResponceDTO> &>(
+                               *packet_list_result.packets[0].structDTOPtr)
+                               .getStructDTOClass();
+    return response.reqResult;
+  } catch (const std::exception &ex) {
+    const auto time_stamp =
+        formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto time_stamp_qt = QString::fromStdString(time_stamp);
+    const auto user_login_qt = QString::fromStdString(user_login);
+
+    emit exc_qt::ErrorBus::i().error(
+        QString::fromUtf8(ex.what()),
+        QStringLiteral("[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=]   "
+                       "[msg=]   checkUserLoginCl")
+            .arg(time_stamp_qt, user_login_qt));
+    return false;
+  }
 }
 //
 //
 //
 bool ClientSession::checkUserPasswordCl(const std::string &user_login,
                                         const std::string &password) {
-  return _core.checkUserPasswordCore(user_login, password);
+  const auto is_on_client_device = _instance.findUserByLogin(user_login);
+  const auto password_hash = picosha2::hash256_hex_string(password);
+
+  if (is_on_client_device != nullptr) {
+    return _instance.checkPasswordValidForUser(password_hash, user_login);
+  }
+
+  UserLoginPasswordDTO user_login_password_dto;
+  user_login_password_dto.login = user_login;
+  user_login_password_dto.passwordhash = password_hash;
+
+  PacketDTO packet_dto;
+  packet_dto.requestType = RequestType::RqFrClientCheckLogPassword;
+  packet_dto.structDTOClassType = StructDTOClassType::userLoginPasswordDTO;
+  packet_dto.reqDirection = RequestDirection::ClientToSrv;
+  packet_dto.structDTOPtr =
+      std::make_shared<StructDTOClass<UserLoginPasswordDTO>>(
+          user_login_password_dto);
+
+  std::vector<PacketDTO> packet_list_send;
+  packet_list_send.push_back(packet_dto);
+
+  auto packet_list_result =
+      processingRequestToServerCl(packet_list_send, packet_dto.requestType);
+
+  try {
+    if (packet_list_result.packets.size() != 1) {
+      throw exc_qt::WrongPacketSizeException();
+    }
+
+    if (packet_list_result.packets[0].requestType !=
+        RequestType::RqFrClientCheckLogPassword) {
+      throw exc_qt::WrongresponceTypeException();
+    }
+
+    const auto &response = static_cast<const StructDTOClass<ResponceDTO> &>(
+                               *packet_list_result.packets[0].structDTOPtr)
+                               .getStructDTOClass();
+
+    return response.reqResult;
+  } catch (const std::exception &ex) {
+    const auto time_stamp =
+        formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto time_stamp_qt = QString::fromStdString(time_stamp);
+    const auto user_login_qt = QString::fromStdString(user_login);
+
+    emit exc_qt::ErrorBus::i().error(
+        QString::fromUtf8(ex.what()),
+        QStringLiteral("[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=]   "
+                       "[msg=]   checkUserPasswordCl")
+            .arg(time_stamp_qt, user_login_qt));
+    return false;
+  }
 }
 // transport
 //
@@ -419,7 +518,50 @@ bool ClientSession::initServerConnectionCl() {
 
 void ClientSession::resetSessionDataCl() { _core.resetSessionDataCore(); }
 
-bool ClientSession::reInitilizeBaseCl() { return _core.reInitilizeBaseCore(); }
+bool ClientSession::reInitilizeBaseCl() {
+  UserLoginDTO user_login_dto;
+  user_login_dto.login = "reInitilizeBase";
+
+  PacketDTO packet_dto;
+  packet_dto.reqDirection = RequestDirection::ClientToSrv;
+  packet_dto.structDTOClassType = StructDTOClassType::userLoginDTO;
+  packet_dto.requestType = RequestType::RqFrClientReInitializeBase;
+  packet_dto.structDTOPtr =
+      std::make_shared<StructDTOClass<UserLoginDTO>>(user_login_dto);
+
+  std::vector<PacketDTO> packet_list_send;
+  packet_list_send.push_back(packet_dto);
+
+  auto packet_list_result =
+      processingRequestToServerCl(packet_list_send, packet_dto.requestType);
+
+  try {
+    if (packet_list_result.packets.empty()) {
+      throw exc_qt::WrongresponceTypeException();
+    }
+
+    if (packet_list_result.packets[0].requestType != packet_dto.requestType) {
+      throw exc_qt::WrongresponceTypeException();
+    }
+
+    const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(
+                             *packet_list_result.packets[0].structDTOPtr)
+                             .getStructDTOClass();
+    return packet.reqResult;
+  } catch (const exc_qt::WrongresponceTypeException &ex) {
+    const auto time_stamp =
+        formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto time_stamp_qt = QString::fromStdString(time_stamp);
+
+    emit exc_qt::ErrorBus::i().error(
+        QString::fromUtf8(ex.what()),
+        QStringLiteral(
+            "[%1]   [ERROR]   [NETWORK]   [user=]   [chat_Id=]   [msg=]   "
+            "reInitilizeBaseCl   wrong type of answer from server")
+            .arg(time_stamp_qt));
+    return false;
+  }
+}
 
 //
 //
@@ -548,12 +690,155 @@ std::size_t ClientSession::createMessageCl(const Message &message,
 // отправка пакета LastReadMessage
 bool ClientSession::sendLastReadMessageFromClientCl(
     const std::shared_ptr<Chat> &chat_ptr, std::size_t message_id) {
-  return _core.sendLastReadMessageFromClientCore(chat_ptr, message_id);
+  MessageDTO message_dto;
+  message_dto.chatId = chat_ptr->getChatId();
+  message_dto.messageId = message_id;
+  if (const auto active_user = _instance.getActiveUser()) {
+    message_dto.senderLogin = active_user->getLogin();
+  }
+  message_dto.messageContent = {};
+  message_dto.timeStamp = 0;
+
+  PacketDTO packet_dto;
+  packet_dto.requestType = RequestType::RqFrClientSetLastReadMessage;
+  packet_dto.structDTOClassType = StructDTOClassType::messageDTO;
+  packet_dto.reqDirection = RequestDirection::ClientToSrv;
+  packet_dto.structDTOPtr =
+      std::make_shared<StructDTOClass<MessageDTO>>(message_dto);
+
+  std::vector<PacketDTO> packet_list_send;
+  packet_list_send.push_back(packet_dto);
+
+  auto response_packet_list = processingRequestToServerCl(
+      packet_list_send, RequestType::RqFrClientSetLastReadMessage);
+
+  try {
+    if (response_packet_list.packets.empty()) {
+      throw exc_qt::EmptyPacketException();
+    }
+
+    if (response_packet_list.packets[0].requestType !=
+        RequestType::RqFrClientSetLastReadMessage) {
+      throw exc_qt::WrongresponceTypeException();
+    }
+
+    const auto &response = static_cast<const StructDTOClass<ResponceDTO> &>(
+                               *response_packet_list.packets[0].structDTOPtr)
+                               .getStructDTOClass();
+
+    if (!response.reqResult) {
+      throw exc_qt::LastReadMessageException();
+    }
+
+    return true;
+  } catch (const std::exception &ex) {
+    const auto time_stamp =
+        formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto time_stamp_qt = QString::fromStdString(time_stamp);
+    const auto sender_login_qt =
+        QString::fromStdString(message_dto.senderLogin);
+    const auto chat_id_qt =
+        QString::number(static_cast<long long>(message_dto.chatId));
+    const auto message_id_qt =
+        QString::number(static_cast<long long>(message_dto.messageId));
+
+    emit exc_qt::ErrorBus::i().error(
+        QString::fromUtf8(ex.what()),
+        QStringLiteral("[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]  "
+                       " [msg=%4]   sendLastReadMessageFromClientCl")
+            .arg(time_stamp_qt, sender_login_qt, chat_id_qt, message_id_qt));
+    return false;
+  }
 }
 
 bool ClientSession::checkAndAddParticipantToSystemCl(
     const std::vector<std::string> &participants) {
-  return _core.ensureParticipantsAvailableCore(participants);
+  try {
+    bool need_request = false;
+    std::vector<PacketDTO> packet_list_send;
+
+    for (const auto &participant : participants) {
+      const auto &user_ptr = _instance.findUserByLogin(participant);
+      if (!user_ptr) {
+        need_request = true;
+
+        UserLoginDTO user_login_dto;
+        user_login_dto.login = participant;
+
+        PacketDTO packet_dto;
+        packet_dto.requestType = RequestType::RqFrClientGetUsersData;
+        packet_dto.structDTOClassType = StructDTOClassType::userLoginDTO;
+        packet_dto.reqDirection = RequestDirection::ClientToSrv;
+        packet_dto.structDTOPtr =
+            std::make_shared<StructDTOClass<UserLoginDTO>>(user_login_dto);
+
+        packet_list_send.push_back(packet_dto);
+      }
+    }
+
+    if (need_request) {
+      auto packet_list_result = processingRequestToServerCl(
+          packet_list_send, RequestType::RqFrClientGetUsersData);
+
+      for (const auto &response_packet : packet_list_result.packets) {
+        if (response_packet.requestType !=
+            RequestType::RqFrClientGetUsersData) {
+          continue;
+        }
+
+        if (response_packet.structDTOClassType != StructDTOClassType::userDTO) {
+          throw exc_qt::WrongresponceTypeException();
+        }
+
+        const auto &user_dto = static_cast<const StructDTOClass<UserDTO> &>(
+                                   *response_packet.structDTOPtr)
+                                   .getStructDTOClass();
+
+        auto new_user = std::make_shared<User>(UserData(
+            user_dto.login, user_dto.userName, "-1", user_dto.email,
+            user_dto.phone, user_dto.disable_reason, user_dto.is_active,
+            user_dto.disabled_at, user_dto.ban_until));
+
+        _instance.addUserToSystem(new_user);
+      }
+    } else {
+      const auto time_stamp =
+          formatTimeStampToString(getCurrentDateTimeInt(), true);
+      const auto time_stamp_qt = QString::fromStdString(time_stamp);
+
+      emit exc_qt::ErrorBus::i().error(
+          "",
+          QStringLiteral(
+              "[%1]   ensureParticipantsAvailable   server answer did not come")
+              .arg(time_stamp_qt));
+
+      for (const auto &packet_dto : packet_list_send) {
+        const auto &user_login_dto =
+            static_cast<const StructDTOClass<UserLoginDTO> &>(
+                *packet_dto.structDTOPtr)
+                .getStructDTOClass();
+
+        auto new_user = std::make_shared<User>(
+            UserData(user_login_dto.login, "Unknown", "-1", "Unknown",
+                     "Unknown", "", true, 0, 0));
+
+        _instance.addUserToSystem(new_user);
+      }
+    }
+  } catch (const exc_qt::WrongresponceTypeException &ex) {
+    const auto time_stamp =
+        formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto time_stamp_qt = QString::fromStdString(time_stamp);
+
+    emit exc_qt::ErrorBus::i().error(
+        QString::fromUtf8(ex.what()),
+        QStringLiteral("[%1]   [ERROR]   [NETWORK]   [user=]   "
+                       "ensureParticipantsAvailable   Wrong responce type")
+            .arg(time_stamp_qt));
+
+    return false;
+  }
+  return true;
 }
 
 std::optional<ChatDTO> ClientSession::fillChatDTOCl(

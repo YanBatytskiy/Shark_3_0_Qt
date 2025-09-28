@@ -46,11 +46,6 @@ class ClientCore : public QObject {
   const std::vector<UserDTO> findUserByTextPartOnServerCore(
       const std::string &text_to_find);
 
-  bool checkUserLoginCore(const std::string &user_login);
-
-  bool checkUserPasswordCore(const std::string &user_login,
-                             const std::string &password_plain);
-
   bool findServerAddressCore(ServerConnectionConfig &config,
                              ServerConnectionMode &mode);
 
@@ -67,22 +62,6 @@ class ClientCore : public QObject {
   bool initServerConnectionCore();
 
   void resetSessionDataCore();
-
-  bool reInitilizeBaseCore();
-
-  bool sendLastReadMessageFromClientCore(const std::shared_ptr<Chat> &chat_ptr,
-                                         std::size_t message_id);
-
-  bool ensureParticipantsAvailableCore(
-      const std::vector<std::string> &participants);
-
-  bool blockUnblockUserCore(const std::string &login, bool is_blocked,
-                            const std::string &disable_reason);
-
-  bool bunUnbunUserCore(const std::string &login, bool is_banned,
-                        std::int64_t banned_to);
-
-  bool changeUserPasswordCore(const UserDTO &user_dto);
 
  signals:
   void serverStatusChanged(bool online, ServerConnectionMode mode);
