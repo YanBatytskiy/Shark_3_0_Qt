@@ -1,3 +1,4 @@
+#include "chat_system/chat_system.h"
 #include "client/client_session.h"
 #include "errorbus.h"
 #include "logger.h"
@@ -14,7 +15,8 @@
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
 
-  auto client_session_ptr = std::make_shared<ClientSession>();
+  ChatSystem chat_system;
+  auto client_session_ptr = std::make_shared<ClientSession>(chat_system);
   auto logger_ptr = std::make_shared<Logger>();
 
   (void)exc_qt::ErrorBus::i();

@@ -151,7 +151,7 @@ void ScreenMainWork::fillOneChatListModelWithData(const std::pair<std::size_t, C
 
 void ScreenMainWork::fillChatListModelWithData(bool allChats) {
 
-  const auto listOfChat = client_session_ptr_->getChatListQt();
+  const auto listOfChat = client_session_ptr_->getChatListCl();
 
   if (listOfChat.has_value()) {
 
@@ -928,7 +928,7 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
     // bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std::vector<std::string> &participants, Message &newMessage)
 
     // отправляем на сервер и получаем результат
-    bool result = client_session_ptr_->CreateAndSendNewChatQt(chat_ptr, participants, newMessage);
+    bool result = client_session_ptr_->CreateAndSendNewChatCl(chat_ptr, participants, newMessage);
 
     // если ответ с сервера - не окей
     if (!result) {
@@ -1240,4 +1240,3 @@ void ScreenMainWork::on_ProfilePushButton_clicked()
 {
   emit signalShowProfile();
 }
-

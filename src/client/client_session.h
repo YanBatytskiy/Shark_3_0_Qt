@@ -21,7 +21,7 @@ class ClientCore;
 class ClientSession : public QObject {
   Q_OBJECT
 public:
-  explicit ClientSession(QObject *parent = nullptr);
+  explicit ClientSession(ChatSystem &chat_system, QObject *parent = nullptr);
   ClientSession(const ClientSession &) = delete;
   ClientSession &operator=(const ClientSession &) = delete;
   ClientSession(ClientSession &&) = delete;
@@ -33,11 +33,11 @@ public:
 
   bool inputNewLoginValidationQt(std::string input_data);
   bool inputNewPasswordValidationQt(std::string input_data, std::size_t data_length_min, std::size_t data_length_max);
-  std::optional<std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>> getChatListQt();
-  bool CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std::vector<UserDTO> &participants, Message &new_message);
-  bool changeUserPasswordQt(UserDTO user_dto);
-  bool blockUnblockUserQt(std::string login, bool is_blocked, std::string disable_reason);
-  bool bunUnbunUserQt(std::string login, bool is_banned, std::int64_t banned_to);
+  std::optional<std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>> getChatListCl();
+  bool CreateAndSendNewChatCl(std::shared_ptr<Chat> &chat_ptr, std::vector<UserDTO> &participants, Message &new_message);
+  bool changeUserPasswordCl(UserDTO user_dto);
+  bool blockUnblockUserCl(const std::string &login, bool is_blocked, const std::string &disable_reason);
+  bool bunUnbunUserCl(const std::string &login, bool is_banned, std::int64_t banned_to);
 
   void startConnectionThread();
   void stopConnectionThread();
@@ -56,7 +56,7 @@ public:
 
   const std::vector<UserDTO> findUserByTextPartOnServerCl(const std::string &text_to_find);
   bool checkUserLoginCl(const std::string &user_login);
-  bool checkUserPasswordCl(const std::string &user_login, const std::string &password_hash);
+  bool checkUserPasswordCl(const std::string &user_login, const std::string &password);
 
   bool findServerAddress(ServerConnectionConfig &server_connection_config, ServerConnectionMode &server_connection_mode);
   int createConnection(ServerConnectionConfig &server_connection_config, ServerConnectionMode &server_connection_mode);
@@ -76,7 +76,7 @@ public:
   bool sendLastReadMessageFromClient(const std::shared_ptr<Chat> &chat_ptr, std::size_t message_id);
   bool checkAndAddParticipantToSystem(const std::vector<std::string> &participants);
   MessageDTO fillOneMessageDTOFromCl(const std::shared_ptr<Message> &message, std::size_t chat_id);
-  std::optional<ChatDTO> fillChatDTOQt(const std::shared_ptr<Chat> &chat);
+  std::optional<ChatDTO> fillChatDTOCl(const std::shared_ptr<Chat> &chat);
 
   std::shared_ptr<ClientCore> getClientCore() const;
 
@@ -87,7 +87,7 @@ private:
   void connectionMonitorLoop();
   static bool socketAlive(int fd);
 
-  std::unique_ptr<ChatSystem> chat_system_;
+  ChatSystem &chat_system_;
   std::shared_ptr<ClientCore> client_core_;
   std::atomic_bool connection_thread_running_{false};
   std::thread connection_thread_;

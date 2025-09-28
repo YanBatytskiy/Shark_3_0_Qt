@@ -1,7 +1,5 @@
 #include "exceptions_qt/errorbus.h"
 #include "system/date_time_utils.h"
-#include "system/picosha2.h"
-
 #include "logger.h"
 #include "screen_login.h"
 #include "ui_screen_login.h"
@@ -231,9 +229,9 @@ void ScreenLogin::checkSignIn() {
     }
 
     const auto login = ui->loginEdit->text().toStdString();
-    const auto password_hash = picosha2::hash256_hex_string(ui->passwordEdit->text().toStdString());
+    const auto password = ui->passwordEdit->text().toStdString();
 
-    auto result = client_session_ptr_->checkUserPasswordCl(login, password_hash);
+    auto result = client_session_ptr_->checkUserPasswordCl(login, password);
 
     if (!result) {
       const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));

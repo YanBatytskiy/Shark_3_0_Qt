@@ -233,7 +233,7 @@ void ScreenUserProfile::on_changePasswordPushButton_clicked() {
   userDTO.login = ui->loginLineEdit->text().toStdString();
   userDTO.passwordhash = picosha2::hash256_hex_string(ui->passwordLineEdit->text().toStdString());
 
-  if (client_session_ptr_->changeUserPasswordQt(userDTO))
+  if (client_session_ptr_->changeUserPasswordCl(userDTO))
     QMessageBox::information(this, "Сообщение", "Пароль изменен.");
   else
     QMessageBox::critical(this, "Ошибка", "Пароль не изменен.");
