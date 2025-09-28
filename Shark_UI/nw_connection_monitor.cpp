@@ -1,6 +1,9 @@
 #include "nw_connection_monitor.h"
-#include <thread>
+
+#include "client/core/client_core.h"
+
 #include <chrono>
+#include <thread>
 #include <unistd.h>
 
 void ConnectionMonitor::run() {
@@ -8,36 +11,29 @@ void ConnectionMonitor::run() {
     bool online = false;
     ServerConnectionMode mode = ServerConnectionMode::Offline;
 
-    while (_run.load(std::memory_order_acquire)) {
-
+    while (run_.load(std::memory_order_acquire)) {
       if (!online) {
-        // OFFLINE: пробуем найти адрес и подключиться
-        if (!_session->findServerAddress(_session->getserverConnectionConfigCl(),
-                                        _session->getserverConnectionModeCl())) {
-          // mode = ServerConnectionMode::Offline;
-          std::this_thread::sleep_for(std::chrono::milliseconds(500)); // пауза между попытками
+        if (!core_->findServerAddressCore(core_->getServerConnectionConfigCore(), core_->getServerConnectionModeCore())) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(500));
           continue;
         }
 
-        mode = _session->getserverConnectionModeCl();
-        const int fd = _session->createConnection(_session->getserverConnectionConfigCl(), mode);
+        mode = core_->getServerConnectionModeCore();
+        const int fd = core_->createConnectionCore(core_->getServerConnectionConfigCore(), mode);
 
         if (fd < 0) {
-          // Ошибки подключения — ждать и повторить
-          // ECONNREFUSED/ETIMEDOUT/ENETUNREACH — типично при старте сервера после клиента
-          std::this_thread::sleep_for(std::chrono::milliseconds(500)); // пауза между попытками
+          std::this_thread::sleep_for(std::chrono::milliseconds(500));
           continue;
         }
 
-        _session->setSocketFd(fd);
+        core_->setSocketFdCore(fd);
         online = true;
         emit connectionStateChanged(true, mode);
-        std::this_thread::sleep_for(std::chrono::milliseconds(500)); // пауза между попытками
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         continue;
-      } // if !online
+      }
 
-      // ONLINE: проверяем живость сокета
-      const int fd = _session->getSocketFd();
+      const int fd = core_->getSocketFdCore();
       const bool alive = socketAlive(fd);
 
       if (!alive) {
@@ -45,15 +41,16 @@ void ConnectionMonitor::run() {
         mode = ServerConnectionMode::Offline;
         if (fd >= 0)
           ::close(fd);
-        _session->setSocketFd(-1);
+        core_->setSocketFdCore(-1);
         emit connectionStateChanged(false, mode);
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(500)); // пауза между попытками
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         continue;
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(500)); // пауза между попытками
-    } // while _run.load
-  } catch (const std::exception&) {
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+  } catch (const std::exception &) {
     return;
   }
 }
+

@@ -5,7 +5,7 @@
 #include "exceptions_cpp/sql_exception.h"
 #include "exceptions_cpp/validation_exception.h"
 #include "message/message.h"
-#include "sql_server.h"
+#include "sql_commands.h"
 #include "processors/user_account_update_processor.h"
 #include "processors/user_ban_block_processor.h"
 #include "processors/user_database_init_processor.h"
@@ -35,12 +35,19 @@ ServerSession::ServerSession(SQLRequests sql_requests)
       _serverConnectionConfig(),
       _pqConnection(nullptr),
       sql_requests_(std::move(sql_requests)),
-      user_ban_block_processor_(sql_requests_),
-      user_account_update_processor_(sql_requests_),
-      user_database_init_processor_(sql_requests_),
-      user_registration_processor_(sql_requests_),
-      user_object_creation_processor_(sql_requests_),
-      user_data_query_processor_(sql_requests_) {}
+      user_sql_reader_(sql_requests_),
+      user_sql_writer_(sql_requests_),
+      chat_sql_reader_(sql_requests_),
+      chat_sql_writer_(sql_requests_),
+      message_sql_writer_(sql_requests_),
+      database_sql_manager_(sql_requests_),
+      user_ban_block_processor_(user_sql_writer_),
+      user_account_update_processor_(user_sql_writer_),
+      user_database_init_processor_(database_sql_manager_),
+      user_registration_processor_(user_sql_reader_, message_sql_writer_),
+      user_object_creation_processor_(user_sql_writer_, chat_sql_writer_,
+                                      message_sql_writer_),
+      user_data_query_processor_(user_sql_reader_) {}
 
 // getters
 PGconn *ServerSession::getPGConnection() { return _pqConnection; }
@@ -209,82 +216,17 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   }
   return true;
 }
-//
-//
-//
 
-
-
-//
-//
-//
-
-//
-//
-//
-
-
-//
-//
-//
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11
 std::optional<UserDTO> ServerSession::FillForSendUserDTOFromSrvSQL(const std::string &login, bool loginUser) {
-
-  PGresult *result = nullptr;
-
-  std::string sql = "";
-
-  try {
-
-    std::string loginEsc = login;
-    for (std::size_t pos = 0; (pos = loginEsc.find('\'', pos)) != std::string::npos; pos += 2) {
-      loginEsc.replace(pos, 1, "''");
-    }
-
-    sql = R"(select * from public.users as us  
-		join public.users_passhash as ph on ph.user_id = us.id
-		where us.login = ')";
-    sql += loginEsc + "';";
-
-    result = sql_requests_.execSQL(this->getPGConnection(), sql);
-
-    if (result == nullptr)
-      throw exc::SQLSelectException(", FillForSendUserDTOFromSrvSQL");
-
-    if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result) > 0) {
-
-      UserDTO userDTO;
-
-      userDTO.login = PQgetvalue(result, 0, 1);
-      userDTO.userName = PQgetvalue(result, 0, 2);
-      userDTO.email = PQgetvalue(result, 0, 3);
-      userDTO.phone = PQgetvalue(result, 0, 4);
-      userDTO.is_active = (std::strcmp(PQgetvalue(result, 0, 5), "t") == 0);
-      userDTO.disabled_at = static_cast<std::size_t>(std::strtoull(PQgetvalue(result, 0, 6), nullptr, 10));
-      userDTO.ban_until = static_cast<std::size_t>(std::strtoull(PQgetvalue(result, 0, 7), nullptr, 10));
-      userDTO.disable_reason = PQgetvalue(result, 0, 8);
-      userDTO.passwordhash = PQgetvalue(result, 0, 10);
-
-      PQclear(result);
-      return userDTO;
-
-    } else {
-      PQclear(result);
-      throw exc::SQLSelectException(", FillForSendUserDTOFromSrvSQL");
-    }
-  } // try
-  catch (const exc::SQLSelectException &ex) {
-    if (result != nullptr)
-      PQclear(result);
-    std::cerr << "Сервер: " << ex.what() << std::endl;
-    return std::nullopt;
-  }
+  (void)loginUser;
+  return user_sql_reader_.GetUserWithPasshashSQL(login,
+                                                 this->getPGConnection());
 }
 
 std::optional<std::vector<UserDTO>> ServerSession::FillForSendSeveralUsersDTOFromSrvSQL(
-    const std::vector<std::string> logins) {
-
-  auto value = sql_requests_.getSeveralUsersDTOFromSrvSQL(this->getPGConnection(), logins);
+  const std::vector<std::string> logins) {
+  auto value =
+      user_sql_reader_.GetSeveralUsersSQL(logins, this->getPGConnection());
 
   if (!value.has_value())
     return std::nullopt;
@@ -305,7 +247,8 @@ std::optional<ChatDTO> ServerSession::FillForSendOneChatDTOFromSrvSQL(const std:
   chatDTO.senderLogin = login;
 
   // получаем список участников
-  auto participants = sql_requests_.getChatParticipantsSQL(this->getPGConnection(), chat_id);
+  auto participants = chat_sql_reader_.GetChatParticipantsSQL(
+      chat_id, this->getPGConnection());
 
   try {
 
@@ -313,7 +256,9 @@ std::optional<ChatDTO> ServerSession::FillForSendOneChatDTOFromSrvSQL(const std:
       throw exc::ChatListNotFoundException(login);
     }
 
-    auto deletedMessagesMultiset = sql_requests_.getChatMessagesDeletedStatusSQL(this->getPGConnection(), chat_id);
+    auto deletedMessagesMultiset =
+        chat_sql_reader_.GetChatMessagesDeletedStatusSQL(
+            chat_id, this->getPGConnection());
 
     if (deletedMessagesMultiset.has_value() && deletedMessagesMultiset.value().size() > 0) {
 
@@ -356,7 +301,8 @@ std::optional<ChatDTO> ServerSession::FillForSendOneChatDTOFromSrvSQL(const std:
 std::optional<std::vector<ChatDTO>> ServerSession::FillForSendAllChatDTOFromSrvSQL(const std::string &login) {
 
   // взяли чат лист
-  auto chatList = sql_requests_.getChatListSQL(this->getPGConnection(), login);
+  auto chatList =
+      chat_sql_reader_.GetChatIdsForUserSQL(login, this->getPGConnection());
 
   if (chatList.size() == 0)
     return std::nullopt;
@@ -382,8 +328,8 @@ std::optional<std::vector<ChatDTO>> ServerSession::FillForSendAllChatDTOFromSrvS
 //
 // получаем сообщения пользователя конкретного чата
 std::optional<MessageChatDTO> ServerSession::fillForSendChatMessageDTOFromSrvSQL(const std::string &chat_id) {
-
-  auto messageChatDTO = sql_requests_.getChatMessagesSQL(this->getPGConnection(), chat_id);
+  auto messageChatDTO =
+      chat_sql_reader_.GetChatMessagesSQL(chat_id, this->getPGConnection());
 
   if (!messageChatDTO.has_value())
     return std::nullopt;
@@ -398,7 +344,8 @@ std::optional<std::vector<MessageChatDTO>> ServerSession::fillForSendAllMessageD
   std::vector<MessageChatDTO> messageChatDTOVector;
 
   // взяли чат лист
-  auto chatList = sql_requests_.getChatListSQL(this->getPGConnection(), login);
+  auto chatList =
+      chat_sql_reader_.GetChatIdsForUserSQL(login, this->getPGConnection());
 
   if (chatList.size() == 0)
     return std::nullopt;

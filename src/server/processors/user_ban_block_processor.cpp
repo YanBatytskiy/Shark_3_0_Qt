@@ -6,8 +6,8 @@
 #include <iostream>
 #include <memory>
 
-UserBanBlockProcessor::UserBanBlockProcessor(SQLRequests &sql_requests)
-    : sql_requests_(sql_requests) {}
+UserBanBlockProcessor::UserBanBlockProcessor(UserSqlWriter &user_sql_writer)
+    : user_sql_writer_(user_sql_writer) {}
 
 bool UserBanBlockProcessor::Process(ServerSession &session,
                                     PacketListDTO &packet_list,
@@ -37,8 +37,8 @@ bool UserBanBlockProcessor::Process(ServerSession &session,
 
     switch (request_type) {
       case RequestType::RqFrClientBlockUser:
-        if (sql_requests_.block_user_srv_sql(user_packet,
-                                             session.getPGConnection())) {
+        if (user_sql_writer_.BlockUserSQL(
+                user_packet, session.getPGConnection())) {
           responce_dto.reqResult = true;
           responce_dto.anyString = user_packet.login;
         } else {
@@ -46,8 +46,8 @@ bool UserBanBlockProcessor::Process(ServerSession &session,
         }
         break;
       case RequestType::RqFrClientUnBlockUser:
-        if (sql_requests_.unblock_user_srv_sql(user_packet,
-                                               session.getPGConnection())) {
+        if (user_sql_writer_.UnblockUserSQL(
+                user_packet, session.getPGConnection())) {
           responce_dto.reqResult = true;
           responce_dto.anyString = user_packet.login;
         } else {
@@ -55,8 +55,8 @@ bool UserBanBlockProcessor::Process(ServerSession &session,
         }
         break;
       case RequestType::RqFrClientBunUser:
-        if (sql_requests_.bun_user_srv_sql(user_packet,
-                                           session.getPGConnection())) {
+        if (user_sql_writer_.BanUserSQL(user_packet,
+                                        session.getPGConnection())) {
           responce_dto.reqResult = true;
           responce_dto.anyString = user_packet.login;
         } else {
@@ -64,8 +64,8 @@ bool UserBanBlockProcessor::Process(ServerSession &session,
         }
         break;
       case RequestType::RqFrClientUnBunUser:
-        if (sql_requests_.unbun_user_srv_sql(user_packet,
-                                             session.getPGConnection())) {
+        if (user_sql_writer_.UnbanUserSQL(
+                user_packet, session.getPGConnection())) {
           responce_dto.reqResult = true;
           responce_dto.anyString = user_packet.login;
         } else {

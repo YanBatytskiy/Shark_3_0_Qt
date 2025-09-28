@@ -9,8 +9,9 @@
 #include <libpq-fe.h>
 #include <memory>
 
-UserDataQueryProcessor::UserDataQueryProcessor(SQLRequests &sql_requests)
-    : sql_requests_(sql_requests) {}
+UserDataQueryProcessor::UserDataQueryProcessor(
+    UserSqlReader &user_sql_reader)
+    : user_sql_reader_(user_sql_reader) {}
 
 bool UserDataQueryProcessor::Process(ServerSession &session,
                                      PacketListDTO &packet_list,
@@ -34,7 +35,8 @@ bool UserDataQueryProcessor::Process(ServerSession &session,
               *packet.structDTOPtr)
               .getStructDTOClass();
 
-      if (!CheckUserLogin(session, login_packet.login)) {
+      if (!user_sql_reader_.CheckUserLoginSQL(login_packet.login,
+                                              session.getPGConnection())) {
         throw exc::UserNotFoundException();
       }
 
@@ -73,44 +75,4 @@ bool UserDataQueryProcessor::Process(ServerSession &session,
   }
 
   return true;
-}
-
-bool UserDataQueryProcessor::CheckUserLogin(ServerSession &session,
-                                            const std::string &login) {
-  PGresult *result = nullptr;
-
-  std::string login_escaped = login;
-  std::string sql;
-
-  try {
-    for (std::size_t pos = 0;
-         (pos = login_escaped.find('\'', pos)) != std::string::npos; pos += 2) {
-      login_escaped.replace(pos, 1, "''");
-    }
-
-    sql =
-        "select id from public.users as u where u.login = '" + login_escaped +
-        "';";
-
-    result = sql_requests_.execSQL(session.getPGConnection(), sql);
-
-    if (result == nullptr) {
-      throw exc::SQLSelectException(
-          ", UserDataQueryProcessor::CheckUserLogin");
-    }
-
-    if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result) > 0) {
-      PQclear(result);
-      return true;
-    }
-
-    PQclear(result);
-    return false;
-  } catch (const exc::SQLSelectException &ex) {
-    std::cerr << "Сервер: " << ex.what() << std::endl;
-    if (result != nullptr) {
-      PQclear(result);
-    }
-    return false;
-  }
 }

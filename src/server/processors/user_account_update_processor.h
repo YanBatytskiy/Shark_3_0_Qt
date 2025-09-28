@@ -1,13 +1,14 @@
 #pragma once
 
 #include "dto/dto_struct.h"
-#include "sql_server.h"
+#include "sql_queries/user_sql_writer.h"
 
 class ServerSession;
 
 class UserAccountUpdateProcessor {
  public:
-  explicit UserAccountUpdateProcessor(SQLRequests &sql_requests);
+  explicit UserAccountUpdateProcessor(
+      UserSqlWriter &user_sql_writer);
 
   bool Process(ServerSession &session, PacketListDTO &packet_list,
                const RequestType &request_type, int connection);
@@ -15,5 +16,5 @@ class UserAccountUpdateProcessor {
  private:
   bool ChangeUserData(ServerSession &session, const UserDTO &user_dto);
 
-  SQLRequests &sql_requests_;
+  UserSqlWriter &user_sql_writer_;
 };

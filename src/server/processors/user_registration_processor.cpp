@@ -9,8 +9,10 @@
 #include <memory>
 #include <typeinfo>
 
-UserRegistrationProcessor::UserRegistrationProcessor(SQLRequests &sql_requests)
-    : sql_requests_(sql_requests) {}
+UserRegistrationProcessor::UserRegistrationProcessor(
+    UserSqlReader &user_sql_reader, MessageSqlWriter &message_sql_writer)
+    : user_sql_reader_(user_sql_reader),
+      message_sql_writer_(message_sql_writer) {}
 
 bool UserRegistrationProcessor::Process(ServerSession &session,
                                         PacketListDTO &packet_list,
@@ -39,7 +41,8 @@ bool UserRegistrationProcessor::Process(ServerSession &session,
         ResponceDTO responce_dto;
         responce_dto.anyNumber = 0;
 
-        if (CheckUserLogin(session, login_packet.login)) {
+        if (user_sql_reader_.CheckUserLoginSQL(
+                login_packet.login, session.getPGConnection())) {
           responce_dto.reqResult = true;
           responce_dto.anyString = login_packet.login;
         } else {
@@ -70,7 +73,8 @@ bool UserRegistrationProcessor::Process(ServerSession &session,
         ResponceDTO responce_dto;
         responce_dto.anyNumber = 0;
 
-        if (CheckUserPassword(session, credentials)) {
+        if (user_sql_reader_.CheckUserPasswordSQL(
+                credentials, session.getPGConnection())) {
           responce_dto.reqResult = true;
           responce_dto.anyString = credentials.login;
         } else {
@@ -112,9 +116,8 @@ bool UserRegistrationProcessor::Process(ServerSession &session,
                 *packet_list.packets[0].structDTOPtr)
                 .getStructDTOClass();
 
-        const auto &user_vector =
-            sql_requests_.getUsersByTextPartSQL(session.getPGConnection(),
-                                                login_packet);
+        const auto &user_vector = user_sql_reader_.GetUsersByTextPartSQL(
+            login_packet, session.getPGConnection());
 
         if (user_vector.has_value() && !user_vector->empty()) {
           PacketDTO packet;
@@ -158,8 +161,8 @@ bool UserRegistrationProcessor::Process(ServerSession &session,
                 *packet_list.packets[0].structDTOPtr)
                 .getStructDTOClass();
 
-        auto value = sql_requests_.setLastReadMessageSQL(
-            session.getPGConnection(), message_packet);
+        auto value = message_sql_writer_.SetLastReadMessageSQL(
+            message_packet, session.getPGConnection());
 
         ResponceDTO responce_dto;
         responce_dto.anyNumber = 0;
@@ -198,97 +201,4 @@ bool UserRegistrationProcessor::Process(ServerSession &session,
   }
 
   return true;
-}
-
-bool UserRegistrationProcessor::CheckUserLogin(ServerSession &session,
-                                               const std::string &login) {
-  PGresult *result = nullptr;
-
-  std::string sql;
-  std::string login_escaped = login;
-
-  try {
-    for (std::size_t pos = 0;
-         (pos = login_escaped.find('\'', pos)) != std::string::npos; pos += 2) {
-      login_escaped.replace(pos, 1, "''");
-    }
-
-    sql =
-        "select id from public.users as u where u.login = '" + login_escaped +
-        "';";
-
-    result = sql_requests_.execSQL(session.getPGConnection(), sql);
-
-    if (result == nullptr) {
-      throw exc::SQLSelectException(
-          ", UserRegistrationProcessor::CheckUserLogin");
-    }
-
-    if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result) > 0) {
-      PQclear(result);
-      return true;
-    }
-
-    PQclear(result);
-    return false;
-  } catch (const exc::SQLSelectException &ex) {
-    std::cerr << "Сервер: " << ex.what() << std::endl;
-    if (result != nullptr) {
-      PQclear(result);
-    }
-    return false;
-  }
-}
-
-bool UserRegistrationProcessor::CheckUserPassword(
-    ServerSession &session, const UserLoginPasswordDTO &credentials) {
-  PGresult *result = nullptr;
-
-  std::string sql;
-  std::string login_escaped = credentials.login;
-  std::string password_escaped = credentials.passwordhash;
-
-  try {
-    for (std::size_t pos = 0;
-         (pos = login_escaped.find('\'', pos)) != std::string::npos; pos += 2) {
-      login_escaped.replace(pos, 1, "''");
-    }
-
-    for (std::size_t pos = 0; (pos = password_escaped.find('\'', pos)) !=
-                                 std::string::npos; pos += 2) {
-      password_escaped.replace(pos, 1, "''");
-    }
-
-    sql =
-        "with user_record as (\n"
-        "    select id as user_id\n"
-        "    from public.users\n"
-        "    where login = '" +
-        login_escaped +
-        "')\n"
-        "select password_hash from public.users_passhash as ph join "
-        "user_record ur on ph.user_id = ur.user_id where password_hash = '" +
-        password_escaped + "';";
-
-    result = sql_requests_.execSQL(session.getPGConnection(), sql);
-
-    if (result == nullptr) {
-      throw exc::SQLSelectException(
-          ", UserRegistrationProcessor::CheckUserPassword");
-    }
-
-    if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result) > 0) {
-      PQclear(result);
-      return true;
-    }
-
-    PQclear(result);
-    return false;
-  } catch (const exc::SQLSelectException &ex) {
-    std::cerr << "Сервер: " << ex.what() << std::endl;
-    if (result != nullptr) {
-      PQclear(result);
-    }
-    return false;
-  }
 }

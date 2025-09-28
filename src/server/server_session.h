@@ -7,8 +7,14 @@
 #include "processors/user_object_creation_processor.h"
 #include "processors/user_registration_processor.h"
 #include "processors/user_data_query_processor.h"
+#include "sql_queries/chat_sql_reader.h"
+#include "sql_queries/chat_sql_writer.h"
+#include "sql_queries/database_sql_manager.h"
+#include "sql_queries/message_sql_writer.h"
+#include "sql_queries/user_sql_reader.h"
+#include "sql_queries/user_sql_writer.h"
 #include "session_transport.h"
-#include "sql_server.h"
+#include "sql_commands.h"
 #include <cstdint>
 #include <libpq-fe.h>
 #include <optional>
@@ -31,6 +37,12 @@ private:
   ServerConnectionConfig _serverConnectionConfig;
   PGconn *_pqConnection;
   SQLRequests sql_requests_;
+  UserSqlReader user_sql_reader_;
+  UserSqlWriter user_sql_writer_;
+  ChatSqlReader chat_sql_reader_;
+  ChatSqlWriter chat_sql_writer_;
+  MessageSqlWriter message_sql_writer_;
+  DatabaseSqlManager database_sql_manager_;
   UserBanBlockProcessor user_ban_block_processor_;
   UserAccountUpdateProcessor user_account_update_processor_;
   UserDatabaseInitProcessor user_database_init_processor_;
@@ -73,11 +85,6 @@ public:
   // Request processing
 
   bool routingRequestsFromClient(PacketListDTO &packetListReceived, const RequestType &requestType, int connection);
-
-  //
-  //
-  //
-  bool processingReceivedtWithoutUser(std::vector<PacketDTO> &packetListReceived, int connection);
 
   // transport sending
   std::optional<UserDTO> FillForSendUserDTOFromSrvSQL(const std::string &userLogin, bool loginUser);

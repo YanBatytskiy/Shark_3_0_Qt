@@ -9,8 +9,11 @@
 #include <typeinfo>
 
 UserObjectCreationProcessor::UserObjectCreationProcessor(
-    SQLRequests &sql_requests)
-    : sql_requests_(sql_requests) {}
+    UserSqlWriter &user_sql_writer, ChatSqlWriter &chat_sql_writer,
+    MessageSqlWriter &message_sql_writer)
+    : user_sql_writer_(user_sql_writer),
+      chat_sql_writer_(chat_sql_writer),
+      message_sql_writer_(message_sql_writer) {}
 
 bool UserObjectCreationProcessor::Process(ServerSession &session,
                                           PacketListDTO &packet_list,
@@ -42,8 +45,8 @@ bool UserObjectCreationProcessor::Process(ServerSession &session,
         responce_dto.anyNumber = 0;
         responce_dto.anyString = "";
 
-        responce_dto.reqResult = sql_requests_.createUserSQL(
-            session.getPGConnection(), user_packet);
+        responce_dto.reqResult = user_sql_writer_.CreateUserSQL(
+            user_packet, session.getPGConnection());
 
         response_packet.structDTOPtr =
             std::make_shared<StructDTOClass<ResponceDTO>>(responce_dto);
@@ -73,8 +76,8 @@ bool UserObjectCreationProcessor::Process(ServerSession &session,
         responce_dto.anyNumber = 0;
         responce_dto.anyString = "";
 
-        const auto &result = sql_requests_.createChatAndMessageSQL(
-            session.getPGConnection(), chat_packet, message_packet);
+        const auto &result = chat_sql_writer_.CreateChatWithInitialMessageSQL(
+            chat_packet, message_packet, session.getPGConnection());
 
         if (!result.empty()) {
           responce_dto.reqResult = true;
@@ -108,8 +111,8 @@ bool UserObjectCreationProcessor::Process(ServerSession &session,
                 *packet_list.packets[0].structDTOPtr)
                 .getStructDTOClass();
 
-        const auto &result = sql_requests_.createMessageSQL(
-            session.getPGConnection(), message_packet);
+        const auto &result = message_sql_writer_.CreateMessageSQL(
+            message_packet, session.getPGConnection());
 
         if (result) {
           responce_dto.reqResult = true;

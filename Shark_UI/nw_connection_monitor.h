@@ -1,42 +1,47 @@
 #ifndef NW_CONNECTION_MONITOR_H
 #define NW_CONNECTION_MONITOR_H
-#include <atomic>
-#include "client_session.h"
-#include <poll.h>
-#include <QObject>
 
-// macOS и другие системы без POLLRDHUP
+#include "client/core/session_types.h"
+
+#include <QObject>
+#include <atomic>
+#include <poll.h>
+
+class ClientCore;
+
 #ifndef POLLRDHUP
 #define POLLRDHUP 0
 #endif
 
-
 class ConnectionMonitor : public QObject {
   Q_OBJECT
 public:
-  explicit ConnectionMonitor(ClientSession* session) : _session(session){}
+  explicit ConnectionMonitor(ClientCore *core) : core_(core) {}
 
 public slots:
   void run();
-  void stop(){_run = false;}
+  void stop() { run_.store(false, std::memory_order_release); }
 
 signals:
   void connectionStateChanged(bool connectionStatus, ServerConnectionMode serverConnectionMode);
 
 private:
-  ClientSession* _session;
-  std::atomic_bool _run{true};
+  ClientCore *core_;
+  std::atomic_bool run_{true};
 
-  static bool socketAlive(int fd){
-    if (fd < 0) return false;
+  static bool socketAlive(int fd) {
+    if (fd < 0)
+      return false;
     pollfd p{};
     p.fd = fd;
     p.events = POLLIN | POLLERR | POLLHUP | POLLRDHUP;
 
-    const int result = poll(&p, 1, 0);
+    const int result = ::poll(&p, 1, 0);
 
-    if (result < 0) return false;
-    if (result == 0) return true;
+    if (result < 0)
+      return false;
+    if (result == 0)
+      return true;
 
     if (p.revents & (POLLERR | POLLHUP | POLLRDHUP))
       return false;
@@ -45,3 +50,4 @@ private:
 };
 
 #endif // NW_CONNECTION_MONITOR_H
+

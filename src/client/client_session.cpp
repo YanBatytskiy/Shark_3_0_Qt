@@ -13,36 +13,24 @@
 #include "exceptions_qt/exception_login.h"
 #include "exceptions_qt/exception_network.h"
 #include "exceptions_qt/exception_router.h"
-#include "nw_connection_monitor.h"
-#include <QCoreApplication>
 #include <QString>
-#include <atomic>
-#include <cerrno>
-#include <qnamespace.h>
-#include <qobject.h>
-#include <qobjectdefs.h>
 
 #include "system/picosha2.h"
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <exception>
-#include <fcntl.h>
 #include <iostream>
 #include <memory>
-#include <netdb.h>
 #include <optional>
 #include <string>
-#include <sys/socket.h>
-#include <unistd.h>
 #include <vector>
-
-#include <arpa/inet.h>
 #include <netinet/in.h>
 
-struct sockaddr_in serveraddress, client;
 // constructor
-ClientSession::ClientSession(ChatSystem &client, QObject *parent) : QObject(parent), _instance(client), _socketFd() {}
+ClientSession::ClientSession(ChatSystem &client, QObject *parent)
+    : QObject(parent), _instance(client), _core(client, this) {
+  QObject::connect(&_core, &ClientCore::serverStatusChanged, this, &ClientSession::serverStatusChanged);
+}
 
 // qt methods
 
@@ -236,7 +224,10 @@ bool ClientSession::changeUserDataQt(UserDTO userDTO) {
   return changeUserDataCl(userDTO);
 }
 
-bool ClientSession::changeUserPasswordQt(UserDTO userDTO) {}
+bool ClientSession::changeUserPasswordQt(UserDTO userDTO) {
+  (void)userDTO;
+  return false;
+}
 
 bool ClientSession::blockUnblockUserQt(std::string login, bool isBlocked, std::string disableReason) {
 
@@ -303,66 +294,45 @@ bool ClientSession::blockUnblockUserQt(std::string login, bool isBlocked, std::s
   }
 }
 
-bool ClientSession::bunUnbunUserQt(std::string login, bool isBanned, std::int64_t bunnedTo) {}
+bool ClientSession::bunUnbunUserQt(std::string login, bool isBanned, std::int64_t bunnedTo) {
+  (void)login;
+  (void)isBanned;
+  (void)bunnedTo;
+  return false;
+}
 
 // threads
-void ClientSession::startConnectionThread() {
+void ClientSession::startConnectionThread() { _core.startConnectionThreadCore(); }
 
-  if (_connectionMonitor)
-    return;
-
-  _connectionMonitor = new ConnectionMonitor(this);
-  _connectionMonitor->moveToThread(&_netThread);
-
-  QObject::connect(&_netThread, &QThread::started, _connectionMonitor, &ConnectionMonitor::run);
-  QObject::connect(&_netThread, &QThread::finished, _connectionMonitor, &QObject::deleteLater);
-
-  QObject::connect(_connectionMonitor, &ConnectionMonitor::connectionStateChanged, this,
-                   &ClientSession::onConnectionStateChanged, Qt::QueuedConnection);
-
-  _netThread.start();
-}
-
-void ClientSession::stopConnectionThread() {
-
-  if (!_connectionMonitor)
-    return;
-
-  _connectionMonitor->stop();
-  _netThread.quit();
-  _netThread.wait();
-  _connectionMonitor = nullptr;
-}
-
-void ClientSession::onConnectionStateChanged(bool online, ServerConnectionMode mode) {
-  _statusOnline.store(online, std::memory_order_release);
-  _serverConnectionMode = mode;
-  emit serverStatusChanged(online, mode);
-}
+void ClientSession::stopConnectionThread() { _core.stopConnectionThreadCore(); }
 
 // getters
 
-ConnectionMonitor *ClientSession::getConnectionMonitor() { return _connectionMonitor; }
+ServerConnectionConfig &ClientSession::getserverConnectionConfigCl() {
+  return _core.getServerConnectionConfigCore();
+}
 
-ServerConnectionConfig &ClientSession::getserverConnectionConfigCl() { return _serverConnectionConfig; }
+const ServerConnectionConfig &ClientSession::getserverConnectionConfigCl() const {
+  return _core.getServerConnectionConfigCore();
+}
 
-const ServerConnectionConfig &ClientSession::getserverConnectionConfigCl() const { return _serverConnectionConfig; }
+ServerConnectionMode &ClientSession::getserverConnectionModeCl() { return _core.getServerConnectionModeCore(); }
 
-ServerConnectionMode &ClientSession::getserverConnectionModeCl() { return _serverConnectionMode; }
-
-const ServerConnectionMode &ClientSession::getserverConnectionModeCl() const { return _serverConnectionMode; }
+const ServerConnectionMode &ClientSession::getserverConnectionModeCl() const {
+  return _core.getServerConnectionModeCore();
+}
 
 const std::shared_ptr<User> ClientSession::getActiveUserCl() const { return _instance.getActiveUser(); }
 
 ChatSystem &ClientSession::getInstance() { return _instance; }
 
-std::size_t ClientSession::getSocketFd() const { return _socketFd; }
+std::size_t ClientSession::getSocketFd() const { return static_cast<std::size_t>(_core.getSocketFdCore()); }
 
 // setters
 
 void ClientSession::setActiveUserCl(const std::shared_ptr<User> &user) { _instance.setActiveUser(user); }
 
-void ClientSession::setSocketFd(int socketFd) { _socketFd = socketFd; };
+void ClientSession::setSocketFd(int socketFd) { _core.setSocketFdCore(socketFd); };
 
 //
 //
@@ -583,54 +553,7 @@ bool ClientSession::checkUserPasswordCl(const std::string &userLogin, const std:
 //
 bool ClientSession::findServerAddress(ServerConnectionConfig &serverConnectionConfig,
                                       ServerConnectionMode &serverConnectionMode) {
-
-  // открываем сокет для поиска
-  int socketTmp = (socket(AF_INET, SOCK_STREAM, 0));
-
-  try {
-    if (socketTmp == -1) {
-      throw exc_qt::CreateSocketTypeException();
-    } else {
-      // сначала ищем сервер на локальной машине
-      sockaddr_in addr{};
-      addr.sin_family = AF_INET;
-      addr.sin_port = htons(serverConnectionConfig.port);
-
-      addr.sin_addr.s_addr = inet_addr(serverConnectionConfig.addressLocalHost.c_str());
-
-      int result = ::connect(socketTmp, (sockaddr *)&addr, sizeof(addr));
-
-      if (result == 0) {
-        serverConnectionConfig.found = true;
-        serverConnectionMode = ServerConnectionMode::Localhost;
-
-        close(socketTmp);
-        return true;
-      }
-
-      // эатем пытаемся найти сервер внутри локальной сети
-      discoverServerOnLAN(serverConnectionConfig);
-      if (serverConnectionConfig.found) {
-        serverConnectionMode = ServerConnectionMode::LocalNetwork;
-        close(socketTmp);
-        return true;
-      }
-    }
-  } // try
-  catch (const exc_qt::CreateSocketTypeException &ex) {
-
-    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-    const auto timeStampQt = QString::fromStdString(time_sdtamp);
-
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral(
-                                         "[%1]   [ERROR]   [NETWORK]   findServerAddress   search of server")
-                                         .arg(timeStampQt));
-  }
-
-  close(socketTmp);
-  serverConnectionMode = ServerConnectionMode::Offline;
-  return false;
+  return _core.findServerAddressCore(serverConnectionConfig, serverConnectionMode);
 }
 //
 //
@@ -638,397 +561,26 @@ bool ClientSession::findServerAddress(ServerConnectionConfig &serverConnectionCo
 
 int ClientSession::createConnection(ServerConnectionConfig &serverConnectionConfig,
                                     ServerConnectionMode &serverConnectionMode) {
-
-  // Зададим номер порта
-  serveraddress.sin_port = htons(serverConnectionConfig.port);
-  // Используем IPv4
-  serveraddress.sin_family = AF_INET;
-
-  //  Установим адрес сервера
-  switch (serverConnectionMode) {
-  case ServerConnectionMode::Localhost: {
-    serveraddress.sin_addr.s_addr = inet_addr(serverConnectionConfig.addressLocalHost.c_str());
-    break;
-  }
-  case ServerConnectionMode::LocalNetwork: {
-    addrinfo hints{}, *res = nullptr;
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-
-    int gaiResult = getaddrinfo(serverConnectionConfig.addressLocalNetwork.c_str(), nullptr, &hints, &res);
-    if (gaiResult != 0 || res == nullptr) {
-      serveraddress.sin_addr.s_addr = INADDR_NONE;
-    } else {
-      sockaddr_in *ipv4 = (sockaddr_in *)res->ai_addr;
-      serveraddress.sin_addr = ipv4->sin_addr;
-      freeaddrinfo(res);
-    }
-    break;
-  }
-  default:
-    break;
-  }
-
-  // открываем сокет для поиска
-  int socketTmp = (socket(AF_INET, SOCK_STREAM, 0));
-
-  try {
-    if (socketTmp == -1)
-      throw exc_qt::CreateSocketTypeException();
-    else {
-      if (::connect(socketTmp, (sockaddr *)&serveraddress, sizeof(serveraddress)) < 0)
-        throw exc_qt::ConnectionToServerException();
-      else
-        _socketFd = socketTmp;
-    }
-  } // try
-  catch (const exc_qt::NetworkException &ex) {
-
-    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-    const auto timeStampQt = QString::fromStdString(time_sdtamp);
-
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral(
-                                         "[%1]   [ERROR]   [NETWORK]   createConnection   uknown mistake")
-                                         .arg(timeStampQt));
-    close(socketTmp);
-    return -1;
-  }
-  return _socketFd;
+  return _core.createConnectionCore(serverConnectionConfig, serverConnectionMode);
 }
 //
 //
 //
 bool ClientSession::discoverServerOnLAN(ServerConnectionConfig &serverConnectionConfig) {
-  int timeoutMs = 1000;
-
-  try {
-    int udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
-    if (udpSocket < 0) {
-      throw exc_qt::CreateSocketTypeException();
-    }
-
-    // Включаем broadcast
-    int broadcastEnable = 1;
-    setsockopt(udpSocket, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable));
-
-    // Установка таймаута
-    timeval timeout{};
-    timeout.tv_sec = timeoutMs / 1000;
-    timeout.tv_usec = (timeoutMs % 1000) * 1000;
-    setsockopt(udpSocket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-
-    sockaddr_in broadcastAddr{};
-    broadcastAddr.sin_family = AF_INET;
-    broadcastAddr.sin_port = htons(serverConnectionConfig.port);
-    broadcastAddr.sin_addr.s_addr = inet_addr("255.255.255.255");
-
-    std::string ping = "ping?";
-    sendto(udpSocket, ping.c_str(), ping.size(), 0, (sockaddr *)&broadcastAddr, sizeof(broadcastAddr));
-
-    char buffer[128] = {0};
-    sockaddr_in serverAddr{};
-    socklen_t addrLen = sizeof(serverAddr);
-    ssize_t bytesReceived = recvfrom(udpSocket, buffer, sizeof(buffer) - 1, 0, (sockaddr *)&serverAddr, &addrLen);
-
-    if (bytesReceived > 0) {
-      std::string msg(buffer);
-      if (msg == "pong") {
-        serverConnectionConfig.addressLocalNetwork = inet_ntoa(serverAddr.sin_addr);
-        serverConnectionConfig.found = true;
-      }
-    }
-
-    close(udpSocket);
-    return true;
-  } catch (const exc_qt::CreateSocketTypeException &ex) {
-
-    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-    const auto timeStampQt = QString::fromStdString(time_sdtamp);
-
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral(
-                                         "[%1]   [ERROR]   [NETWORK]   discoverServerOnLAN   search in LAN")
-                                         .arg(timeStampQt));
-    serverConnectionConfig.found = false;
-    throw;
-  }
+  return _core.discoverServerOnLANCore(serverConnectionConfig);
 }
 //
 //
 //
 PacketListDTO ClientSession::getDatafromServer(const std::vector<std::uint8_t> &packetListSend) {
-
-  PacketListDTO packetListDTOresult;
-  packetListDTOresult.packets.clear();
-
-  try {
-
-    if (!_statusOnline.load(std::memory_order_acquire))
-      throw exc_qt::ConnectionToServerException();
-
-    // проверка
-    // for (std::uint8_t b : packetListSend) {
-    //   std::cerr << static_cast<int>(b) << " ";
-    // }
-    // std::cerr << std::endl;
-
-    // 1. Добавляем 4 байта длины в начало
-    std::vector<std::uint8_t> packetWithSize;
-    uint32_t len = htonl(static_cast<uint32_t>(packetListSend.size()));
-
-    packetWithSize.resize(4 + packetListSend.size());
-    std::memcpy(packetWithSize.data(), &len, 4);                                          // первые 4 байта — длина
-    std::memcpy(packetWithSize.data() + 4, packetListSend.data(), packetListSend.size()); // далее — данные
-
-    // 2. Отправка
-    // Очистка входящего буфера перед отправкой запроса
-
-    // Сохраняем текущий режим сокета
-    int flags = fcntl(_socketFd, F_GETFL, 0);
-    fcntl(_socketFd, F_SETFL, flags | O_NONBLOCK);
-
-    // Очищаем входящий буфер
-    std::vector<std::uint8_t> drainBuf(4096);
-    try {
-      for (;;) {
-        ssize_t n = ::recv(_socketFd, drainBuf.data(), drainBuf.size(), MSG_DONTWAIT);
-        if (n > 0)
-          continue;
-        if (n == 0) {
-          _statusOnline.store(false, std::memory_order_release);
-          throw exc_qt::ConnectionToServerException();
-        }
-        if (n < 0) {
-          if (errno == EAGAIN || errno == EWOULDBLOCK)
-            break;
-          if (errno == EINTR)
-            continue;
-          _statusOnline.store(false, std::memory_order_release);
-          throw exc_qt::ReceiveDataException();
-        }
-      } // for
-    } catch (...) {
-      fcntl(_socketFd, F_SETFL, flags);
-      throw;
-    }
-
-    // Возвращаем исходный режим
-    fcntl(_socketFd, F_SETFL, flags);
-
-    // 3. Отправка
-    std::size_t totalSent = 0;
-    const std::size_t need = packetWithSize.size();
-
-    while (totalSent < need) {
-      ssize_t bytesSent = ::send(_socketFd, packetWithSize.data() + totalSent, need - totalSent,
-#ifdef MSG_NOSIGNAL
-                                 MSG_NOSIGNAL
-#else
-                                 0
-#endif
-      );
-
-      if (bytesSent > 0) {
-        totalSent += static_cast<std::size_t>(bytesSent);
-        continue;
-      }
-
-      if (bytesSent < 0) {
-        if (errno == EINTR)
-          continue;
-
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          pollfd pfd{};
-          pfd.fd = _socketFd;
-          pfd.events = POLLOUT;
-          int pr = ::poll(&pfd, 1, 1000);
-          if (pr > 0 && (pfd.revents & POLLOUT))
-            continue;
-
-          _statusOnline.store(false, std::memory_order_release);
-          throw exc_qt::SendDataException();
-        }
-
-        if (errno == EPIPE || errno == ECONNRESET) {
-          _statusOnline.store(false, std::memory_order_release);
-          throw exc_qt::ConnectionToServerException();
-        }
-
-        _statusOnline.store(false, std::memory_order_release);
-        throw exc_qt::SendDataException();
-      };
-    }
-
-    // 4. Приём заголовка длины (4 байта)
-    len = 0;
-    std::vector<PacketDTO> responcePacketListDTOVector;
-    try {
-
-      std::uint8_t lenBuf[4];
-      std::size_t total = 0;
-      while (total < 4) {
-        ssize_t r = ::recv(_socketFd, lenBuf + total, 4 - total, 0);
-
-        if (r > 0) {
-          total += static_cast<std::size_t>(r);
-          continue;
-        }
-
-        if (r == 0) {
-          _statusOnline.store(false, std::memory_order_release);
-          throw exc_qt::ConnectionToServerException();
-        }
-
-        if (r < 0) {
-          if (errno == EAGAIN || errno == EWOULDBLOCK)
-            continue;
-          if (errno == EINTR) {
-            continue;
-          }
-          _statusOnline.store(false, std::memory_order_release);
-          throw exc_qt::ReceiveDataException();
-        }
-      }
-
-      std::memcpy(&len, lenBuf, 4);
-      len = ntohl(len);
-      std::vector<std::uint8_t> buffer(len);
-
-      // 5. Приём тела
-      ssize_t bytesReceived = 0;
-
-      while (bytesReceived < len) {
-        ssize_t bytes = ::recv(_socketFd, buffer.data() + bytesReceived, len - bytesReceived, 0);
-
-        if (bytes > 0) {
-          bytesReceived += bytes;
-          continue;
-        }
-
-        if (bytes == 0) {
-          _statusOnline.store(false, std::memory_order_release);
-          throw exc_qt::ConnectionToServerException();
-        }
-
-        if (bytes < 0) {
-          if (errno == EAGAIN || errno == EWOULDBLOCK)
-            continue;
-          if (errno == EINTR) {
-            continue;
-          }
-          _statusOnline.store(false, std::memory_order_release);
-          throw exc_qt::ReceiveDataException();
-        }
-
-        bytesReceived += bytes;
-      } // while
-      responcePacketListDTOVector = deSerializePacketList(buffer);
-    } // try
-    catch (...) {
-      throw;
-    }
-
-    for (const auto &pct : responcePacketListDTOVector)
-      packetListDTOresult.packets.push_back(pct);
-
-    if (packetListDTOresult.packets.empty())
-      throw exc_qt::ReceiveDataException();
-  } // try
-  catch (const exc_qt::ConnectionToServerException &ex) {
-
-    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-    const auto timeStampQt = QString::fromStdString(time_sdtamp);
-
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral(
-                                         "[%1]   [ERROR]   [NETWORK]   getDatafromServer   lost connection with server")
-                                         .arg(timeStampQt));
-    return packetListDTOresult;
-  } catch (const exc_qt::SendDataException &ex) {
-    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-    const auto timeStampQt = QString::fromStdString(time_sdtamp);
-
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral(
-                                         "[%1]   [ERROR]   [NETWORK]    getDatafromServer   lost connection with server")
-                                         .arg(timeStampQt));
-    packetListDTOresult.packets.clear();
-    return packetListDTOresult;
-  } catch (const exc_qt::ReceiveDataException &ex) {
-    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-    const auto timeStampQt = QString::fromStdString(time_sdtamp);
-
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral(
-                                         "[%1]   [ERROR]   [NETWORK]   getDatafromServer   lost connection with server")
-                                         .arg(timeStampQt));
-    packetListDTOresult.packets.clear();
-    return packetListDTOresult;
-  }
-  return packetListDTOresult;
+  return _core.getDatafromServerCore(packetListSend);
 }
+
 //
 //
 PacketListDTO ClientSession::processingRequestToServer(std::vector<PacketDTO> &packetDTOListVector,
                                                        const RequestType &requestType) {
-
-  PacketListDTO packetListDTOForSend;
-  PacketListDTO packetListDTOresult;
-  packetListDTOresult.packets.clear();
-
-  // ГАРД: офлайн/битый сокет → мгновенный отказ без сети
-  if (!_statusOnline.load(std::memory_order_acquire) || _socketFd < 0) {
-
-    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-    const auto timeStampQt = QString::fromStdString(time_sdtamp);
-
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(""),
-                                     QStringLiteral(
-                                         "[%1]   [ERROR]   [NETWORK]   [user=]   [chat_Id=]   [msg=]   processingRequestToServer   no connection with server")
-                                         .arg(timeStampQt));
-
-    return packetListDTOresult; // пустой ответ
-  }
-
-  try {
-    // добавляем хэдер
-    UserLoginPasswordDTO userLoginPasswordDTO;
-
-    if (_instance.getActiveUser())
-      userLoginPasswordDTO.login = _instance.getActiveUser()->getLogin();
-    else
-      userLoginPasswordDTO.login = "!";
-    userLoginPasswordDTO.passwordhash = "UserHeder";
-
-    PacketDTO packetDTO;
-    packetDTO.requestType = requestType;
-    packetDTO.structDTOClassType = StructDTOClassType::userLoginPasswordDTO;
-    packetDTO.reqDirection = RequestDirection::ClientToSrv;
-    packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserLoginPasswordDTO>>(userLoginPasswordDTO);
-
-    packetListDTOForSend.packets.push_back(packetDTO);
-
-    for (const auto &packetDTO : packetDTOListVector)
-      packetListDTOForSend.packets.push_back(packetDTO);
-
-    // проверка удалить
-    // std::cout << "[DEBUG] Сериализуем reqDirection = "
-    // << static_cast<int>(packetDTO.reqDirection) << std::endl;
-
-    auto packetListBinarySend = serializePacketList((packetListDTOForSend.packets));
-
-    // отправили и получили ответ от сервера
-    packetListDTOresult = getDatafromServer(packetListBinarySend);
-
-    int x = 1;
-  } // try
-  catch (const exc_qt::LostConnectionException &ex) {
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral("Клиент processingRequestToServer: "));
-    packetListDTOresult.packets.clear();
-  }
-  return packetListDTOresult;
+  return _core.processingRequestToServerCore(packetDTOListVector, requestType);
 }
 
 //
@@ -1036,32 +588,9 @@ PacketListDTO ClientSession::processingRequestToServer(std::vector<PacketDTO> &p
 //
 // utilities
 
-bool ClientSession::initServerConnection() {
+bool ClientSession::initServerConnection() { return _core.initServerConnectionCore(); }
 
-  this->getInstance().setIsServerStatus(false);
-
-  if (!findServerAddress(getserverConnectionConfigCl(), getserverConnectionModeCl())) {
-    getserverConnectionModeCl() = ServerConnectionMode::Offline;
-    emit serverStatusChanged(false, getserverConnectionModeCl());
-    return false;
-  }
-
-  const int fd = createConnection(getserverConnectionConfigCl(), getserverConnectionModeCl());
-
-  if (fd < 0) {
-    getserverConnectionModeCl() = ServerConnectionMode::Offline;
-    emit serverStatusChanged(false, getserverConnectionModeCl());
-    return false;
-  }
-  _socketFd = fd;
-  this->getInstance().setIsServerStatus(true);
-  emit serverStatusChanged(true, getserverConnectionModeCl());
-  return true;
-}
-
-void ClientSession::resetSessionData() {
-  _instance = ChatSystem(); // пересоздание всего chatSystem (users, chats, id)
-}
+void ClientSession::resetSessionData() { _core.resetSessionDataCore(); }
 
 bool ClientSession::reInitilizeBaseCl() {
   UserLoginDTO userLoginDTO;

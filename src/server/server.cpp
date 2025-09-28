@@ -1,6 +1,6 @@
-#include "postgres_db.h"
+#include "db/postgres_db.h"
 #include "server_session.h"
-#include "sql_server.h"
+#include "sql_commands.h"
 #include "system/system_function.h"
 #include <arpa/inet.h>
 #include <cstring>
@@ -53,9 +53,6 @@ int main() {
   ServerSession serverSession(SQLRequests{});
   serverSession.setPgConnection(conn);
 
-  // if (!systemInitForTest(serverSession, conn)) {
-  //   return 1;
-  // }
   // 🔧 Старт UDP discovery-сервера в потоке, без копирования
   std::thread([&serverSession]() {
     serverSession.runUDPServerDiscovery(serverSession.getServerConnectionConfig().port);
@@ -92,13 +89,6 @@ int main() {
   }
 
   std::cout << "[INFO] TCP-сервер запущен на порту " << serverSession.getServerConnectionConfig().port << std::endl;
-
-  // Главный цикл
-  // while (true) {
-  //   serverSession.runServer(socket_file_descriptor);
-  //   if (serverSession.isConnected()) {
-  //     serverSession.listeningClients();
-  //   }
 
 while (true) {
   serverSession.runServer(socket_file_descriptor);

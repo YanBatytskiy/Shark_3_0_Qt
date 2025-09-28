@@ -7,8 +7,9 @@
 #include <iostream>
 #include <memory>
 
-UserDatabaseInitProcessor::UserDatabaseInitProcessor(SQLRequests &sql_requests)
-    : sql_requests_(sql_requests) {}
+UserDatabaseInitProcessor::UserDatabaseInitProcessor(
+    DatabaseSqlManager &database_sql_manager)
+    : database_sql_manager_(database_sql_manager) {}
 
 bool UserDatabaseInitProcessor::Process(ServerSession &session,
                                         PacketListDTO &packet_list,
@@ -20,7 +21,7 @@ bool UserDatabaseInitProcessor::Process(ServerSession &session,
 
   try {
     bool init_result =
-        sql_requests_.initDatabaseOnServer(session.getPGConnection());
+        database_sql_manager_.InitDatabaseSQL(session.getPGConnection());
 
     PacketDTO response_packet;
     response_packet.requestType = request_type;

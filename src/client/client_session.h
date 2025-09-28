@@ -1,53 +1,26 @@
 #pragma once
+#include "client/core/client_core.h"
+#include "client/core/session_types.h"
 #include "chat_system/chat_system.h"
 #include "dto_struct.h"
 #include "message/message.h"
-#include <cstdint>
+
+#include <map>
 #include <memory>
 #include <optional>
-
-#include <arpa/inet.h>
-#include <netinet/in.h>
-
-#include <QThread>
-#include <qthread.h>
-#include <qtmetamacros.h>
-
-class ConnectionMonitor;
-
-enum class ServerConnectionMode {
-  Localhost,    // на этом же компьютере
-  LocalNetwork, // внутри LAN (UDP discovery)
-  Offline       //
-};
-
-struct ServerConnectionConfig {
-  std::string addressLocalHost = "127.0.0.1";
-  std::string addressLocalNetwork = "";
-  std::uint16_t port = 50000;
-  bool found = false;
-};
+#include <vector>
 
 class ClientSession : public QObject {
   Q_OBJECT
 private:
   ChatSystem &_instance; // link to server
-  int _socketFd;
-  ServerConnectionConfig _serverConnectionConfig;
-  ServerConnectionMode _serverConnectionMode;
-
-  QThread _netThread;
-  ConnectionMonitor *_connectionMonitor{nullptr};
-  std::atomic_bool _statusOnline{false};
+  ClientCore _core;
 
 signals:
   void serverStatusChanged(bool online, ServerConnectionMode mode);
 
-public slots:
-  void onConnectionStateChanged(bool online, ServerConnectionMode mode);
-
 public:
-  bool getIsServerOnline() const noexcept { return _statusOnline.load(std::memory_order_acquire); }
+  bool getIsServerOnline() const noexcept { return _core.getIsServerOnlineCore(); }
 
   // constructors
   ClientSession(ChatSystem &client, QObject *parent = nullptr);
@@ -96,8 +69,6 @@ public:
   void stopConnectionThread();
 
   // getters
-
-  ConnectionMonitor *getConnectionMonitor();
 
   ServerConnectionConfig &getserverConnectionConfigCl();
 

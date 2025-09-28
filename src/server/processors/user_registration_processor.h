@@ -1,7 +1,8 @@
 #pragma once
 
 #include "dto/dto_struct.h"
-#include "sql_server.h"
+#include "sql_queries/message_sql_writer.h"
+#include "sql_queries/user_sql_reader.h"
 
 #include <optional>
 #include <string>
@@ -11,15 +12,13 @@ class ServerSession;
 
 class UserRegistrationProcessor {
  public:
-  explicit UserRegistrationProcessor(SQLRequests &sql_requests);
+  UserRegistrationProcessor(UserSqlReader &user_sql_reader,
+                            MessageSqlWriter &message_sql_writer);
 
   bool Process(ServerSession &session, PacketListDTO &packet_list,
                const RequestType &request_type, int connection);
 
  private:
-  bool CheckUserLogin(ServerSession &session, const std::string &login);
-  bool CheckUserPassword(ServerSession &session,
-                         const UserLoginPasswordDTO &credentials);
-
-  SQLRequests &sql_requests_;
+  UserSqlReader &user_sql_reader_;
+  MessageSqlWriter &message_sql_writer_;
 };

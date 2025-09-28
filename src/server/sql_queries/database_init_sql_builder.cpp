@@ -1,21 +1,12 @@
-#include <map>
-#include <string>
-#pragma once
-
-inline std::string checkBaseStructureSrvSQL() { return ""; };
-
-inline std::multimap<int, std::string> createInitTablesSQL() {
-
+#include "server/sql_queries/database_init_sql_builder.h"
+std::multimap<int, std::string> DatabaseInitSqlBuilder::BuildSchemaSql() const {
   std::multimap<int, std::string> result;
   result.clear();
-
   std::string t1 = R"(set local search_path = public;
-
 create table if not exists public.chats (
     id bigserial primary key
 );
 )";
-
   std::string t2 = R"(create table if not exists public.users (
     id bigserial primary key,
     login varchar(30) not null unique,
@@ -28,7 +19,6 @@ create table if not exists public.chats (
 	disable_reason text not null DEFAULT ''
 );
 )";
-
   std::string t3 = R"(create table if not exists public.messages (
     id bigserial not null,
     chat_id bigint not null references public.chats(id) on delete cascade,
@@ -39,7 +29,6 @@ create table if not exists public.chats (
     constraint messages_id_uq unique (id)
 );
 )";
-
   std::string t4 = R"(create table if not exists public.message_status (
     message_id bigint not null references public.messages(id) on delete cascade,
     user_id bigint not null references public.users(id) on delete cascade,
@@ -48,13 +37,11 @@ create table if not exists public.chats (
     constraint message_status_pk primary key (message_id, user_id)
 );
 )";
-
   std::string t5 = R"(create table if not exists public.users_passhash (
     user_id bigint primary key references public.users(id) on delete cascade,
     password_hash varchar(255)
 );
 )";
-
   std::string t6 = R"(create table if not exists public.participants (
     chat_id bigint not null references public.chats(id) on delete cascade,
     user_id bigint not null references public.users(id) on delete cascade,
@@ -65,7 +52,6 @@ create table if not exists public.chats (
         references public.messages(chat_id, id)
 );
 )";
-
   std::string t7 = R"(
 insert into public.users (login, name, email, phone, is_active,	disabled_at, ban_until, disable_reason) 
 values ('a', 'Alex', '...@gmail.com','111',true,0,0,'');
@@ -83,7 +69,6 @@ insert into public.users (login, name, email, phone, is_active,	disabled_at, ban
 values ('ver', 'Vera', '...@gmail.com','111',true,0,0,'');
 insert into public.users (login, name, email, phone, is_active,	disabled_at, ban_until, disable_reason) 
 values ('y', 'Yakov', '...@gmail.com','111',true,0,1759265999000,'');
-
 insert into public.users_passhash (user_id, password_hash)
 values 
 ((select id from public.users where login = 'a'), '6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b'),
@@ -94,9 +79,7 @@ values
 ((select id from public.users where login = 'f'), '6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b'),
 ((select id from public.users where login = 'ver'), '6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b'),
 ((select id from public.users where login = 'y'), '6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b');
-
 )";
-
   std::string t8 = R"(CREATE TABLE user_bans (
   user_id      bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   start_at     bigint NOT NULL DEFAULT extract(epoch from now())::bigint,
@@ -104,14 +87,12 @@ values
   created_by   bigint,
   created_at   bigint NOT NULL DEFAULT extract(epoch from now())::bigint,
   revoked_at   bigint,
-
   revoked_by   bigint
 );
 CREATE INDEX idx_user_bans_user_start ON user_bans(user_id, start_at DESC);
 CREATE INDEX idx_user_bans_active ON user_bans(user_id) WHERE revoked_at IS NULL;
 ;
 )";
-
   result.insert({1, t1});
   result.insert({2, t2});
   result.insert({3, t3});
@@ -120,14 +101,10 @@ CREATE INDEX idx_user_bans_active ON user_bans(user_id) WHERE revoked_at IS NULL
   result.insert({6, t6});
   result.insert({7, t7});
   result.insert({8, t8});
-
   return result;
 }
-
-inline std::multimap<int, std::string> createChatFirstSQL() {
-
+std::multimap<int, std::string> DatabaseInitSqlBuilder::BuildChatFirstSql() const {
   std::multimap<int, std::string> result;
-
   // создаем первый чат
   std::string t1 = R"(with
 	user_e_record as (
@@ -209,17 +186,12 @@ inline std::multimap<int, std::string> createChatFirstSQL() {
 	)
 select 1;
 )";
-
   result.insert({1, t1});
   return result;
 }
-
-inline std::multimap<int, std::string> createChatSecondSQL() {
-
+std::multimap<int, std::string> DatabaseInitSqlBuilder::BuildChatSecondSql() const {
   std::multimap<int, std::string> result;
-
   // создаем второй чат
-
   std::string t1 = R"(WITH
   user_elena AS (
     SELECT id AS user_id FROM public.users WHERE login = 'e'
@@ -240,7 +212,6 @@ inline std::multimap<int, std::string> createChatSecondSQL() {
     INSERT INTO public.chats DEFAULT VALUES
     RETURNING id AS chat_id
   ),
-
   message1_insert AS (
     INSERT INTO public.messages (chat_id, sender_id, message_text, time_stamp)
     SELECT chat_created.chat_id, user_elena.user_id, 'Всем Привееет!?', 1743512400000
@@ -277,7 +248,6 @@ inline std::multimap<int, std::string> createChatSecondSQL() {
     FROM message1_insert, user_yakov
     RETURNING message_id
   ),
-
   message2_insert AS (
     INSERT INTO public.messages (chat_id, sender_id, message_text, time_stamp)
     SELECT chat_created.chat_id, user_alex.user_id, 'И тебе не хворать!?', 1743512520000
@@ -314,7 +284,6 @@ inline std::multimap<int, std::string> createChatSecondSQL() {
     FROM message2_insert, user_yakov
     RETURNING message_id
   ),
-
   message3_insert AS (
     INSERT INTO public.messages (chat_id, sender_id, message_text, time_stamp)
     SELECT chat_created.chat_id, user_sergei.user_id, 'Всем здрассьте.', 1743513015000
@@ -351,7 +320,6 @@ inline std::multimap<int, std::string> createChatSecondSQL() {
     FROM message3_insert, user_yakov
     RETURNING message_id
   ),
-
   message4_insert AS (
     INSERT INTO public.messages (chat_id, sender_id, message_text, time_stamp)
     SELECT chat_created.chat_id, user_elena.user_id, 'Куда идем?', 1743513129000
@@ -388,7 +356,6 @@ inline std::multimap<int, std::string> createChatSecondSQL() {
     FROM message4_insert, user_yakov
     RETURNING message_id
   ),
-
   message5_insert AS (
     INSERT INTO public.messages (chat_id, sender_id, message_text, time_stamp)
     SELECT chat_created.chat_id, user_sergei.user_id,
@@ -449,7 +416,6 @@ inline std::multimap<int, std::string> createChatSecondSQL() {
 )
 SELECT 1;
 )";
-
   result.insert({1, t1});
   return result;
 }

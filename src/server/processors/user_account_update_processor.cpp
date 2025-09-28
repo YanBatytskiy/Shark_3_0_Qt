@@ -10,8 +10,8 @@
 #include <memory>
 
 UserAccountUpdateProcessor::UserAccountUpdateProcessor(
-    SQLRequests &sql_requests)
-    : sql_requests_(sql_requests) {}
+    UserSqlWriter &user_sql_writer)
+    : user_sql_writer_(user_sql_writer) {}
 
 bool UserAccountUpdateProcessor::Process(ServerSession &session,
                                          PacketListDTO &packet_list,
@@ -79,58 +79,6 @@ bool UserAccountUpdateProcessor::Process(ServerSession &session,
 
 bool UserAccountUpdateProcessor::ChangeUserData(ServerSession &session,
                                                 const UserDTO &user_dto) {
-  PGresult *result = nullptr;
-
-  std::string sql;
-  std::string login = user_dto.login;
-  std::string name = user_dto.userName;
-  std::string email = user_dto.email;
-  std::string phone = user_dto.phone;
-
-  try {
-    for (std::size_t pos = 0;
-         (pos = login.find('\'', pos)) != std::string::npos; pos += 2) {
-      login.replace(pos, 1, "''");
-    }
-    for (std::size_t pos = 0;
-         (pos = name.find('\'', pos)) != std::string::npos; pos += 2) {
-      name.replace(pos, 1, "''");
-    }
-    for (std::size_t pos = 0;
-         (pos = email.find('\'', pos)) != std::string::npos; pos += 2) {
-      email.replace(pos, 1, "''");
-    }
-    for (std::size_t pos = 0;
-         (pos = phone.find('\'', pos)) != std::string::npos; pos += 2) {
-      phone.replace(pos, 1, "''");
-    }
-
-    sql = "UPDATE public.users SET name = '" + name + "', email = '" + email +
-          "', phone = '" + phone + "' WHERE login = '" + login + "';";
-
-    result = sql_requests_.execSQL(session.getPGConnection(), sql);
-
-    if (result == nullptr) {
-      throw exc::SQLSelectException(
-          ", UserAccountUpdateProcessor::ChangeUserData");
-    }
-
-    const char *tuples = PQcmdTuples(result);
-    const long affected_rows =
-        tuples != nullptr ? std::strtol(tuples, nullptr, 10) : 0;
-
-    PQclear(result);
-
-    if (affected_rows == 0) {
-      return false;
-    }
-
-    return true;
-  } catch (const exc::SQLSelectException &ex) {
-    std::cerr << "Сервер: " << ex.what() << std::endl;
-    if (result != nullptr) {
-      PQclear(result);
-    }
-    return false;
-  }
+  return user_sql_writer_.ChangeUserDataSQL(user_dto,
+                                            session.getPGConnection());
 }
