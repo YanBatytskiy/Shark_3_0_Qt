@@ -1,6 +1,6 @@
 #include "nw_connection_monitor.h"
 
-#include "client/client_core.h"
+#include "client/core/client_core.h"
 
 #include <chrono>
 #include <thread>

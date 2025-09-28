@@ -1,5 +1,5 @@
 #pragma once
-#include "client_core.h"
+#include "core/client_core.h"
 #include "tcp_transport/session_types.h"
 #include "client/processors/client_session_dto_builder.h"
 #include "client/processors/client_session_create_objects.h"
