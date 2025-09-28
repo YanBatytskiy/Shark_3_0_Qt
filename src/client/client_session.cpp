@@ -480,13 +480,6 @@ bool ClientSession::checkUserPasswordCl(const std::string &user_login,
 //
 //
 //
-PacketListDTO ClientSession::getDatafromServerCl(
-    const std::vector<std::uint8_t> &packet_list_send) {
-  return _core.getDatafromServerCore(packet_list_send);
-}
-
-//
-//
 PacketListDTO ClientSession::processingRequestToServerCl(
     std::vector<PacketDTO> &packet_dto_vector,
     const RequestType &request_type) {
