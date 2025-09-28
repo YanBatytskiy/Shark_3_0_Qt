@@ -20,7 +20,7 @@ class User;
 
 class ClientCore : public QObject {
   Q_OBJECT
- public:
+public:
   ClientCore(ChatSystem &chat_system, QObject *parent = nullptr);
   ClientCore(const ClientCore &) = delete;
   ClientCore &operator=(const ClientCore &) = delete;
@@ -29,23 +29,19 @@ class ClientCore : public QObject {
 
   ~ClientCore();
 
+  // getters
   bool getIsServerOnlineCore() const noexcept;
 
   ServerConnectionConfig &getServerConnectionConfigCore();
-
   const ServerConnectionConfig &getServerConnectionConfigCore() const;
-
   ServerConnectionMode &getServerConnectionModeCore();
-
   const ServerConnectionMode &getServerConnectionModeCore() const;
-
   int getSocketFdCore() const;
 
+  // setters
   void setSocketFdCore(int socket_fd);
 
-  const std::vector<UserDTO> findUserByTextPartOnServerCore(
-      const std::string &text_to_find);
-
+  // transport
   bool findServerAddressCore(ServerConnectionConfig &config,
                              ServerConnectionMode &mode);
 
@@ -54,19 +50,22 @@ class ClientCore : public QObject {
 
   bool discoverServerOnLANCore(ServerConnectionConfig &config);
 
-  PacketListDTO getDatafromServerCore(const std::vector<std::uint8_t> &payload);
+  bool initServerConnectionCore();
 
+  // utilities
+  PacketListDTO getDatafromServerCore(const std::vector<std::uint8_t> &payload);
   PacketListDTO processingRequestToServerCore(std::vector<PacketDTO> &packets,
                                               const RequestType &request_type);
 
-  bool initServerConnectionCore();
-
   void resetSessionDataCore();
 
- signals:
+  const std::vector<UserDTO>
+  findUserByTextPartOnServerCore(const std::string &text_to_find);
+
+signals:
   void serverStatusChanged(bool online, ServerConnectionMode mode);
 
- private:
+private:
   void updateConnectionStateCore(bool online, ServerConnectionMode mode);
 
   ChatSystem &chat_system_;

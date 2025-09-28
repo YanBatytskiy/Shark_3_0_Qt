@@ -4,6 +4,7 @@
 #include <memory>
 
 class ClientSession;
+class ClientRequestExecutor;
 class Chat;
 class Message;
 class User;
@@ -14,7 +15,8 @@ struct UserDTO;
 
 class ClientSessionCreateObjects {
  public:
-  explicit ClientSessionCreateObjects(ClientSession &session);
+  ClientSessionCreateObjects(ClientSession &session,
+                             ClientRequestExecutor &request_executor);
 
   bool createUserProcessing(const UserDTO &user_dto);
   bool createNewChatProcessing(std::shared_ptr<Chat> &chat, ChatDTO &chat_dto,
@@ -25,4 +27,5 @@ class ClientSessionCreateObjects {
 
  private:
   ClientSession &session_;
+  ClientRequestExecutor &request_executor_;
 };

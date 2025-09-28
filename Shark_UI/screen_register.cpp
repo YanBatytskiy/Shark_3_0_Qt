@@ -3,6 +3,7 @@
 #include <QMessageBox>
 
 #include "system/picosha2.h"
+#include "system/system_function.h"
 #include "ui_screen_register.h"
 
 ScreenRegister::ScreenRegister(QWidget *parent)
@@ -100,8 +101,7 @@ void ScreenRegister::on_loginEdit_editingFinished() {
     return;
   }
 
-  if (!client_session_ptr_->inputNewLoginValidationQtCl(
-          ui->loginEdit->text().toStdString())) {
+  if (!engAndFiguresCheck(ui->loginEdit->text().toStdString())) {
     ui->loginEdit->setStyleSheet("QLineEdit { color: red; }");
     isLogin = false;
   } else {
@@ -122,8 +122,7 @@ void ScreenRegister::on_nameEdit_editingFinished() {
     return;
   }
 
-  if (!client_session_ptr_->inputNewLoginValidationQtCl(
-          ui->nameEdit->text().toStdString())) {
+  if (!engAndFiguresCheck(ui->nameEdit->text().toStdString())) {
     QMessageBox::critical(
         this, "Ошибка",
         "Недопустимое имя. Наведи мышку на поле для полсказки.");
@@ -148,8 +147,8 @@ void ScreenRegister::on_passwordEdit_editingFinished() {
     return;
   }
 
-  if (!client_session_ptr_->inputNewPasswordValidationQtCl(
-          ui->passwordEdit->text().toStdString(), 5, 20)) {
+  if (!checkNewLoginPasswordForLimits(ui->passwordEdit->text().toStdString(), 5,
+                                      20, true)) {
     QMessageBox::critical(
         this, "Ошибка",
         "Недопустимый пароль. Наведи мышку на поле для полсказки.");

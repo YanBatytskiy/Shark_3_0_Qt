@@ -8,6 +8,7 @@
 #include <thread>
 #include <vector>
 
+#include "client/client_request_executor.h"
 #include "client/core/client_core.h"
 #include "client/processors/client_session_create_objects.h"
 #include "client/processors/client_session_dto_builder.h"
@@ -23,6 +24,21 @@ class User;
 
 class ClientSession : public QObject {
   Q_OBJECT
+
+ private:
+  void connectionMonitorLoopCl();
+  static bool socketAliveCl(int fd);
+
+  ChatSystem &_instance;
+  ClientCore _core;
+  ClientRequestExecutor _requestExecutor;
+  ClientSessionDtoWriter _dtoWriter;
+  ClientSessionDtoBuilder _dtoBuilder;
+  ClientSessionCreateObjects _createObjects;
+  ClientSessionModifyObjects _modifyObjects;
+  std::atomic_bool connection_thread_running_{false};
+  std::thread connection_thread_;
+
  public:
   explicit ClientSession(ChatSystem &chat_system, QObject *parent = nullptr);
   ClientSession(const ClientSession &) = delete;
@@ -30,14 +46,20 @@ class ClientSession : public QObject {
   ClientSession(ClientSession &&) = delete;
   ClientSession &operator=(ClientSession &&) = delete;
 
+  // constructors
   ~ClientSession();
 
+  // getters
   bool getIsServerOnlineCl() const noexcept;
+  ServerConnectionConfig &getserverConnectionConfigCl();
+  const ServerConnectionConfig &getserverConnectionConfigCl() const;
+  ServerConnectionMode &getserverConnectionModeCl();
+  const ServerConnectionMode &getserverConnectionModeCl() const;
 
-  bool inputNewLoginValidationQtCl(std::string input_data);
-  bool inputNewPasswordValidationQtCl(std::string input_data,
-                                      std::size_t data_length_min,
-                                      std::size_t data_length_max);
+  // threads
+  void startConnectionThreadCl();
+  void stopConnectionThreadCl();
+
   std::optional<
       std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>>
   getChatListCl();
@@ -49,14 +71,6 @@ class ClientSession : public QObject {
                           const std::string &disable_reason);
   bool bunUnbunUserCl(const std::string &login, bool is_banned,
                       std::int64_t banned_to);
-
-  void startConnectionThreadCl();
-  void stopConnectionThreadCl();
-
-  ServerConnectionConfig &getserverConnectionConfigCl();
-  const ServerConnectionConfig &getserverConnectionConfigCl() const;
-  ServerConnectionMode &getserverConnectionModeCl();
-  const ServerConnectionMode &getserverConnectionModeCl() const;
 
   const std::shared_ptr<User> getActiveUserCl() const;
   ChatSystem &getInstanceCl();
@@ -70,10 +84,6 @@ class ClientSession : public QObject {
   bool checkUserLoginCl(const std::string &user_login);
   bool checkUserPasswordCl(const std::string &user_login,
                            const std::string &password);
-
-  PacketListDTO processingRequestToServerCl(
-      std::vector<PacketDTO> &packet_dto_vector,
-      const RequestType &request_type);
 
   void resetSessionDataCl();
   bool reInitilizeBaseCl();
@@ -96,17 +106,4 @@ class ClientSession : public QObject {
 
  signals:
   void serverStatusChanged(bool online, ServerConnectionMode mode);
-
- private:
-  void connectionMonitorLoopCl();
-  static bool socketAliveCl(int fd);
-
-  ChatSystem &_instance;
-  ClientCore _core;
-  ClientSessionDtoWriter _dtoWriter;
-  ClientSessionDtoBuilder _dtoBuilder;
-  ClientSessionCreateObjects _createObjects;
-  ClientSessionModifyObjects _modifyObjects;
-  std::atomic_bool connection_thread_running_{false};
-  std::thread connection_thread_;
 };

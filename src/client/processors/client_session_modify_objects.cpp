@@ -2,11 +2,13 @@
 
 #include <vector>
 
+#include "client/client_request_executor.h"
 #include "client/client_session.h"
 #include "dto_struct.h"
 
-ClientSessionModifyObjects::ClientSessionModifyObjects(ClientSession &session)
-    : session_(session) {}
+ClientSessionModifyObjects::ClientSessionModifyObjects(
+    ClientSession &session, ClientRequestExecutor &request_executor)
+    : session_(session), request_executor_(request_executor) {}
 
 bool ClientSessionModifyObjects::changeUserDataProcessing(
     const UserDTO &user_dto) {
@@ -22,7 +24,7 @@ bool ClientSessionModifyObjects::changeUserDataProcessing(
   PacketListDTO packet_list_result;
   packet_list_result.packets.clear();
 
-  packet_list_result = session_.processingRequestToServerCl(
+  packet_list_result = request_executor_.processingRequestToServer(
       packet_list_send, packet_dto.requestType);
 
   const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(

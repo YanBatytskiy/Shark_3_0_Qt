@@ -26,7 +26,6 @@
 #include "message/message_content_struct.h"
 #include "system/date_time_utils.h"
 #include "system/serialize.h"
-#include "system/system_function.h"
 #include "user/user.h"
 #include "user/user_chat_list.h"
 
@@ -39,10 +38,11 @@ ClientSession::ClientSession(ChatSystem &chat_system, QObject *parent)
     : QObject(parent),
       _instance(chat_system),
       _core(chat_system, this),
+      _requestExecutor(_core),
       _dtoWriter(*this),
       _dtoBuilder(*this),
-      _createObjects(*this),
-      _modifyObjects(*this) {
+      _createObjects(*this, _requestExecutor),
+      _modifyObjects(*this, _requestExecutor) {
   QObject::connect(&_core, &ClientCore::serverStatusChanged, this,
                    &ClientSession::serverStatusChanged);
 }
@@ -51,27 +51,6 @@ ClientSession::~ClientSession() { stopConnectionThreadCl(); }
 
 bool ClientSession::getIsServerOnlineCl() const noexcept {
   return _core.getIsServerOnlineCore();
-}
-
-bool ClientSession::inputNewLoginValidationQtCl(std::string inputData) {
-  // проверяем только на англ буквы и цифры
-  if (!engAndFiguresCheck(inputData))
-    return false;
-  else
-    return true;
-}
-
-bool ClientSession::inputNewPasswordValidationQtCl(std::string inputData,
-                                                   std::size_t dataLengthMin,
-                                                   std::size_t dataLengthMax) {
-  // проверяем только на англ буквы и цифры
-  if (!engAndFiguresCheck(inputData)) return false;
-
-  if (!checkNewLoginPasswordForLimits(inputData, dataLengthMin, dataLengthMax,
-                                      true))
-    return false;
-  else
-    return true;
 }
 
 std::optional<std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>>
@@ -252,8 +231,8 @@ bool ClientSession::blockUnblockUserCl(const std::string &login, bool isBlocked,
     PacketListDTO packetListDTOresult;
     packetListDTOresult.packets.clear();
 
-    packetListDTOresult =
-        processingRequestToServerCl(packetDTOListSend, packetDTO.requestType);
+    packetListDTOresult = _requestExecutor.processingRequestToServer(
+        packetDTOListSend, packetDTO.requestType);
 
     const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(
                              *packetListDTOresult.packets[0].structDTOPtr)
@@ -375,8 +354,8 @@ bool ClientSession::checkUserLoginCl(const std::string &user_login) {
   std::vector<PacketDTO> packet_list_send;
   packet_list_send.push_back(packet_dto);
 
-  auto packet_list_result =
-      processingRequestToServerCl(packet_list_send, packet_dto.requestType);
+  auto packet_list_result = _requestExecutor.processingRequestToServer(
+      packet_list_send, packet_dto.requestType);
 
   try {
     if (packet_list_result.packets.size() != 1) {
@@ -433,8 +412,8 @@ bool ClientSession::checkUserPasswordCl(const std::string &user_login,
   std::vector<PacketDTO> packet_list_send;
   packet_list_send.push_back(packet_dto);
 
-  auto packet_list_result =
-      processingRequestToServerCl(packet_list_send, packet_dto.requestType);
+  auto packet_list_result = _requestExecutor.processingRequestToServer(
+      packet_list_send, packet_dto.requestType);
 
   try {
     if (packet_list_result.packets.size() != 1) {
@@ -480,12 +459,6 @@ bool ClientSession::checkUserPasswordCl(const std::string &user_login,
 //
 //
 //
-PacketListDTO ClientSession::processingRequestToServerCl(
-    std::vector<PacketDTO> &packet_dto_vector,
-    const RequestType &request_type) {
-  return _core.processingRequestToServerCore(packet_dto_vector, request_type);
-}
-
 //
 //
 //
@@ -507,8 +480,8 @@ bool ClientSession::reInitilizeBaseCl() {
   std::vector<PacketDTO> packet_list_send;
   packet_list_send.push_back(packet_dto);
 
-  auto packet_list_result =
-      processingRequestToServerCl(packet_list_send, packet_dto.requestType);
+  auto packet_list_result = _requestExecutor.processingRequestToServer(
+      packet_list_send, packet_dto.requestType);
 
   try {
     if (packet_list_result.packets.empty()) {
@@ -555,8 +528,8 @@ bool ClientSession::registerClientToSystemCl(const std::string &login) {
   std::vector<PacketDTO> packet_list_send;
   packet_list_send.push_back(packet_dto);
 
-  auto packet_list_result =
-      processingRequestToServerCl(packet_list_send, packet_dto.requestType);
+  auto packet_list_result = _requestExecutor.processingRequestToServer(
+      packet_list_send, packet_dto.requestType);
 
   try {
     for (const auto &packet : packet_list_result.packets) {
@@ -684,7 +657,7 @@ bool ClientSession::sendLastReadMessageFromClientCl(
   std::vector<PacketDTO> packet_list_send;
   packet_list_send.push_back(packet_dto);
 
-  auto response_packet_list = processingRequestToServerCl(
+  auto response_packet_list = _requestExecutor.processingRequestToServer(
       packet_list_send, RequestType::RqFrClientSetLastReadMessage);
 
   try {
@@ -752,7 +725,7 @@ bool ClientSession::checkAndAddParticipantToSystemCl(
     }
 
     if (need_request) {
-      auto packet_list_result = processingRequestToServerCl(
+      auto packet_list_result = _requestExecutor.processingRequestToServer(
           packet_list_send, RequestType::RqFrClientGetUsersData);
 
       for (const auto &response_packet : packet_list_result.packets) {

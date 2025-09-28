@@ -4,6 +4,7 @@
 
 #include "dto/dto_struct.h"
 #include "system/picosha2.h"
+#include "system/system_function.h"
 #include "ui_screen_user_profile.h"
 
 ScreenUserProfile::ScreenUserProfile(QWidget *parent)
@@ -143,8 +144,7 @@ void ScreenUserProfile::on_nameLineEdit_editingFinished() {
     return;
   }
 
-  if (!client_session_ptr_->inputNewLoginValidationQtCl(
-          ui->nameLineEdit->text().toStdString())) {
+  if (!engAndFiguresCheck(ui->nameLineEdit->text().toStdString())) {
     QMessageBox::critical(
         this, "Ошибка",
         "Недопустимое имя. Наведи мышку на поле для полсказки.");
@@ -198,8 +198,8 @@ void ScreenUserProfile::on_passwordLineEdit_editingFinished() {
     return;
   }
 
-  if (!client_session_ptr_->inputNewPasswordValidationQtCl(
-          ui->passwordLineEdit->text().toStdString(), 5, 20)) {
+  if (!checkNewLoginPasswordForLimits(
+          ui->passwordLineEdit->text().toStdString(), 5, 20, true)) {
     QMessageBox::critical(
         this, "Ошибка",
         "Недопустимый пароль. Наведи мышку на поле для полсказки.");
