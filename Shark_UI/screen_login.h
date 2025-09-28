@@ -17,7 +17,7 @@ class ScreenLogin : public QWidget {
 public:
   explicit ScreenLogin(QWidget *parent = nullptr);
   ~ScreenLogin();
-  void setDatabase(std::shared_ptr<ClientSession> sessionPtr, std::shared_ptr<Logger> loggerPtr);
+  void setDatabase(std::shared_ptr<ClientSession> client_session_ptr, std::shared_ptr<Logger> logger_ptr);
   void clearFields();
 
 signals:
@@ -50,8 +50,8 @@ private slots:
 private:
   Ui::ScreenLogin *ui;
   ScreenLoggerForm *logger_form_{nullptr};
-  std::shared_ptr<ClientSession> _sessionPtr;
-  std::shared_ptr<Logger> _loggerPtr;
+  std::shared_ptr<ClientSession> client_session_ptr_;
+  std::shared_ptr<Logger> logger_ptr_;
   QString _systemData;
 };
 

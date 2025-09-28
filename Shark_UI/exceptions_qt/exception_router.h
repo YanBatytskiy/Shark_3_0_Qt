@@ -5,6 +5,8 @@
 #include "exception_sql.h"
 #include "exception_valid.h"
 
+#include <exception>
+
 namespace exc_qt {
 
 struct ExceptionRouter {

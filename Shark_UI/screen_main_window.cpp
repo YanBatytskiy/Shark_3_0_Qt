@@ -6,19 +6,19 @@
 #include <QTimeZone>
 #include <QPushButton>
 
-MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr,
-                       std::shared_ptr<Logger> loggerPtr,
+MainWindow::MainWindow(std::shared_ptr<ClientSession> client_session_ptr,
+                       std::shared_ptr<Logger> logger_ptr,
                        QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
 
-  _sessionPtr = std::move(sessionPtr);
-  _loggerPtr = std::move(loggerPtr);
+  client_session_ptr_ = std::move(client_session_ptr);
+  logger_ptr_ = std::move(logger_ptr);
 
   ui->setupUi(this);
 
-  ui->pageLogin->setDatabase(_sessionPtr, _loggerPtr);
-  ui->pageRegister->setDatabase(_sessionPtr, _loggerPtr);
-  ui->pageWork->setDatabase(_sessionPtr, _loggerPtr);
+  ui->pageLogin->setDatabase(client_session_ptr_, logger_ptr_);
+  ui->pageRegister->setDatabase(client_session_ptr_, logger_ptr_);
+  ui->pageWork->setDatabase(client_session_ptr_, logger_ptr_);
 
   connect(ui->pageLogin, &ScreenLogin::registrationRequested, this,
           &MainWindow::setRegistrationForm);
@@ -47,7 +47,7 @@ MainWindow::MainWindow(std::shared_ptr<ClientSession> sessionPtr,
 
   connect(profile, &ScreenUserProfile::signalCloseUserProfile, this, &MainWindow::setworkForm);
 
-  profile->setDatabase(_sessionPtr);
+  profile->setDatabase(client_session_ptr_);
 
   setLoginForm();
 }
@@ -76,20 +76,20 @@ void MainWindow::setworkForm() {
 }
 
 void MainWindow::onLoggedIn(QString login) {
-  _sessionPtr->registerClientToSystemCl(login.toStdString());
+  client_session_ptr_->registerClientToSystemCl(login.toStdString());
   ui->pageWork->createSession();
   setworkForm();
 }
 
 void MainWindow::slotOnLogOut() {
 
-  _sessionPtr->resetSessionData();
+  client_session_ptr_->resetSessionData();
   setLoginForm();
 }
 
 void MainWindow::slotonRejectedRequested() {
-  if (_sessionPtr) {
-    _sessionPtr->stopConnectionThread(); // ← остановка фонового соединения
+  if (client_session_ptr_) {
+    client_session_ptr_->stopConnectionThread(); // ← остановка фонового соединения
   }
   close();
 }

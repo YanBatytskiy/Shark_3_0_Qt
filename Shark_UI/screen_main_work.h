@@ -24,7 +24,7 @@ class ScreenMainWork : public QWidget {
 public:
   explicit ScreenMainWork(QWidget *parent = nullptr);
   ~ScreenMainWork();
-  void setDatabase(std::shared_ptr<ClientSession> sessionPtr, std::shared_ptr<Logger> loggerPtr);
+  void setDatabase(std::shared_ptr<ClientSession> client_session_ptr, std::shared_ptr<Logger> logger_ptr);
 
   void fillOneChatListModelWithData(const std::pair<std::size_t, ChatDTO> chat, bool newChatBool);
   void fillChatListModelWithData(bool allChats);
@@ -89,8 +89,8 @@ private slots:
 
 private:
   Ui::ScreenMainWork *ui;
-  std::shared_ptr<ClientSession> _sessionPtr;
-  std::shared_ptr<Logger> _loggerPtr;
+  std::shared_ptr<ClientSession> client_session_ptr_;
+  std::shared_ptr<Logger> logger_ptr_;
 
   QButtonGroup *_findRadoButtonGroup{nullptr};
   ChatListModel *_ChatListModel;

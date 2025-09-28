@@ -27,12 +27,12 @@ ScreenLogin::ScreenLogin(QWidget *parent) : QWidget(parent), ui(new Ui::ScreenLo
 
 ScreenLogin::~ScreenLogin() { delete ui; }
 
-void ScreenLogin::setDatabase(std::shared_ptr<ClientSession> sessionPtr, std::shared_ptr<Logger> loggerPtr) {
+void ScreenLogin::setDatabase(std::shared_ptr<ClientSession> client_session_ptr, std::shared_ptr<Logger> logger_ptr) {
 
-  _sessionPtr = sessionPtr;
-  _loggerPtr = loggerPtr;
+  client_session_ptr_ = client_session_ptr;
+  logger_ptr_ = logger_ptr;
 
-  connect(_sessionPtr.get(), &ClientSession::serverStatusChanged, this, &ScreenLogin::onConnectionStatusChanged,
+  connect(client_session_ptr_.get(), &ClientSession::serverStatusChanged, this, &ScreenLogin::onConnectionStatusChanged,
           Qt::QueuedConnection);
 
   struct utsname utsname;
@@ -49,7 +49,7 @@ void ScreenLogin::setDatabase(std::shared_ptr<ClientSession> sessionPtr, std::sh
   ServerConnectionConfig serverConnectionConfig;
   serverDataText = _systemData;
 
-  auto mode = _sessionPtr->getserverConnectionModeCl();
+  auto mode = client_session_ptr_->getserverConnectionModeCl();
 
   if (mode == ServerConnectionMode::Localhost) {
     serverDataText += "\n\nПодключено к серверу внутри рабочей станции.";
@@ -62,7 +62,7 @@ void ScreenLogin::setDatabase(std::shared_ptr<ClientSession> sessionPtr, std::sh
                                       "NETWORK", // Ключевые модули для чата
                                       event);    // Event
 
-    emit _loggerPtr->signalWriteLine(log_line);
+    emit logger_ptr_->signalWriteLine(log_line);
 
   } else if (mode == ServerConnectionMode::LocalNetwork) {
     serverDataText += "\n\nПодключено к серверу внути локальной сети.";
@@ -76,7 +76,7 @@ void ScreenLogin::setDatabase(std::shared_ptr<ClientSession> sessionPtr, std::sh
                                       "NETWORK", // Ключевые модули для чата
                                       event);    // Event
 
-    emit _loggerPtr->signalWriteLine(log_line);
+    emit logger_ptr_->signalWriteLine(log_line);
   } else if (mode == ServerConnectionMode::Offline)
     serverDataText += "\n\nПодключение к серверу не удалось. Режим Offline.";
 
@@ -122,7 +122,7 @@ void ScreenLogin::onConnectionStatusChanged(bool connectionStatus, ServerConnect
                                       "NETWORK", // Ключевые модули для чата
                                       event);    // Event
 
-    emit _loggerPtr->signalWriteLine(log_line);
+    emit logger_ptr_->signalWriteLine(log_line);
 
   } else if (mode == ServerConnectionMode::LocalNetwork) {
     serverDataText += "\n\nПодключено к серверу внути локальной сети.";
@@ -137,7 +137,7 @@ void ScreenLogin::onConnectionStatusChanged(bool connectionStatus, ServerConnect
                                       "NETWORK", // Ключевые модули для чата
                                       event);    // Event
 
-    emit _loggerPtr->signalWriteLine(log_line);
+    emit logger_ptr_->signalWriteLine(log_line);
 
   } else if (mode == ServerConnectionMode::Offline) {
     const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
@@ -149,7 +149,7 @@ void ScreenLogin::onConnectionStatusChanged(bool connectionStatus, ServerConnect
                                       "NETWORK", // Ключевые модули для чата
                                       event);    // Event
 
-    emit _loggerPtr->signalWriteLine(log_line);
+    emit logger_ptr_->signalWriteLine(log_line);
 
     serverDataText += "\n\nПодключение к серверу не удалось. Режим Offline.";
   }
@@ -179,7 +179,7 @@ void ScreenLogin::onConnectionStatusChanged(bool connectionStatus, ServerConnect
 
 void ScreenLogin::slot_show_logger_form(const std::multimap<qint64, QString> &logger_model) {
   if (logger_form_ == nullptr)
-    logger_form_ = new ScreenLoggerForm(_sessionPtr, _loggerPtr, this);
+    logger_form_ = new ScreenLoggerForm(client_session_ptr_, logger_ptr_, this);
 
   logger_form_->slot_fill_logger_model(logger_model);
 
@@ -190,7 +190,7 @@ void ScreenLogin::slot_show_logger_form(const std::multimap<qint64, QString> &lo
 
 void ScreenLogin::on_registerModeButton_clicked() {
 
-  if (!_sessionPtr->getIsServerOnline()) {
+  if (!client_session_ptr_->getIsServerOnline()) {
     QMessageBox::warning(this, tr("No!"), tr("Сервер не доступен."));
   } else {
     clearFields();
@@ -211,7 +211,7 @@ void ScreenLogin::checkSignIn() {
     if (ui->loginEdit->text().toStdString() == "" || newInput == "")
       return;
 
-    if (!_sessionPtr->getIsServerOnline()) {
+    if (!client_session_ptr_->getIsServerOnline()) {
       const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
       const QString event = "Server unavailable";
       const QString user_login = ui->loginEdit->text();
@@ -224,7 +224,7 @@ void ScreenLogin::checkSignIn() {
                                         user_login, // User
                                         event);     // Event
 
-      emit _loggerPtr->signalWriteLine(log_line);
+      emit logger_ptr_->signalWriteLine(log_line);
 
       QMessageBox::warning(this, tr("No!"), tr("Сервер не доступен."));
       return;
@@ -233,7 +233,7 @@ void ScreenLogin::checkSignIn() {
     const auto login = ui->loginEdit->text().toStdString();
     const auto password_hash = picosha2::hash256_hex_string(ui->passwordEdit->text().toStdString());
 
-    auto result = _sessionPtr->checkUserPasswordCl(login, password_hash);
+    auto result = client_session_ptr_->checkUserPasswordCl(login, password_hash);
 
     if (!result) {
       const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
@@ -248,7 +248,7 @@ void ScreenLogin::checkSignIn() {
                                         user_login, // User
                                         event);     // Event
 
-      emit _loggerPtr->signalWriteLine(log_line);
+      emit logger_ptr_->signalWriteLine(log_line);
       emit exc_qt::ErrorBus::i().error(tr("Login or Password is wrong"), "login");
       return;
     }
@@ -265,7 +265,7 @@ void ScreenLogin::checkSignIn() {
                                       user_login, // User
                                       event);     // Event
 
-    emit _loggerPtr->signalWriteLine(log_line);
+    emit logger_ptr_->signalWriteLine(log_line);
 
     emit accepted(ui->loginEdit->text());
 
@@ -287,7 +287,7 @@ void ScreenLogin::on_passwordEdit_returnPressed() {
 
 void ScreenLogin::on_baseReInitialisationPushButton_clicked() {
 
-  bool result = _sessionPtr->reInitilizeBaseCl();
+  bool result = client_session_ptr_->reInitilizeBaseCl();
 
   if (!result) {
     const auto time_stamp = QString::fromStdString(formatTimeStampToString(getCurrentDateTimeInt(), true));
@@ -302,7 +302,7 @@ void ScreenLogin::on_baseReInitialisationPushButton_clicked() {
                                       user_login, // User
                                       event);     // Event
 
-    emit _loggerPtr->signalWriteLine(log_line);
+    emit logger_ptr_->signalWriteLine(log_line);
 
     QMessageBox::warning(this, "Ошибка", "Не удалось переинициализировать базу.");
   } else {
@@ -318,7 +318,7 @@ void ScreenLogin::on_baseReInitialisationPushButton_clicked() {
                                       user_login, // User
                                       event);     // Event
 
-    emit _loggerPtr->signalWriteLine(log_line);
+    emit logger_ptr_->signalWriteLine(log_line);
 
     QMessageBox::information(this, "Успешно.", "Можно входить");
   }
@@ -338,12 +338,12 @@ void ScreenLogin::slotOn_logFileClearPushButton_clicked() {
   if (clicked != clearButton)
     return;
 
-  if (!_loggerPtr) {
+  if (!logger_ptr_) {
     QMessageBox::warning(this, "Ошибка", "Логгер недоступен.");
     return;
   }
 
-  const bool cleared = _loggerPtr->slotClearLogFile();
+  const bool cleared = logger_ptr_->slotClearLogFile();
   if (cleared)
     QMessageBox::information(this, "Сообщение", "Файл логов очищен.");
   else
@@ -365,17 +365,17 @@ void ScreenLogin::slotOn_lookLogSeveralLinePushButton_clicked() {
     bool ok;
     int count = QInputDialog::getInt(this, "Количество:", "Ведите количество:", 10, 1, 1000, 1, &ok);
     if (ok) {
-      const auto &model_data = _loggerPtr->slotReadSeveralLines(count);
+      const auto &model_data = logger_ptr_->slotReadSeveralLines(count);
       slot_show_logger_form(model_data);
     }
   } else if (message.clickedButton()->text() == "Вывести все строки") {
-    const auto &model_data = _loggerPtr->slotReadSeveralLines(0);
+    const auto &model_data = logger_ptr_->slotReadSeveralLines(0);
     slot_show_logger_form(model_data);
   }
 }
 
 void ScreenLogin::slotOn_lookLogLastLinePushButton_clicked() {
-  const auto &model_data = _loggerPtr->slotReadLastLine();
+  const auto &model_data = logger_ptr_->slotReadLastLine();
 
   slot_show_logger_form(model_data);
 }

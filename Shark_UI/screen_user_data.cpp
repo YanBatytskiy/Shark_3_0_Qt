@@ -26,9 +26,9 @@ ScreenUserData::ScreenUserData(QWidget *parent)
 
 ScreenUserData::~ScreenUserData() { delete ui; }
 
-void ScreenUserData::setDatabase(std::shared_ptr<ClientSession> sessionPtr)
+void ScreenUserData::setDatabase(std::shared_ptr<ClientSession> client_session_ptr)
 {
-  _sessionPtr = sessionPtr;
+  client_session_ptr_ = client_session_ptr;
 
 }
 
@@ -143,7 +143,7 @@ void ScreenUserData::slot_on_block_push_button_clicked() {
   if (block_reason == "")
     return;
 
-  _sessionPtr->blockUnblockUserQt(ui->loginLineEdit->text().toStdString(), true,
+  client_session_ptr_->blockUnblockUserQt(ui->loginLineEdit->text().toStdString(), true,
                                   block_reason.toStdString());
 }
 
@@ -156,7 +156,7 @@ void ScreenUserData::slot_on_unblock_push_button_clicked() {
   if (!ok)
     return;
 
-  if (_sessionPtr->blockUnblockUserQt(ui->loginLineEdit->text().toStdString(),
+  if (client_session_ptr_->blockUnblockUserQt(ui->loginLineEdit->text().toStdString(),
                                       false, "")) {
     QMessageBox::information(this, "Сообщение", "Пользователь разблокирован");
   } else {
@@ -200,7 +200,7 @@ void ScreenUserData::slot_on_bun_push_button_clicked() {
 
   const auto time_stamp = makeTimeStamp(year, month, day, 23, 59, 59);
 
-  _sessionPtr->bunUnbunUserQt(ui->loginLineEdit->text().toStdString(), true,
+  client_session_ptr_->bunUnbunUserQt(ui->loginLineEdit->text().toStdString(), true,
                               time_stamp);
 }
 
@@ -212,6 +212,6 @@ void ScreenUserData::slot_on_unbun_push_button_clicked() {
   if (!ok)
     return;
 
-  _sessionPtr->bunUnbunUserQt(ui->loginLineEdit->text().toStdString(), false,
+  client_session_ptr_->bunUnbunUserQt(ui->loginLineEdit->text().toStdString(), false,
                               0);
 }

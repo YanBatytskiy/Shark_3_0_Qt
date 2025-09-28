@@ -1,4 +1,3 @@
-#include "chat_system/chat_system.h"
 #include "client/client_session.h"
 #include "errorbus.h"
 #include "logger.h"
@@ -15,32 +14,31 @@
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
 
-  ChatSystem clientSystem;
-  auto sessionPtr = std::make_shared<ClientSession>(clientSystem);
-  auto loggerPtr = std::make_shared<Logger>();
+  auto client_session_ptr = std::make_shared<ClientSession>();
+  auto logger_ptr = std::make_shared<Logger>();
 
   (void)exc_qt::ErrorBus::i();
 
   QObject::connect(&exc_qt::ErrorBus::i(), &exc_qt::ErrorBus::error, &app,
-                   [loggerPtr](const QString &m, const QString &ctx) {
+                   [logger_ptr](const QString &m, const QString &ctx) {
                      QMessageBox::critical(qApp->activeWindow(), "Ошибка",
                                            QString("[%1]\n%2").arg(ctx, m));
 
                      // записать в лог
                      QString log_line = QStringLiteral("%1   %2")
                                             .arg(ctx, m);
-                     emit loggerPtr->signalWriteLine(log_line);
+                     emit logger_ptr->signalWriteLine(log_line);
                    });
 
-  sessionPtr->startConnectionThread();
+  client_session_ptr->startConnectionThread();
 
   QObject::connect(&app, &QCoreApplication::aboutToQuit,
-                   [&] { sessionPtr->stopConnectionThread(); });
+                   [&] { client_session_ptr->stopConnectionThread(); });
 
   QObject::connect(&app, &QCoreApplication::aboutToQuit,
-                   loggerPtr.get(), &Logger::slotStopLogger);
+                   logger_ptr.get(), &Logger::slotStopLogger);
 
-  auto w = new MainWindow(sessionPtr, loggerPtr);
+  auto w = new MainWindow(client_session_ptr, logger_ptr);
   w->show();
   auto result = app.exec();
 

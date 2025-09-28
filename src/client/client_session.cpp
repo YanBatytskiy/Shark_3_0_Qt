@@ -1,21 +1,24 @@
 #include "client_session.h"
+
 #include "chat/chat.h"
 #include "chat_system/chat_system.h"
+#include "client/core/client_core.h"
 #include "dto/dto_struct.h"
 #include "exceptions_cpp/login_exception.h"
+#include "exceptions_qt/exception_login.h"
+#include "exceptions_qt/exception_network.h"
+#include "exceptions_qt/exception_router.h"
 #include "message/message_content_struct.h"
 #include "system/date_time_utils.h"
+#include "system/picosha2.h"
 #include "system/serialize.h"
 #include "system/system_function.h"
 #include "user/user.h"
 #include "user/user_chat_list.h"
 
-#include "exceptions_qt/exception_login.h"
-#include "exceptions_qt/exception_network.h"
-#include "exceptions_qt/exception_router.h"
 #include <QString>
 
-#include "system/picosha2.h"
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
@@ -23,15 +26,26 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
-#include <netinet/in.h>
+
+#include <poll.h>
+#include <unistd.h>
+
+#ifndef POLLRDHUP
+#define POLLRDHUP 0
+#endif
 
 // constructor
-ClientSession::ClientSession(ChatSystem &client, QObject *parent)
-    : QObject(parent), _instance(client), _core(client, this), _dtoWriter(*this), _dtoBuilder(*this),
-      _createObjects(*this), _modifyObjects(*this) {
-  QObject::connect(&_core, &ClientCore::serverStatusChanged, this, &ClientSession::serverStatusChanged);
+ClientSession::ClientSession(QObject *parent)
+    : QObject(parent), chat_system_(std::make_unique<ChatSystem>()),
+      client_core_(std::make_shared<ClientCore>(*chat_system_, this)) {
+  QObject::connect(client_core_.get(), &ClientCore::serverStatusChanged, this, &ClientSession::serverStatusChanged);
 }
+
+ClientSession::~ClientSession() { stopConnectionThread(); }
+
+bool ClientSession::getIsServerOnline() const noexcept { return client_core_->getIsServerOnlineCore(); }
 
 bool ClientSession::inputNewLoginValidationQt(std::string inputData) {
 
@@ -199,7 +213,7 @@ bool ClientSession::changeUserPasswordQt(UserDTO userDTO) {
 
 bool ClientSession::blockUnblockUserQt(std::string login, bool isBlocked, std::string disableReason) {
 
-  const auto user_ptr = _instance.findUserByLogin(login);
+  const auto user_ptr = getInstance().findUserByLogin(login);
 
   try {
 
@@ -270,37 +284,49 @@ bool ClientSession::bunUnbunUserQt(std::string login, bool isBanned, std::int64_
 }
 
 // threads
-void ClientSession::startConnectionThread() { _core.startConnectionThreadCore(); }
+void ClientSession::startConnectionThread() {
+  if (connection_thread_running_.exchange(true, std::memory_order_acq_rel)) {
+    return;
+  }
+  connection_thread_ = std::thread([this] { connectionMonitorLoop(); });
+}
 
-void ClientSession::stopConnectionThread() { _core.stopConnectionThreadCore(); }
+void ClientSession::stopConnectionThread() {
+  if (!connection_thread_running_.exchange(false, std::memory_order_acq_rel)) {
+    return;
+  }
+  if (connection_thread_.joinable()) {
+    connection_thread_.join();
+  }
+}
 
 // getters
 
 ServerConnectionConfig &ClientSession::getserverConnectionConfigCl() {
-  return _core.getServerConnectionConfigCore();
+  return client_core_->getServerConnectionConfigCore();
 }
 
 const ServerConnectionConfig &ClientSession::getserverConnectionConfigCl() const {
-  return _core.getServerConnectionConfigCore();
+  return client_core_->getServerConnectionConfigCore();
 }
 
-ServerConnectionMode &ClientSession::getserverConnectionModeCl() { return _core.getServerConnectionModeCore(); }
+ServerConnectionMode &ClientSession::getserverConnectionModeCl() { return client_core_->getServerConnectionModeCore(); }
 
 const ServerConnectionMode &ClientSession::getserverConnectionModeCl() const {
-  return _core.getServerConnectionModeCore();
+  return client_core_->getServerConnectionModeCore();
 }
 
-const std::shared_ptr<User> ClientSession::getActiveUserCl() const { return _instance.getActiveUser(); }
+const std::shared_ptr<User> ClientSession::getActiveUserCl() const { return client_core_->getActiveUserCl(); }
 
-ChatSystem &ClientSession::getInstance() { return _instance; }
+ChatSystem &ClientSession::getInstance() { return client_core_->getInstance(); }
 
-std::size_t ClientSession::getSocketFd() const { return static_cast<std::size_t>(_core.getSocketFdCore()); }
+std::size_t ClientSession::getSocketFd() const {
+  return static_cast<std::size_t>(client_core_->getSocketFdCore());
+}
 
-// setters
+void ClientSession::setActiveUserCl(const std::shared_ptr<User> &user) { client_core_->setActiveUserCl(user); }
 
-void ClientSession::setActiveUserCl(const std::shared_ptr<User> &user) { _instance.setActiveUser(user); }
-
-void ClientSession::setSocketFd(int socketFd) { _core.setSocketFdCore(socketFd); };
+void ClientSession::setSocketFd(int socket_fd) { client_core_->setSocketFdCore(socket_fd); }
 
 //
 //
@@ -375,7 +401,7 @@ const std::vector<UserDTO> ClientSession::findUserByTextPartOnServerCl(const std
 //
 bool ClientSession::checkUserLoginCl(const std::string &userLogin) {
 
-  const auto isOnClientDevice = _instance.findUserByLogin(userLogin);
+  const auto isOnClientDevice = getInstance().findUserByLogin(userLogin);
 
   if (isOnClientDevice != nullptr)
     return true;
@@ -441,10 +467,10 @@ bool ClientSession::checkUserLoginCl(const std::string &userLogin) {
 //
 bool ClientSession::checkUserPasswordCl(const std::string &userLogin, const std::string &passwordHash) {
 
-  const auto isOnClientDevice = _instance.findUserByLogin(userLogin);
+  const auto isOnClientDevice = getInstance().findUserByLogin(userLogin);
 
   if (isOnClientDevice != nullptr)
-    return _instance.checkPasswordValidForUser(passwordHash, userLogin);
+    return getInstance().checkPasswordValidForUser(passwordHash, userLogin);
 
   UserLoginPasswordDTO userLoginPasswordDTO;
   userLoginPasswordDTO.login = userLogin;
@@ -519,36 +545,36 @@ bool ClientSession::checkUserPasswordCl(const std::string &userLogin, const std:
 // transport
 //
 //
-bool ClientSession::findServerAddress(ServerConnectionConfig &serverConnectionConfig,
-                                      ServerConnectionMode &serverConnectionMode) {
-  return _core.findServerAddressCore(serverConnectionConfig, serverConnectionMode);
+bool ClientSession::findServerAddress(ServerConnectionConfig &server_connection_config,
+                                      ServerConnectionMode &server_connection_mode) {
+  return client_core_->findServerAddressCore(server_connection_config, server_connection_mode);
 }
 //
 //
 //
 
-int ClientSession::createConnection(ServerConnectionConfig &serverConnectionConfig,
-                                    ServerConnectionMode &serverConnectionMode) {
-  return _core.createConnectionCore(serverConnectionConfig, serverConnectionMode);
+int ClientSession::createConnection(ServerConnectionConfig &server_connection_config,
+                                    ServerConnectionMode &server_connection_mode) {
+  return client_core_->createConnectionCore(server_connection_config, server_connection_mode);
 }
 //
 //
 //
-bool ClientSession::discoverServerOnLAN(ServerConnectionConfig &serverConnectionConfig) {
-  return _core.discoverServerOnLANCore(serverConnectionConfig);
+bool ClientSession::discoverServerOnLAN(ServerConnectionConfig &server_connection_config) {
+  return client_core_->discoverServerOnLANCore(server_connection_config);
 }
 //
 //
 //
-PacketListDTO ClientSession::getDatafromServer(const std::vector<std::uint8_t> &packetListSend) {
-  return _core.getDatafromServerCore(packetListSend);
+PacketListDTO ClientSession::getDatafromServer(const std::vector<std::uint8_t> &packet_list_send) {
+  return client_core_->getDatafromServerCore(packet_list_send);
 }
 
 //
 //
-PacketListDTO ClientSession::processingRequestToServer(std::vector<PacketDTO> &packetDTOListVector,
-                                                       const RequestType &requestType) {
-  return _core.processingRequestToServerCore(packetDTOListVector, requestType);
+PacketListDTO ClientSession::processingRequestToServer(std::vector<PacketDTO> &packet_dto_vector,
+                                                       const RequestType &request_type) {
+  return client_core_->processingRequestToServerCore(packet_dto_vector, request_type);
 }
 
 //
@@ -556,353 +582,118 @@ PacketListDTO ClientSession::processingRequestToServer(std::vector<PacketDTO> &p
 //
 // utilities
 
-bool ClientSession::initServerConnection() { return _core.initServerConnectionCore(); }
+bool ClientSession::initServerConnection() { return client_core_->initServerConnectionCore(); }
 
-void ClientSession::resetSessionData() { _core.resetSessionDataCore(); }
+void ClientSession::resetSessionData() { client_core_->resetSessionDataCore(); }
 
-bool ClientSession::reInitilizeBaseCl() {
-  UserLoginDTO userLoginDTO;
-  userLoginDTO.login = "reInitilizeBase";
-  PacketDTO packetDTO;
-  packetDTO.reqDirection = RequestDirection::ClientToSrv;
-  packetDTO.structDTOClassType = StructDTOClassType::userLoginDTO;
-
-  packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserLoginDTO>>(userLoginDTO);
-
-  packetDTO.requestType = RequestType::RqFrClientReInitializeBase;
-
-  std::vector<PacketDTO> packetDTOListSend;
-  packetDTOListSend.push_back(packetDTO);
-
-  PacketListDTO packetListDTOresult;
-  packetListDTOresult.packets.clear();
-
-  packetListDTOresult = processingRequestToServer(packetDTOListSend, packetDTO.requestType);
-
-  try {
-
-    if (packetListDTOresult.packets.empty())
-      throw exc_qt::WrongresponceTypeException();
-
-    if (packetListDTOresult.packets[0].requestType != packetDTO.requestType)
-      throw exc_qt::WrongresponceTypeException();
-
-    const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(*packetListDTOresult.packets[0].structDTOPtr)
-                             .getStructDTOClass();
-
-    if (packet.reqResult)
-      return true;
-    else
-      return false;
-  } // try
-  catch (const exc_qt::WrongresponceTypeException &ex) {
-
-    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-    const auto timeStampQt = QString::fromStdString(time_sdtamp);
-
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral(
-                                         "[%1]   [ERROR]   [NETWORK]   [user=]   [chat_Id=]   [msg=]   reInitilizeBaseCl   wrong type of answer from server")
-                                         .arg(timeStampQt));
-    return false;
-  }
-}
+bool ClientSession::reInitilizeBaseCl() { return client_core_->reInitilizeBaseCl(); }
 
 //
 //
 //
-bool ClientSession::registerClientToSystemCl(const std::string &login) {
-  // в данном методе мы передаем серверу логин и в ответ получаем
-  // данные юзера, все его чаты и сообщения
+bool ClientSession::registerClientToSystemCl(const std::string &login) { return client_core_->registerClientToSystemCl(login); }
 
-  UserLoginDTO userLoginDTO;
-  userLoginDTO.login = login;
-  PacketDTO packetDTO;
-  packetDTO.reqDirection = RequestDirection::ClientToSrv;
-  packetDTO.structDTOClassType = StructDTOClassType::userLoginDTO;
-
-  packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserLoginDTO>>(userLoginDTO);
-
-  const auto isOnClientDevice = _instance.findUserByLogin(login);
-
-  packetDTO.requestType = RequestType::RqFrClientRegisterUser;
-
-  std::vector<PacketDTO> packetDTOListSend;
-  packetDTOListSend.push_back(packetDTO);
-
-  PacketListDTO packetListDTOresult;
-  packetListDTOresult.packets.clear();
-
-  packetListDTOresult = processingRequestToServer(packetDTOListSend, packetDTO.requestType);
-
-  try {
-
-    for (const auto &packet : packetListDTOresult.packets) {
-      // std::cout << "packet type: " << static_cast<int>(packet.requestTyfpe)
-      //           << std::endl;
-      if (packet.requestType != packetDTO.requestType)
-        throw exc_qt::WrongresponceTypeException();
-    }
-
-    for (const auto &packet : packetListDTOresult.packets) {
-
-      switch (packet.structDTOClassType) {
-      case StructDTOClassType::userDTO: {
-
-        // достаем из указателя ссылку на структуру
-        const auto &type = static_cast<const StructDTOClass<UserDTO> &>(*packet.structDTOPtr).getStructDTOClass();
-
-        _dtoWriter.setActiveUserDTOFromSrv(type);
-        break;
-      }
-      case StructDTOClassType::chatDTO: {
-        // достаем из указателя ссылку на структуру
-        const auto &type = static_cast<const StructDTOClass<ChatDTO> &>(*packet.structDTOPtr).getStructDTOClass();
-
-        _dtoWriter.setOneChatDTOFromSrv(type);
-        break;
-      }
-      case StructDTOClassType::messageChatDTO: {
-        // достаем из указателя ссылку на структуру
-        const auto &type = static_cast<const StructDTOClass<MessageChatDTO> &>(*packet.structDTOPtr)
-                               .getStructDTOClass();
-
-        _dtoWriter.setOneChatMessageDTO(type);
-        break;
-      }
-      default:
-        throw exc_qt::WrongresponceTypeException();
-      } // switch
-    } // for
-
-  } // try
-  catch (const exc_qt::WrongresponceTypeException &ex) {
-
-    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-    const auto timeStampQt = QString::fromStdString(time_sdtamp);
-    const auto loginQt = QString::fromStdString(login);
-
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral(
-                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   registerClientToSystemCl   wrong type packet from server")
-                                         .arg(timeStampQt, loginQt));
-    return false;
-  } catch (const exc_qt::NetworkException &ex) {
-
-    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-    const auto timeStampQt = QString::fromStdString(time_sdtamp);
-    const auto loginQt = QString::fromStdString(login);
-
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral(
-                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   registerClientToSystemCl   uknown mistake")
-                                         .arg(timeStampQt, loginQt));
-    return false;
-  }
-
-  return true;
-}
 
 //
 //
 //
 
-bool ClientSession::changeUserDataCl(const UserDTO &userDTO) { return _modifyObjects.changeUserDataCl(userDTO); }
+bool ClientSession::changeUserDataCl(const UserDTO &user_dto) { return client_core_->changeUserDataCl(user_dto); }
 
-bool ClientSession::createUserCl(const UserDTO &userDTO) { return _createObjects.createUserCl(userDTO); }
-//
-//
-//
-bool ClientSession::createNewChatCl(std::shared_ptr<Chat> &chat, ChatDTO &chatDTO, MessageChatDTO &messageChatDTO) {
-  return _createObjects.createNewChatCl(chat, chatDTO, messageChatDTO);
+bool ClientSession::createUserCl(const UserDTO &user_dto) { return client_core_->createUserCl(user_dto); }
+
+bool ClientSession::createNewChatCl(std::shared_ptr<Chat> &chat, ChatDTO &chat_dto, MessageChatDTO &message_chat_dto) {
+  return client_core_->createNewChatCl(chat, chat_dto, message_chat_dto);
 }
 //
 //
 //
-MessageDTO ClientSession::fillOneMessageDTOFromCl(const std::shared_ptr<Message> &message, std::size_t chatId) {
-  return _dtoBuilder.fillOneMessageDTOFromCl(message, chatId);
-}
+MessageDTO ClientSession::fillOneMessageDTOFromCl(const std::shared_ptr<Message> &message, std::size_t chat_id) { return client_core_->fillOneMessageDTOFromCl(message, chat_id); }
+
 //
 //
 //
-std::size_t ClientSession::createMessageCl(const Message &message, std::shared_ptr<Chat> &chat_ptr,
-                                           const std::shared_ptr<User> &user) {
-  return _createObjects.createMessageCl(message, chat_ptr, user);
-}
+std::size_t ClientSession::createMessageCl(const Message &message, std::shared_ptr<Chat> &chat_ptr, const std::shared_ptr<User> &user) { return client_core_->createMessageCl(message, chat_ptr, user); }
+
 //
 //
 //
 // отправка пакета LastReadMessage
-bool ClientSession::sendLastReadMessageFromClient(const std::shared_ptr<Chat> &chat_ptr, std::size_t messageId) {
-  MessageDTO messageDTO;
-  messageDTO.chatId = chat_ptr->getChatId();
-  messageDTO.messageId = messageId;
-  messageDTO.senderLogin = _instance.getActiveUser()->getLogin();
-  messageDTO.messageContent = {};
-  messageDTO.timeStamp = 0;
+bool ClientSession::sendLastReadMessageFromClient(const std::shared_ptr<Chat> &chat_ptr, std::size_t message_id) { return client_core_->sendLastReadMessageFromClient(chat_ptr, message_id); }
 
-  PacketDTO packetDTOForSend;
-  packetDTOForSend.requestType = RequestType::RqFrClientSetLastReadMessage;
-  packetDTOForSend.structDTOClassType = StructDTOClassType::messageDTO;
-  packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
-  packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<MessageDTO>>(messageDTO);
+bool ClientSession::checkAndAddParticipantToSystem(const std::vector<std::string> &participants) { return client_core_->ensureParticipantsAvailable(participants); }
 
-  std::vector<PacketDTO> packetDTOListSend;
-  packetDTOListSend.push_back(packetDTOForSend);
+std::optional<ChatDTO> ClientSession::fillChatDTOQt(const std::shared_ptr<Chat> &chat_ptr) { return client_core_->fillChatDTOQt(chat_ptr); }
 
-  PacketListDTO responcePacketListDTO;
-  responcePacketListDTO.packets.clear();
+std::shared_ptr<ClientCore> ClientSession::getClientCore() const { return client_core_; }
 
-  responcePacketListDTO =
-      processingRequestToServer(packetDTOListSend, RequestType::RqFrClientSetLastReadMessage);
-
+void ClientSession::connectionMonitorLoop() {
   try {
-    if (responcePacketListDTO.packets.empty()) {
-      throw exc_qt::EmptyPacketException();
-    } else {
-      if (responcePacketListDTO.packets[0].requestType != RequestType::RqFrClientSetLastReadMessage)
-        throw exc_qt::WrongresponceTypeException();
-      else {
-        const auto &packetDTO = static_cast<const StructDTOClass<ResponceDTO> &>(
-                                    *responcePacketListDTO.packets[0].structDTOPtr)
-                                    .getStructDTOClass();
+    bool online = client_core_->getIsServerOnlineCore();
 
-        if (!packetDTO.reqResult)
-          throw exc_qt::LastReadMessageException();
-        else
-          return true;
-      }
-    }
-  } // try
-  catch (const exc_qt::WrongresponceTypeException &ex) {
+    while (connection_thread_running_.load(std::memory_order_acquire)) {
+      if (!online) {
+        auto &config = client_core_->getServerConnectionConfigCore();
+        auto &mode_ref = client_core_->getServerConnectionModeCore();
 
-    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-    const auto timeStampQt = QString::fromStdString(time_sdtamp);
-    const auto senderLoginQt = QString::fromStdString(messageDTO.senderLogin);
-    const auto chatIdQt = QString::number(static_cast<long long>(messageDTO.chatId));
-    const auto messageIdQt = QString::number(static_cast<long long>(messageDTO.messageId));
-
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral(
-                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   sendLastReadMessageFromClient   ")
-                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
-    return false;
-  } catch (const exc_qt::EmptyPacketException &ex) {
-    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-    const auto timeStampQt = QString::fromStdString(time_sdtamp);
-    const auto senderLoginQt = QString::fromStdString(messageDTO.senderLogin);
-    const auto chatIdQt = QString::number(static_cast<long long>(messageDTO.chatId));
-    const auto messageIdQt = QString::number(static_cast<long long>(messageDTO.messageId));
-
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral(
-                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   sendLastReadMessageFromClient   ")
-                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
-    return false;
-  } catch (const exc_qt::LastReadMessageException &ex) {
-    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-    const auto timeStampQt = QString::fromStdString(time_sdtamp);
-    const auto senderLoginQt = QString::fromStdString(messageDTO.senderLogin);
-    const auto chatIdQt = QString::number(static_cast<long long>(messageDTO.chatId));
-    const auto messageIdQt = QString::number(static_cast<long long>(messageDTO.messageId));
-
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral(
-                                         "[%1]   [ERROR]   [NETWORK]   [user=%2]   [chat_Id=%3]   [msg=%4]   sendLastReadMessageFromClient   ")
-                                         .arg(timeStampQt, senderLoginQt, chatIdQt, messageIdQt));
-    return false;
-  }
-  return true;
-}
-bool ClientSession::checkAndAddParticipantToSystem(const std::vector<std::string> &participants) {
-
-  try {
-
-    bool needRequest = false;
-    std::vector<PacketDTO> packetDTOListSend;
-
-    for (const auto &participant : participants) {
-
-      const auto &user_ptr = this->_instance.findUserByLogin(participant);
-
-      if (user_ptr == nullptr) {
-
-        needRequest = true;
-
-        UserLoginDTO userLoginDTO;
-        userLoginDTO.login = participant;
-
-        PacketDTO packetDTO;
-        packetDTO.requestType = RequestType::RqFrClientGetUsersData;
-        packetDTO.structDTOClassType = StructDTOClassType::userLoginDTO;
-        packetDTO.reqDirection = RequestDirection::ClientToSrv;
-        packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserLoginDTO>>(userLoginDTO);
-
-        packetDTOListSend.push_back(packetDTO);
-      }
-    }
-
-    if (needRequest) {
-
-      PacketListDTO packetListDTOresult;
-      packetListDTOresult.packets.clear();
-
-      packetListDTOresult = processingRequestToServer(packetDTOListSend, RequestType::RqFrClientGetUsersData);
-
-      {
-        for (const auto &responcePacket : packetListDTOresult.packets) {
-          if (responcePacket.requestType != RequestType::RqFrClientGetUsersData)
-            continue;
-
-          if (responcePacket.structDTOClassType != StructDTOClassType::userDTO)
-            throw exc_qt::WrongresponceTypeException();
-
-          const auto &userDTO = static_cast<const StructDTOClass<UserDTO> &>(*responcePacket.structDTOPtr)
-                                    .getStructDTOClass();
-
-          auto newUser_ptr = std::make_shared<User>(UserData(userDTO.login, userDTO.userName, "-1", userDTO.email,
-                                                             userDTO.phone, userDTO.disable_reason, userDTO.is_active,
-                                                             userDTO.disabled_at, userDTO.ban_until));
-
-          _instance.addUserToSystem(newUser_ptr);
+        if (!client_core_->findServerAddressCore(config, mode_ref)) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(500));
+          continue;
         }
+
+        const int fd = client_core_->createConnectionCore(config, mode_ref);
+
+        if (fd < 0) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(500));
+          continue;
+        }
+
+        online = true;
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        continue;
       }
-    } else {
-      const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-      const auto timeStampQt = QString::fromStdString(time_sdtamp);
 
-      emit exc_qt::ErrorBus::i().error("",
-                                       QStringLiteral(
-                                           "[%1]   checkAndAddParticipantToSystem   server answer did not come")
-                                           .arg(timeStampQt));
-
-      for (const auto &packetDTO : packetDTOListSend) {
-
-        const auto &userLoginDTO = static_cast<const StructDTOClass<UserLoginDTO> &>(*packetDTO.structDTOPtr)
-                                       .getStructDTOClass();
-
-        auto newUser_ptr = std::make_shared<User>(
-            UserData(userLoginDTO.login, "Unknown", "-1", "Unknown", "Unknown", "", true, 0, 0));
-
-        _instance.addUserToSystem(newUser_ptr);
+      const int fd = client_core_->getSocketFdCore();
+      if (!socketAlive(fd)) {
+        if (fd >= 0) {
+          ::close(fd);
+        }
+        client_core_->setSocketFdCore(-1);
+        online = false;
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        continue;
       }
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
-  } // try
-  catch (const exc_qt::WrongresponceTypeException &ex) {
+  } catch (const std::exception &) {
+    connection_thread_running_.store(false, std::memory_order_release);
+    return;
+  }
+}
 
-    const auto time_sdtamp = formatTimeStampToString(getCurrentDateTimeInt(), true);
-    const auto timeStampQt = QString::fromStdString(time_sdtamp);
-
-    emit exc_qt::ErrorBus::i().error(QString::fromUtf8(ex.what()),
-                                     QStringLiteral(
-                                         "[%1]   [ERROR]   [NETWORK]   [user=]   checkAndAddParticipantToSystem   Wrong responce type")
-                                         .arg(timeStampQt));
-
-    std::cerr << "Клиент: добавление участников. " << ex.what() << std::endl;
+bool ClientSession::socketAlive(int fd) {
+  if (fd < 0) {
     return false;
   }
+
+  pollfd descriptor{};
+  descriptor.fd = fd;
+  descriptor.events = POLLIN | POLLERR | POLLHUP | POLLRDHUP;
+
+  const int result = ::poll(&descriptor, 1, 0);
+
+  if (result < 0) {
+    return false;
+  }
+
+  if (result == 0) {
+    return true;
+  }
+
+  if (descriptor.revents & (POLLERR | POLLHUP | POLLRDHUP)) {
+    return false;
+  }
+
   return true;
-}
-std::optional<ChatDTO> ClientSession::fillChatDTOQt(const std::shared_ptr<Chat> &chat_ptr) {
-  return _dtoBuilder.fillChatDTOQt(chat_ptr);
 }

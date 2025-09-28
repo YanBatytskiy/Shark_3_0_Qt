@@ -49,8 +49,8 @@ bool ScreenUserProfile::eventFilter(QObject *watched, QEvent *event) {
 
 ScreenUserProfile::~ScreenUserProfile() { delete ui; }
 
-void ScreenUserProfile::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
-  _sessionPtr = sessionPtr;
+void ScreenUserProfile::setDatabase(std::shared_ptr<ClientSession> client_session_ptr) {
+  client_session_ptr_ = client_session_ptr;
 }
 
 const UserDataQt ScreenUserProfile::getUserData() const {
@@ -59,10 +59,10 @@ const UserDataQt ScreenUserProfile::getUserData() const {
 
 void ScreenUserProfile::slotFillDataToForm() {
 
-  _userData._login = QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin());
-  _userData._name = QString::fromStdString(_sessionPtr->getActiveUserCl()->getUserName());
-  _userData._email = QString::fromStdString(_sessionPtr->getActiveUserCl()->getEmail());
-  _userData._phone = QString::fromStdString(_sessionPtr->getActiveUserCl()->getPhone());
+  _userData._login = QString::fromStdString(client_session_ptr_->getActiveUserCl()->getLogin());
+  _userData._name = QString::fromStdString(client_session_ptr_->getActiveUserCl()->getUserName());
+  _userData._email = QString::fromStdString(client_session_ptr_->getActiveUserCl()->getEmail());
+  _userData._phone = QString::fromStdString(client_session_ptr_->getActiveUserCl()->getPhone());
 
   ui->loginLineEdit->setText(_userData._login);
   ui->nameLineEdit->setText(_userData._name);
@@ -113,7 +113,7 @@ void ScreenUserProfile::on_savePushButton_clicked() {
   _isPhoneChanged = false;
   _isPasswordChanged = false;
 
-  if (_sessionPtr->changeUserDataCl(userDTO))
+  if (client_session_ptr_->changeUserDataCl(userDTO))
     QMessageBox::information(this, "Сообщение", "Данные изменены.");
   else
     QMessageBox::critical(this, "Ошибка", "Данные не изменены.");
@@ -136,7 +136,7 @@ void ScreenUserProfile::on_nameLineEdit_editingFinished() {
     return;
   }
 
-  if (!_sessionPtr->inputNewLoginValidationQt(ui->nameLineEdit->text().toStdString())) {
+  if (!client_session_ptr_->inputNewLoginValidationQt(ui->nameLineEdit->text().toStdString())) {
     QMessageBox::critical(this, "Ошибка", "Недопустимое имя. Наведи мышку на поле для полсказки.");
     ui->nameLineEdit->setStyleSheet("color: red;");
     _isNameChanged = false;
@@ -187,7 +187,7 @@ void ScreenUserProfile::on_passwordLineEdit_editingFinished() {
     return;
   }
 
-  if (!_sessionPtr->inputNewPasswordValidationQt(ui->passwordLineEdit->text().toStdString(), 5, 20)) {
+  if (!client_session_ptr_->inputNewPasswordValidationQt(ui->passwordLineEdit->text().toStdString(), 5, 20)) {
     QMessageBox::critical(this, "Ошибка", "Недопустимый пароль. Наведи мышку на поле для полсказки.");
     ui->passwordLineEdit->setStyleSheet("color: red;");
     _isPasswordChanged = false;
@@ -233,7 +233,7 @@ void ScreenUserProfile::on_changePasswordPushButton_clicked() {
   userDTO.login = ui->loginLineEdit->text().toStdString();
   userDTO.passwordhash = picosha2::hash256_hex_string(ui->passwordLineEdit->text().toStdString());
 
-  if (_sessionPtr->changeUserPasswordQt(userDTO))
+  if (client_session_ptr_->changeUserPasswordQt(userDTO))
     QMessageBox::information(this, "Сообщение", "Пароль изменен.");
   else
     QMessageBox::critical(this, "Ошибка", "Пароль не изменен.");

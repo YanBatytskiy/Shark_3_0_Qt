@@ -19,7 +19,7 @@ public:
   QPushButton* unblockPushButton;
   QPushButton* bunToPushButton;
   QPushButton* unBunToPushButton;
-  void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
+  void setDatabase(std::shared_ptr<ClientSession> client_session_ptr);
 
   void slotClearUserDataToLabels();
 
@@ -40,7 +40,7 @@ private slots:
 
 private:
   Ui::ScreenUserData *ui;
-  std::shared_ptr<ClientSession> _sessionPtr;
+  std::shared_ptr<ClientSession> client_session_ptr_;
 
 };
 

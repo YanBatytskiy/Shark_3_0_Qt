@@ -16,9 +16,9 @@ class MainWindow : public QMainWindow {
   Q_OBJECT
 
 public:
-  MainWindow(std::shared_ptr<ClientSession> sessionPtr,
+  MainWindow(std::shared_ptr<ClientSession> client_session_ptr,
 
-             std::shared_ptr<Logger> loggerPtr, QWidget *parent = nullptr);
+             std::shared_ptr<Logger> logger_ptr, QWidget *parent = nullptr);
   ~MainWindow();
 
   void setLoginForm();
@@ -39,7 +39,7 @@ private slots:
 
 private:
   Ui::MainWindow *ui;
-  std::shared_ptr<ClientSession> _sessionPtr;
-  std::shared_ptr<Logger> _loggerPtr;
+  std::shared_ptr<ClientSession> client_session_ptr_;
+  std::shared_ptr<Logger> logger_ptr_;
 };
 #endif // MAINWINDOW_H

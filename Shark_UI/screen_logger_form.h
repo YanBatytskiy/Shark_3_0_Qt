@@ -15,7 +15,7 @@ class ScreenLoggerForm : public QWidget {
   Q_OBJECT
 
 public:
-  explicit ScreenLoggerForm(std::shared_ptr<ClientSession> sessionPtr, std::shared_ptr<Logger> loggerPtr, QWidget *parent = nullptr);
+  explicit ScreenLoggerForm(std::shared_ptr<ClientSession> client_session_ptr, std::shared_ptr<Logger> logger_ptr, QWidget *parent = nullptr);
   ~ScreenLoggerForm();
 
 public slots:
@@ -27,8 +27,8 @@ private slots:
 private:
   Ui::ScreenLoggerForm *ui;
   QStandardItemModel *model_logger_{nullptr};
-  std::shared_ptr<Logger> _loggerPtr;
-  std::shared_ptr<ClientSession> _sessionPtr;
+  std::shared_ptr<Logger> logger_ptr_;
+  std::shared_ptr<ClientSession> client_session_ptr_;
 };
 
 #endif // SCREEN_LOGGER_FORM_H

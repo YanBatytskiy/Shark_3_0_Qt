@@ -15,7 +15,7 @@ class ScreenChatList : public QWidget {
 public:
   explicit ScreenChatList(QWidget *parent = nullptr);
   ~ScreenChatList();
-  void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
+  void setDatabase(std::shared_ptr<ClientSession> client_session_ptr);
   void setModel(ChatListModel *chatListModel);
   QItemSelectionModel* getSelectionModel() const;
 
@@ -34,7 +34,7 @@ signals:
 
 private:
   Ui::ScreenChatList *ui;
-  std::shared_ptr<ClientSession> _sessionPtr;
+  std::shared_ptr<ClientSession> client_session_ptr_;
 };
 
 #endif // CHAT_LIST_VIEW_SCREEN_H

@@ -18,7 +18,7 @@ public:
   explicit ScreenChatting(QWidget *parent = nullptr);
   ~ScreenChatting();
 
-  void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
+  void setDatabase(std::shared_ptr<ClientSession> client_session_ptr);
   void setModel(MessageModel *messageModel);
 
   QTextEdit* getScreenChattingNewMessageTextEdit() const;
@@ -32,7 +32,7 @@ private slots:
 
 private:
   Ui::ScreenChatting *ui;
-  std::shared_ptr<ClientSession> _sessionPtr;
+  std::shared_ptr<ClientSession> client_session_ptr_;
   MessageModel *_messageModel{nullptr};
 
 };

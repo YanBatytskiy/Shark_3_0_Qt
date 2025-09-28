@@ -37,8 +37,8 @@ ScreenChatting::ScreenChatting(QWidget *parent)
 
 ScreenChatting::~ScreenChatting() { delete ui; }
 
-void ScreenChatting::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
-  _sessionPtr = sessionPtr;
+void ScreenChatting::setDatabase(std::shared_ptr<ClientSession> client_session_ptr) {
+  client_session_ptr_ = client_session_ptr;
 }
 
 void ScreenChatting::setModel(MessageModel *messageModel) {

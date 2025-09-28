@@ -177,8 +177,8 @@ bool TcpTransport::discoverServerOnLAN(ServerConnectionConfig &config) {
   }
 }
 
-PacketListDTO TcpTransport::transportPackets(int socket_fd, std::atomic_bool &status_online,
-                                             const std::vector<std::uint8_t> &payload) {
+PacketListDTO TcpTransport::getDataFromServer(int socket_fd, std::atomic_bool &status_online,
+                                              const std::vector<std::uint8_t> &payload) {
   PacketListDTO result;
   result.packets.clear();
 

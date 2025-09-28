@@ -2,13 +2,13 @@
 #include "ui_screen_logger_form.h"
 #include <QStandardItemModel>
 
-ScreenLoggerForm::ScreenLoggerForm(std::shared_ptr<ClientSession> sessionPtr,
-                                   std::shared_ptr<Logger> loggerPtr, QWidget *parent) : QWidget(parent),
+ScreenLoggerForm::ScreenLoggerForm(std::shared_ptr<ClientSession> client_session_ptr,
+                                   std::shared_ptr<Logger> logger_ptr, QWidget *parent) : QWidget(parent),
                                                                                          ui(new Ui::ScreenLoggerForm) {
   ui->setupUi(this);
 
-  _sessionPtr = sessionPtr;
-  _loggerPtr = loggerPtr;
+  client_session_ptr_ = client_session_ptr;
+  logger_ptr_ = logger_ptr;
 
   model_logger_ = new QStandardItemModel(0, 2);
 }

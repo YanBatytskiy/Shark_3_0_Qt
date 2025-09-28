@@ -61,17 +61,17 @@ ScreenMainWork::ScreenMainWork(QWidget *parent)
 
 ScreenMainWork::~ScreenMainWork() { delete ui; }
 
-void ScreenMainWork::setDatabase(std::shared_ptr<ClientSession> sessionPtr,
-                                 std::shared_ptr<Logger> loggerPtr) {
+void ScreenMainWork::setDatabase(std::shared_ptr<ClientSession> client_session_ptr,
+                                 std::shared_ptr<Logger> logger_ptr) {
 
-  _sessionPtr = sessionPtr;
-  _loggerPtr = loggerPtr;
+  client_session_ptr_ = client_session_ptr;
+  logger_ptr_ = logger_ptr;
 
   ui->findLineEdit->setEnabled(false);
   ui->mainWorkChatUserTabWidget->setCurrentIndex(0);
   ui->mainWorkRightStackedWidget->setCurrentIndex(0);
 
-  connect(_sessionPtr.get(), &ClientSession::serverStatusChanged, this,
+  connect(client_session_ptr_.get(), &ClientSession::serverStatusChanged, this,
           &ScreenMainWork::onConnectionStatusChanged, Qt::QueuedConnection);
 }
 
@@ -91,9 +91,9 @@ void ScreenMainWork::fillOneChatListModelWithData(const std::pair<std::size_t, C
 
   if (chat.second.chatId != 0)  {
   unreadCount =
-      _sessionPtr->getInstance()
+      client_session_ptr_->getInstance()
           .getChatById(chat.second.chatId)
-          ->getUnreadMessageCount(_sessionPtr->getActiveUserCl());
+          ->getUnreadMessageCount(client_session_ptr_->getActiveUserCl());
   }
   else unreadCount = 0;
 
@@ -122,13 +122,13 @@ void ScreenMainWork::fillOneChatListModelWithData(const std::pair<std::size_t, C
     const auto &login = participant.login;
 
            // пропускаем активного пользователя
-    if (login == _sessionPtr->getActiveUserCl()->getLogin())
+    if (login == client_session_ptr_->getActiveUserCl()->getLogin())
       continue;
 
     std::string userName;
 
     if (!newChatBool) {
-    const auto &user = _sessionPtr->getInstance().findUserByLogin(login);
+    const auto &user = client_session_ptr_->getInstance().findUserByLogin(login);
     userName = user->getUserName();
     }
     else userName = _newChatUserListModel->findNameByLogin(QString::fromStdString(login)).toStdString();
@@ -151,7 +151,7 @@ void ScreenMainWork::fillOneChatListModelWithData(const std::pair<std::size_t, C
 
 void ScreenMainWork::fillChatListModelWithData(bool allChats) {
 
-  const auto listOfChat = _sessionPtr->getChatListQt();
+  const auto listOfChat = client_session_ptr_->getChatListQt();
 
   if (listOfChat.has_value()) {
 
@@ -176,7 +176,7 @@ void ScreenMainWork::fillChatListModelWithData(bool allChats) {
           const auto &login = participant.login;
 
                  // пропускаем активного пользователя
-          if (login == _sessionPtr->getActiveUserCl()->getLogin())
+          if (login == client_session_ptr_->getActiveUserCl()->getLogin())
             continue;
 
                  // определяем наличие выбранного контакта в списке участников чата
@@ -207,14 +207,14 @@ void ScreenMainWork::fillUserListModelWithData() {
     _userListModel->clear();
   }
 
-  const auto users = _sessionPtr->getInstance().getUsers();
+  const auto users = client_session_ptr_->getInstance().getUsers();
 
   if (users.size()) {
 
     for (const auto &user_ptr : users) {
 
       if (user_ptr != nullptr)
-        if (user_ptr->getLogin() != _sessionPtr->getActiveUserCl()->getLogin())
+        if (user_ptr->getLogin() != client_session_ptr_->getActiveUserCl()->getLogin())
         {
           const QString login = QString::fromStdString(user_ptr->getLogin());
           const QString name = QString::fromStdString(user_ptr->getUserName());
@@ -237,7 +237,7 @@ void ScreenMainWork::fillMessageModelWithData(std::size_t chatId) {
   _MessageModel->clear();
 
   if (chatId == 0) return;                                   // новый чат без id
-  const auto chat_ptr = _sessionPtr->getInstance().getChatById(chatId);
+  const auto chat_ptr = client_session_ptr_->getInstance().getChatById(chatId);
   if (!chat_ptr) return;                                      // чата нет в map
 
   const auto& messages = chat_ptr->getMessages();
@@ -387,7 +387,7 @@ void ScreenMainWork::slotMakeNewChat(int quantity, const QStringListModel* parti
 
   //формируем чат
   _newChatDTO.chatId = 0;
-  _newChatDTO.senderLogin = _sessionPtr->getActiveUserCl()->getLogin();
+  _newChatDTO.senderLogin = client_session_ptr_->getActiveUserCl()->getLogin();
   _newChatDTO.participants.clear();
 
   ParticipantsDTO participantsDTO;
@@ -486,7 +486,7 @@ void ScreenMainWork::slotFindContactsByPart() {
   clearChatListModelWithData();
   clearMessageModelWithData();
 
-  std::vector<UserDTO> userListDTO = _sessionPtr->findUserByTextPartOnServerCl(textToFind);
+  std::vector<UserDTO> userListDTO = client_session_ptr_->findUserByTextPartOnServerCl(textToFind);
 
   _userListModel->clear();
 
@@ -551,10 +551,10 @@ void ScreenMainWork::createSession() {
 
   ui->loginLabel->setText(
       " Логин: " +
-      QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin()));
+      QString::fromStdString(client_session_ptr_->getActiveUserCl()->getLogin()));
   ui->nameLabel->setText(
       "Имя: " +
-      QString::fromStdString(_sessionPtr->getActiveUserCl()->getUserName()));
+      QString::fromStdString(client_session_ptr_->getActiveUserCl()->getUserName()));
 
   // окно работы со списком чатов
   _ChatListModel = new ChatListModel(this);
@@ -885,7 +885,7 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
   iMessageContent.push_back(std::make_shared<MessageContent<TextContent>>(messageContentText));
 
   auto newMessageTimeStamp = getCurrentDateTimeInt();
-  Message newMessage(iMessageContent, _sessionPtr->getActiveUserCl(), newMessageTimeStamp, 0);
+  Message newMessage(iMessageContent, client_session_ptr_->getActiveUserCl(), newMessageTimeStamp, 0);
 
   std::size_t newMessageId;
 
@@ -896,7 +896,7 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
     auto chat_ptr = std::make_shared<Chat>();
 
     // добавили сообщение к чату
-    chat_ptr->addMessageToChat(std::make_shared<Message>(newMessage), _sessionPtr->getActiveUserCl(),
+    chat_ptr->addMessageToChat(std::make_shared<Message>(newMessage), client_session_ptr_->getActiveUserCl(),
                                false);
 
     // заполняем получателей
@@ -904,7 +904,7 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
     participants.clear();
 
     UserDTO userDTO;
-    userDTO.login = _sessionPtr->getActiveUserCl()->getLogin();
+    userDTO.login = client_session_ptr_->getActiveUserCl()->getLogin();
     participants.push_back(userDTO);
 
     for (int i = 0; i < _newChatUserListModel->rowCount(); ++i) {
@@ -928,13 +928,13 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
     // bool ClientSession::CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std::vector<std::string> &participants, Message &newMessage)
 
     // отправляем на сервер и получаем результат
-    bool result = _sessionPtr->CreateAndSendNewChatQt(chat_ptr, participants, newMessage);
+    bool result = client_session_ptr_->CreateAndSendNewChatQt(chat_ptr, participants, newMessage);
 
     // если ответ с сервера - не окей
     if (!result) {
 
       const auto time_stamp = QString::fromStdString(formatTimeStampToString(newMessageTimeStamp, true));
-      const QString user_login = QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin());
+      const QString user_login = QString::fromStdString(client_session_ptr_->getActiveUserCl()->getLogin());
       const QString chat_id_str = "new chat";
       const QString event = "Message sending failed";
       const QString content_str = newMessageText;
@@ -949,13 +949,13 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
                                         event,        // Event
                                         content_str); // сообщение
 
-      emit _loggerPtr->signalWriteLine(log_line);
+      emit logger_ptr_->signalWriteLine(log_line);
 
       QMessageBox::warning(this, tr("Ошибка!"), tr("Невозможно отправить сообщение."));
       return;
     } else {
       const auto time_stamp = QString::fromStdString(formatTimeStampToString(newMessageTimeStamp, true));
-      const QString user_login = QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin());
+      const QString user_login = QString::fromStdString(client_session_ptr_->getActiveUserCl()->getLogin());
       const QString chat_id_str = QString::number(chat_ptr->getChatId());
 
       const auto &it = chat_ptr->getMessages().rbegin();
@@ -976,7 +976,7 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
                                         event,        // Event
                                         content_str); // сообщение
 
-      emit _loggerPtr->signalWriteLine(log_line);
+      emit logger_ptr_->signalWriteLine(log_line);
     }
 
     // заменили в модели чатов
@@ -985,22 +985,22 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
 
   // если это не новый чат
   else {
-    auto chat_ptr = _sessionPtr->getInstance().getChatById(currentChatId);
+    auto chat_ptr = client_session_ptr_->getInstance().getChatById(currentChatId);
 
     std::vector<std::shared_ptr<User>> recipients;
     for (const auto &participant : chat_ptr->getParticipants()) {
       auto user_ptr = participant._user.lock();
-      if (user_ptr && user_ptr != _sessionPtr->getActiveUserCl())
+      if (user_ptr && user_ptr != client_session_ptr_->getActiveUserCl())
         recipients.push_back(user_ptr);
     }
 
     newMessageId =
-        _sessionPtr->createMessageCl(newMessage, chat_ptr, _sessionPtr->getInstance().getActiveUser());
+        client_session_ptr_->createMessageCl(newMessage, chat_ptr, client_session_ptr_->getInstance().getActiveUser());
 
     if (newMessageId == 0) {
 
       const auto time_stamp = QString::fromStdString(formatTimeStampToString(newMessageTimeStamp, true));
-      const QString user_login = QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin());
+      const QString user_login = QString::fromStdString(client_session_ptr_->getActiveUserCl()->getLogin());
       const QString chat_id_str = QString::number(currentChatId);
       const QString msg_id_str = "new";
       const QString event = "Message sending failed";
@@ -1017,13 +1017,13 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
                                         event,        // Event
                                         content_str); // сообщение
 
-      emit _loggerPtr->signalWriteLine(log_line);
+      emit logger_ptr_->signalWriteLine(log_line);
 
       QMessageBox::warning(this, tr("Ошибка!"), tr("Невозможно отправить сообщение."));
       return;
     } else {
       const auto time_stamp = QString::fromStdString(formatTimeStampToString(newMessageTimeStamp, true));
-      const QString user_login = QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin());
+      const QString user_login = QString::fromStdString(client_session_ptr_->getActiveUserCl()->getLogin());
       const QString chat_id_str = QString::number(currentChatId);
 
       const QString msg_id_str = QString::number(newMessageId);
@@ -1042,14 +1042,14 @@ void ScreenMainWork::sendMessageCommmand(const QModelIndex idx,
                                         event,        // Event
                                         content_str); // сообщение
 
-      emit _loggerPtr->signalWriteLine(log_line);
+      emit logger_ptr_->signalWriteLine(log_line);
     }
   } // else - не новый чат
 
   _MessageModel->fillMessageItem(
       newMessageText,
-      QString::fromStdString(_sessionPtr->getActiveUserCl()->getLogin()),
-      QString::fromStdString(_sessionPtr->getActiveUserCl()->getUserName()),
+      QString::fromStdString(client_session_ptr_->getActiveUserCl()->getLogin()),
+      QString::fromStdString(client_session_ptr_->getActiveUserCl()->getUserName()),
       newMessageTimeStamp,
       newMessageId);
 
@@ -1098,19 +1098,19 @@ const auto& idx = ui->mainWorkTabChatsList->getCcurrentChatIndex();
   if (currentChatId == 0) return;
 
 //доастали указатель на чат
-  const auto& chat_ptr = _sessionPtr->getInstance().getChatById(currentChatId);
+  const auto& chat_ptr = client_session_ptr_->getInstance().getChatById(currentChatId);
   if (!chat_ptr) return;
   if (chat_ptr->getMessages().empty()) return;
 
   //проверили, все ли сообщения прочитаны
   const auto &lastMessageId = chat_ptr->getMessages().rbegin()->second->getMessageId();
-  const auto &lastReadMessageId = chat_ptr->getLastReadMessageId(_sessionPtr->getInstance().getActiveUser());
+  const auto &lastReadMessageId = chat_ptr->getLastReadMessageId(client_session_ptr_->getInstance().getActiveUser());
 
   if (lastMessageId != lastReadMessageId) {
-    chat_ptr->setLastReadMessageId(_sessionPtr->getActiveUserCl(), lastMessageId);
+    chat_ptr->setLastReadMessageId(client_session_ptr_->getActiveUserCl(), lastMessageId);
 
     //подали команду серверу на установку последнего прочитанного сообщения
-    _sessionPtr->sendLastReadMessageFromClient(chat_ptr, lastMessageId);
+    client_session_ptr_->sendLastReadMessageFromClient(chat_ptr, lastMessageId);
 
   // заменили в модели количество непрочатанных и обновили элемент списка
     _ChatListModel->setUnreadCount(idx.row(),0);

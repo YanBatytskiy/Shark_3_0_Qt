@@ -32,8 +32,8 @@ ScreenChatList::ScreenChatList(QWidget *parent)
 
 ScreenChatList::~ScreenChatList() { delete ui; }
 
-void ScreenChatList::setDatabase(std::shared_ptr<ClientSession> sessionPtr) {
-  _sessionPtr = sessionPtr;
+void ScreenChatList::setDatabase(std::shared_ptr<ClientSession> client_session_ptr) {
+  client_session_ptr_ = client_session_ptr;
 }
 
 void ScreenChatList::setModel(ChatListModel *chatListModel) {

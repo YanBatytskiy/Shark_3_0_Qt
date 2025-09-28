@@ -46,12 +46,12 @@ bool ScreenRegister::eventFilter(QObject *watched, QEvent *event) {
 
 ScreenRegister::~ScreenRegister() { delete ui; }
 
-void ScreenRegister::setDatabase(std::shared_ptr<ClientSession> sessionPtr,
-                                 std::shared_ptr<Logger> loggerPtr) {
-  _sessionPtr = sessionPtr;
-  _loggerPtr = loggerPtr;
+void ScreenRegister::setDatabase(std::shared_ptr<ClientSession> client_session_ptr,
+                                 std::shared_ptr<Logger> logger_ptr) {
+  client_session_ptr_ = client_session_ptr;
+  logger_ptr_ = logger_ptr;
 
-  connect(_sessionPtr.get(), &ClientSession::serverStatusChanged, this,
+  connect(client_session_ptr_.get(), &ClientSession::serverStatusChanged, this,
           &ScreenRegister::onConnectionStatusChanged, Qt::QueuedConnection);
 }
 
@@ -96,7 +96,7 @@ void ScreenRegister::on_loginEdit_editingFinished() {
     return;
   }
 
-  if (!_sessionPtr->inputNewLoginValidationQt(ui->loginEdit->text().toStdString())) {
+  if (!client_session_ptr_->inputNewLoginValidationQt(ui->loginEdit->text().toStdString())) {
     ui->loginEdit->setStyleSheet("QLineEdit { color: red; }");
     isLogin = false;
   } else {
@@ -117,7 +117,7 @@ void ScreenRegister::on_nameEdit_editingFinished() {
     return;
   }
 
-  if (!_sessionPtr->inputNewLoginValidationQt(ui->nameEdit->text().toStdString())) {
+  if (!client_session_ptr_->inputNewLoginValidationQt(ui->nameEdit->text().toStdString())) {
     QMessageBox::critical(this, "Ошибка", "Недопустимое имя. Наведи мышку на поле для полсказки.");
     ui->nameEdit->setStyleSheet("QLineEdit { color: red; }");
     isName = false;
@@ -139,7 +139,7 @@ void ScreenRegister::on_passwordEdit_editingFinished() {
     return;
   }
 
-  if (!_sessionPtr->inputNewPasswordValidationQt(ui->passwordEdit->text().toStdString(), 5, 20)) {
+  if (!client_session_ptr_->inputNewPasswordValidationQt(ui->passwordEdit->text().toStdString(), 5, 20)) {
     QMessageBox::critical(this, "Ошибка", "Недопустимый пароль. Наведи мышку на поле для полсказки.");
     ui->passwordEdit->setStyleSheet("QLineEdit { color: red; }");
   } else
@@ -174,7 +174,7 @@ void ScreenRegister::on_registerPushButton_clicked() {
   }
   const auto &login = ui->loginEdit->text().toStdString();
 
-  if (_sessionPtr->checkUserLoginCl(login))
+  if (client_session_ptr_->checkUserLoginCl(login))
     QMessageBox::critical(this, "Ошибка", "Такой логин уже существует.");
   else {
     UserDTO userDTO;
@@ -191,7 +191,7 @@ void ScreenRegister::on_registerPushButton_clicked() {
     userDTO.is_active = true;
     userDTO.disabled_at = 0;
 
-    if (_sessionPtr->createUserCl(userDTO)) {
+    if (client_session_ptr_->createUserCl(userDTO)) {
 
       auto user_ptr = std::make_shared<User>(
           UserData(
@@ -205,7 +205,7 @@ void ScreenRegister::on_registerPushButton_clicked() {
               0,
               0));
 
-      _sessionPtr->getInstance().addUserToSystem(user_ptr);
+      client_session_ptr_->getInstance().addUserToSystem(user_ptr);
 
     } // if create
     else {

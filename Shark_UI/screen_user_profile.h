@@ -23,7 +23,7 @@ class ScreenUserProfile : public QWidget {
 public:
   explicit ScreenUserProfile(QWidget *parent = nullptr);
   ~ScreenUserProfile();
-  void setDatabase(std::shared_ptr<ClientSession> sessionPtr);
+  void setDatabase(std::shared_ptr<ClientSession> client_session_ptr);
   const UserDataQt getUserData() const;
 
 protected:
@@ -53,7 +53,7 @@ private:
   bool _isPhoneChanged{false};
   bool _isPasswordChanged{false};
   UserDataQt _userData;
-  std::shared_ptr<ClientSession> _sessionPtr;
+  std::shared_ptr<ClientSession> client_session_ptr_;
 };
 
 #endif // SCREEN_USER_PROFILE_H

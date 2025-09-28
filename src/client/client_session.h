@@ -1,140 +1,94 @@
 #pragma once
-#include "core/client_core.h"
-#include "tcp_transport/session_types.h"
-#include "client/processors/client_session_dto_builder.h"
-#include "client/processors/client_session_create_objects.h"
-#include "client/processors/client_session_dto_writer.h"
-#include "client/processors/client_session_modify_objects.h"
-#include "chat_system/chat_system.h"
+
+#include "client/tcp_transport/session_types.h"
 #include "dto_struct.h"
 #include "message/message.h"
 
-#include <map>
+#include <QObject>
+
+#include <atomic>
 #include <memory>
 #include <optional>
+#include <thread>
 #include <vector>
+#include <map>
+
+class ChatSystem;
+class Chat;
+class User;
+class ClientCore;
 
 class ClientSession : public QObject {
   Q_OBJECT
-private:
-  ChatSystem &_instance; // link to server
-  ClientCore _core;
-  ClientSessionDtoWriter _dtoWriter;
-  ClientSessionDtoBuilder _dtoBuilder;
-  ClientSessionCreateObjects _createObjects;
-  ClientSessionModifyObjects _modifyObjects;
-
-signals:
-  void serverStatusChanged(bool online, ServerConnectionMode mode);
-
 public:
-  bool getIsServerOnline() const noexcept { return _core.getIsServerOnlineCore(); }
-
-  // constructors
-  ClientSession(ChatSystem &client, QObject *parent = nullptr);
+  explicit ClientSession(QObject *parent = nullptr);
   ClientSession(const ClientSession &) = delete;
   ClientSession &operator=(const ClientSession &) = delete;
   ClientSession(ClientSession &&) = delete;
   ClientSession &operator=(ClientSession &&) = delete;
 
-  ~ClientSession() {
-    stopConnectionThread(); // quit(); wait();
-  }
+  ~ClientSession();
 
-  // qt methods
-  //  utilities
+  bool getIsServerOnline() const noexcept;
 
-  bool inputNewLoginValidationQt(std::string inputData);
-
-  bool inputNewPasswordValidationQt(std::string inputData, std::size_t dataLengthMin, std::size_t dataLengthMax);
-
+  bool inputNewLoginValidationQt(std::string input_data);
+  bool inputNewPasswordValidationQt(std::string input_data, std::size_t data_length_min, std::size_t data_length_max);
   std::optional<std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>> getChatListQt();
-
-  bool CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std::vector<UserDTO> &participants, Message &newMessage);
-
-    bool changeUserPasswordQt(UserDTO userDTO);
-    bool blockUnblockUserQt(std::string login, bool isBlocked, std::string disableReason);
-
-    bool bunUnbunUserQt(std::string login, bool isBanned, std::int64_t bunnedTo);
-
-
-  // threads
+  bool CreateAndSendNewChatQt(std::shared_ptr<Chat> &chat_ptr, std::vector<UserDTO> &participants, Message &new_message);
+  bool changeUserPasswordQt(UserDTO user_dto);
+  bool blockUnblockUserQt(std::string login, bool is_blocked, std::string disable_reason);
+  bool bunUnbunUserQt(std::string login, bool is_banned, std::int64_t banned_to);
 
   void startConnectionThread();
   void stopConnectionThread();
 
-  // getters
-
   ServerConnectionConfig &getserverConnectionConfigCl();
-
   const ServerConnectionConfig &getserverConnectionConfigCl() const;
-
   ServerConnectionMode &getserverConnectionModeCl();
-
   const ServerConnectionMode &getserverConnectionModeCl() const;
 
   const std::shared_ptr<User> getActiveUserCl() const;
-
   ChatSystem &getInstance();
-
   std::size_t getSocketFd() const;
 
-  // setters
-
   void setActiveUserCl(const std::shared_ptr<User> &user);
+  void setSocketFd(int socket_fd);
 
-  void setSocketFd(int socketFd);
+  const std::vector<UserDTO> findUserByTextPartOnServerCl(const std::string &text_to_find);
+  bool checkUserLoginCl(const std::string &user_login);
+  bool checkUserPasswordCl(const std::string &user_login, const std::string &password_hash);
 
-  // checking and finding
-
-  // поиск и проверки пользователя
-  const std::vector<UserDTO> findUserByTextPartOnServerCl(const std::string &textToFind);
-
-  bool checkUserLoginCl(const std::string &userLogin);
-
-  bool checkUserPasswordCl(const std::string &userLogin, const std::string &passwordHash);
-
-  // transport
-
-  bool findServerAddress(ServerConnectionConfig &serverConnectionConfig, ServerConnectionMode &serverConnectionMode);
-
-  int createConnection(ServerConnectionConfig &serverConnectionConfig, ServerConnectionMode &serverConnectionMode);
-
-  bool discoverServerOnLAN(ServerConnectionConfig &serverConnectionConfig);
-
-  PacketListDTO getDatafromServer(const std::vector<std::uint8_t> &packetListSend);
-
-  PacketListDTO processingRequestToServer(std::vector<PacketDTO> &packetDTOVector, const RequestType &requestType);
-
-  //
-  //
-  // utilities
+  bool findServerAddress(ServerConnectionConfig &server_connection_config, ServerConnectionMode &server_connection_mode);
+  int createConnection(ServerConnectionConfig &server_connection_config, ServerConnectionMode &server_connection_mode);
+  bool discoverServerOnLAN(ServerConnectionConfig &server_connection_config);
+  PacketListDTO getDatafromServer(const std::vector<std::uint8_t> &packet_list_send);
+  PacketListDTO processingRequestToServer(std::vector<PacketDTO> &packet_dto_vector, const RequestType &request_type);
 
   bool initServerConnection();
-
   void resetSessionData();
-
   bool reInitilizeBaseCl();
 
-  const std::size_t createNewMessageIdFromCl() const;
-
   bool registerClientToSystemCl(const std::string &login);
-
-  bool changeUserDataCl(const UserDTO& userDTO);
-
-  bool createUserCl(const UserDTO& userDTO);
-
-  bool createNewChatCl(std::shared_ptr<Chat> &chat, ChatDTO &chatDTO, MessageChatDTO &messageChatDTO);
-
+  bool changeUserDataCl(const UserDTO &user_dto);
+  bool createUserCl(const UserDTO &user_dto);
+  bool createNewChatCl(std::shared_ptr<Chat> &chat, ChatDTO &chat_dto, MessageChatDTO &message_chat_dto);
   std::size_t createMessageCl(const Message &message, std::shared_ptr<Chat> &chat, const std::shared_ptr<User> &user);
-
-  // отправить на сервер lastReadMessage
-  bool sendLastReadMessageFromClient(const std::shared_ptr<Chat> &chat_ptr, std::size_t messageId);
-
+  bool sendLastReadMessageFromClient(const std::shared_ptr<Chat> &chat_ptr, std::size_t message_id);
   bool checkAndAddParticipantToSystem(const std::vector<std::string> &participants);
-
-  MessageDTO fillOneMessageDTOFromCl(const std::shared_ptr<Message> &message, std::size_t chatId);
-
-  // заполнение на отправку пакета Chat
+  MessageDTO fillOneMessageDTOFromCl(const std::shared_ptr<Message> &message, std::size_t chat_id);
   std::optional<ChatDTO> fillChatDTOQt(const std::shared_ptr<Chat> &chat);
+
+  std::shared_ptr<ClientCore> getClientCore() const;
+
+signals:
+  void serverStatusChanged(bool online, ServerConnectionMode mode);
+
+private:
+  void connectionMonitorLoop();
+  static bool socketAlive(int fd);
+
+  std::unique_ptr<ChatSystem> chat_system_;
+  std::shared_ptr<ClientCore> client_core_;
+  std::atomic_bool connection_thread_running_{false};
+  std::thread connection_thread_;
 };
