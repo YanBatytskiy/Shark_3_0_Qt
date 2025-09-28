@@ -1,6 +1,8 @@
 #pragma once
 #include "client/core/client_core.h"
 #include "client/core/session_types.h"
+#include "client_session_dto_from_cl.h"
+#include "client_session_dto_from_srv.h"
 #include "chat_system/chat_system.h"
 #include "dto_struct.h"
 #include "message/message.h"
@@ -15,6 +17,8 @@ class ClientSession : public QObject {
 private:
   ChatSystem &_instance; // link to server
   ClientCore _core;
+  ClientSessionDtoFromSrv _dtoFromSrv;
+  ClientSessionDtoFromCl _dtoFromCl;
 
 signals:
   void serverStatusChanged(bool online, ServerConnectionMode mode);
@@ -35,8 +39,6 @@ public:
 
   // qt methods
   //  utilities
-
-  bool reInitilizeBaseQt();
 
   bool checkLoginQt(std::string login);
 
