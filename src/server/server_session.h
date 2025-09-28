@@ -1,5 +1,13 @@
 #pragma once
 #include "dto/dto_struct.h"
+#include "packet_parser.h"
+#include "processors/user_account_update_processor.h"
+#include "processors/user_ban_block_processor.h"
+#include "processors/user_database_init_processor.h"
+#include "processors/user_object_creation_processor.h"
+#include "processors/user_registration_processor.h"
+#include "processors/user_data_query_processor.h"
+#include "session_transport.h"
 #include "sql_server.h"
 #include <cstdint>
 #include <libpq-fe.h>
@@ -18,15 +26,22 @@ struct ServerConnectionConfig {
 
 class ServerSession {
 private:
-  int _connection;
+  SessionTransport transport_;
+  PacketParser packet_parser_;
   ServerConnectionConfig _serverConnectionConfig;
   PGconn *_pqConnection;
   SQLRequests sql_requests_;
+  UserBanBlockProcessor user_ban_block_processor_;
+  UserAccountUpdateProcessor user_account_update_processor_;
+  UserDatabaseInitProcessor user_database_init_processor_;
+  UserRegistrationProcessor user_registration_processor_;
+  UserObjectCreationProcessor user_object_creation_processor_;
+  UserDataQueryProcessor user_data_query_processor_;
   
 
 public:
   // constructors
-  ServerSession(SQLRequests sql_requests) : sql_requests_(sql_requests){};
+  explicit ServerSession(SQLRequests sql_requests);
 
   // getters
   PGconn *getPGConnection();
@@ -59,35 +74,10 @@ public:
 
   bool routingRequestsFromClient(PacketListDTO &packetListReceived, const RequestType &requestType, int connection);
 
-  bool processingRqFrClientBunBlockUser(PacketListDTO &packetListReceived, const RequestType &requestType,
-    int connection);
-
-    bool processingRqFrClientchangeDataPassword(PacketListDTO &packetListReceived, const RequestType &requestType,
-                                              int connection);
-
-  bool processingRqFrClientReInitializeBase(PacketListDTO &packetListReceived, const RequestType &requestType,
-                                            int connection);
-
-  bool processingCheckAndRegistryUser(PacketListDTO &packetListReceived, const RequestType &requestType,
-                                      int connection);
-
-  bool processingCreateObjects(PacketListDTO &packetListReceived, const RequestType &requestType, int connection);
-
-  bool processingGetUserData(PacketListDTO &packetListReceived, const RequestType &requestType, int connection);
-
   //
   //
   //
   bool processingReceivedtWithoutUser(std::vector<PacketDTO> &packetListReceived, int connection);
-
-  // utilities
-  bool changeUserDataSrvSQL(const UserDTO &userDTO);
-
-  bool checkUserLoginSrvSQL(const std::string &login);
-
-  bool checkUserPasswordSrvSql(const UserLoginPasswordDTO &userLoginPasswordDTO);
-
-  std::string getUserPasswordSrvSql(const UserLoginPasswordDTO &userLoginPasswordDTO);
 
   // transport sending
   std::optional<UserDTO> FillForSendUserDTOFromSrvSQL(const std::string &userLogin, bool loginUser);

@@ -6,6 +6,12 @@
 #include "exceptions_cpp/validation_exception.h"
 #include "message/message.h"
 #include "sql_server.h"
+#include "processors/user_account_update_processor.h"
+#include "processors/user_ban_block_processor.h"
+#include "processors/user_database_init_processor.h"
+#include "processors/user_object_creation_processor.h"
+#include "processors/user_registration_processor.h"
+#include "processors/user_data_query_processor.h"
 #include "system/serialize.h"
 #include "system/system_function.h"
 #include <arpa/inet.h>
@@ -19,57 +25,52 @@
 #include <libpq-fe.h>
 #include <memory>
 #include <optional>
+#include <utility>
 #include <unistd.h>
 #include <vector>
 
-// ServerSession::ServerSession(ChatSystem &server) : _instance(server) {}
+ServerSession::ServerSession(SQLRequests sql_requests)
+    : transport_(),
+      packet_parser_(),
+      _serverConnectionConfig(),
+      _pqConnection(nullptr),
+      sql_requests_(std::move(sql_requests)),
+      user_ban_block_processor_(sql_requests_),
+      user_account_update_processor_(sql_requests_),
+      user_database_init_processor_(sql_requests_),
+      user_registration_processor_(sql_requests_),
+      user_object_creation_processor_(sql_requests_),
+      user_data_query_processor_(sql_requests_) {}
 
 // getters
 PGconn *ServerSession::getPGConnection() { return _pqConnection; }
 const PGconn *ServerSession::getPGConnection() const { return _pqConnection; }
 
-ServerConnectionConfig &ServerSession::getServerConnectionConfig() { return _serverConnectionConfig; }
+ServerConnectionConfig &ServerSession::getServerConnectionConfig() {
+  return _serverConnectionConfig;
+}
 
-int &ServerSession::getConnection() { return _connection; }
-const int &ServerSession::getConnection() const { return _connection; }
+int &ServerSession::getConnection() { return transport_.Connection(); }
+
+const int &ServerSession::getConnection() const {
+  return transport_.Connection();
+}
 
 // setters
 void ServerSession::setPgConnection(PGconn *connection) { _pqConnection = connection; }
 
-void ServerSession::setConnection(const int &connection) { _connection = connection; }
+void ServerSession::setConnection(const int &connection) {
+  transport_.SetConnection(connection);
+}
 //
 //
 // transport
 
-bool ServerSession::isConnected() const { return _connection > 0 && fcntl(_connection, F_GETFD) != -1; }
+bool ServerSession::isConnected() const { return transport_.IsConnected(); }
 
 void ServerSession::runServer(int socketFd) {
   try {
-
-    // если соединение уже есть — проверим его валидность
-    if (_connection > 0) {
-      // Проверим валидность дескриптора
-      if (fcntl(_connection, F_GETFD) != -1) {
-        // Соединение уже активно — ничего делать не нужно
-        return;
-      } else {
-        // Соединение есть, но оно невалидно — закрываем
-        close(_connection);
-        _connection = -1;
-      }
-    }
-    // создаем новое соединение
-    struct sockaddr_in client{};
-    socklen_t client_len = sizeof(client);
-
-    _connection = accept(socketFd, (struct sockaddr *)&client, &client_len);
-    if (_connection < 0) {
-      throw exc::ConnectNotAcceptException();
-    }
-
-    // сохранили номер сессии
-    std::cout << "[Инфо] Новое соединение установлено" << std::endl;
-
+    transport_.EnsureConnected(socketFd);
   } catch (const exc::ConnectNotAcceptException &ex) {
     std::cerr << "Сервер. " << ex.what() << std::endl;
   } catch (const std::exception &ex) {
@@ -80,150 +81,57 @@ void ServerSession::runServer(int socketFd) {
 //
 //
 void ServerSession::listeningClients() {
-
   try {
-
-    if (_connection <= 0) {
+    if (!transport_.IsConnected()) {
       throw exc::SocketInvalidException();
     }
 
+    auto buffer = transport_.ReceiveFrame();
+    auto parsed = packet_parser_.ParseIncoming(buffer);
+    auto packetListReceived = std::move(parsed.payload);
 
-    if (_connection <= 0 || fcntl(_connection, F_GETFD) == -1) {
-      throw exc::SocketInvalidException();
-    }
-
-
-    // 1. читаем 4 байта длины
-    std::uint8_t lenBuf[4];
-    std::size_t total = 0;
-    while (total < 4) {
-      ssize_t r = recv(_connection, lenBuf + total, 4 - total, 0);
-      if (r <= 0)
-        throw exc::ReceiveDataException();
-      total += r;
-    }
-
-    uint32_t len = 0;
-    std::memcpy(&len, lenBuf, 4);
-    len = ntohl(len);
-
-    // 2. читаем len байт данных
-    std::vector<std::uint8_t> buffer(len);
-    std::size_t bytesReceived = 0;
-    while (bytesReceived < len) {
-      ssize_t r = recv(_connection, buffer.data() + bytesReceived, len - bytesReceived, 0);
-      if (r <= 0)
-        throw exc::ReceiveDataException();
-      bytesReceived += r;
-    }
-
-    std::vector<PacketDTO> packetListReceivedVector = deSerializePacketList(buffer);
-
-    if (packetListReceivedVector.empty())
-      throw exc::EmptyPacketException();
-
-    // берем первый пакет - хедер
-    PacketDTO firstPacket = packetListReceivedVector.front();
-
-    if (firstPacket.structDTOClassType != StructDTOClassType::userLoginPasswordDTO)
-      throw exc::HeaderWrongTypeException();
-
-    const auto &headerPacket = static_cast<const StructDTOClass<UserLoginPasswordDTO> &>(*firstPacket.structDTOPtr)
-                                   .getStructDTOClass();
-
-    if (headerPacket.passwordhash != "UserHeder")
-      throw exc::HeaderWrongTypeException();
-
-    if (headerPacket.login.empty())
-      throw exc::HeaderWrongDataException();
-
-    const auto &requestType = firstPacket.requestType;
-
-    packetListReceivedVector.erase(packetListReceivedVector.begin());
-
-    if (packetListReceivedVector.empty())
-      throw exc::EmptyPacketException();
-
-    PacketListDTO packetListReceived;
-    for (const auto &packet : packetListReceivedVector)
-      packetListReceived.packets.push_back(packet);
-
-    routingRequestsFromClient(packetListReceived, requestType, _connection);
-  } // try
-  catch (const exc::SocketInvalidException &ex) {
-    std::cerr << "Сервер: " << ex.what() << " = " << _connection << std::endl;
-    close(_connection);
-    _connection = -1;
-    return;
+    routingRequestsFromClient(packetListReceived, parsed.request_type,
+                              transport_.Connection());
+  } catch (const exc::SocketInvalidException &ex) {
+    std::cerr << "Сервер: " << ex.what() << " = "
+              << transport_.Connection() << std::endl;
+    transport_.Reset();
   } catch (const exc::CreateBufferException &ex) {
-    std::cerr << "Сервер: " << ex.what() << " = " << MESSAGE_LENGTH << std::endl;
+    std::cerr << "Сервер: " << ex.what() << " = " << MESSAGE_LENGTH
+              << std::endl;
   } catch (const exc::ReceiveDataException &ex) {
     std::cerr << "Сервер: " << ex.what() << std::endl;
-    _connection = -1;
-    return;
+    transport_.Reset();
   } catch (const exc::HeaderWrongTypeException &ex) {
     std::cerr << "Сервер: " << ex.what() << std::endl;
-    _connection = -1;
-    return;
+    transport_.Reset();
   } catch (const exc::HeaderWrongDataException &ex) {
     std::cerr << "Сервер: " << ex.what() << std::endl;
-    _connection = -1;
-    return;
+    transport_.Reset();
   }
 }
 //
 //
 //
-bool ServerSession::sendPacketListDTO(PacketListDTO &packetListForSend, int connection) {
-  ssize_t bytesSent = 0;
+bool ServerSession::sendPacketListDTO(PacketListDTO &packetListForSend,
+                                      int connection) {
   try {
+    auto packetBinary = serializePacketList(packetListForSend.packets);
 
-    // Проверка валидности соединения
-    if (connection <= 0 || fcntl(connection, F_GETFD) == -1)
-      throw exc::SocketInvalidException();
-
-    // Сериализуем пакеты
-
-    auto PacketSendBinary = serializePacketList(packetListForSend.packets);
-
-    // Проверка: не отправлять пустой буфер
-    if (PacketSendBinary.empty())
+    if (packetBinary.empty()) {
       throw exc::SendDataException();
+    }
 
-    // проверка
-    // std::cerr << "[DEBUG] Отправка пакета. Размер: " << PacketSendBinary.size() << " байт" << std::endl;
-    // for (std::size_t i = 0; i < PacketSendBinary.size(); ++i) {
-    //   std::cerr << static_cast<int>(PacketSendBinary[i]) << " ";
-    // }
-    // std::cerr << std::endl;
-
-    // Отправка данных
-    uint32_t len = htonl(PacketSendBinary.size());
-
-    // std::cerr << "[SERVER DEBUG] requestType of first packet = "
-    //           << static_cast<int>(packetListForSend.packets[0].requestType) << std::endl;
-
-    send(connection, &len, 4, 0);
-
-    // std::cerr << "[SERVER DEBUG] requestType of first packet = "
-    //           << static_cast<int>(packetListForSend.packets[0].requestType) << std::endl;
-    bytesSent = send(connection, PacketSendBinary.data(), PacketSendBinary.size(), 0);
-
-    // Проверка результата
-    if (bytesSent <= 0)
-      throw exc::SendDataException();
-
-    if (bytesSent != static_cast<ssize_t>(PacketSendBinary.size()))
-      throw exc::SendDataException();
+    transport_.SendFrame(packetBinary, connection);
   } catch (const exc::SendDataException &ex) {
     std::cerr << "Сервер: " << ex.what() << std::endl;
-    std::cerr << "Send failed. Bytes sent = " << bytesSent << std::endl;
     return false;
   } catch (const exc::NetworkException &ex) {
     std::cerr << "Сервер sendPacketListDTO: " << ex.what() << std::endl;
     return false;
   } catch (const std::exception &ex) {
-    std::cerr << "Сервер: Неизвестная ошибка. sendPacketListDTO" << ex.what() << std::endl;
+    std::cerr << "Сервер: Неизвестная ошибка. sendPacketListDTO"
+              << ex.what() << std::endl;
     return false;
   }
   return true;
@@ -242,15 +150,17 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   switch (packetDTOrequestType) {
   case RequestType::RqFrClientChangeUserData:
   case RequestType::RqFrClientChangeUserPassword: {
-    if (!processingRqFrClientchangeDataPassword(packetListReceived, packetDTOrequestType, connection))
+    if (!user_account_update_processor_.Process(*this, packetListReceived,
+                                                packetDTOrequestType,
+                                                connection))
       return false;
-    break;
-
     break;
   }
 
   case RequestType::RqFrClientReInitializeBase: {
-    if (!processingRqFrClientReInitializeBase(packetListReceived, packetDTOrequestType, connection))
+    if (!user_database_init_processor_.Process(*this, packetListReceived,
+                                               packetDTOrequestType,
+                                               connection))
       return false;
     break;
   }
@@ -260,28 +170,38 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   case RequestType::RqFrClientFindUserByPart:
   case RequestType::RqFrClientSetLastReadMessage:
   case RequestType::RqFrClientFindUserByLogin: {
-
-    processingCheckAndRegistryUser(packetListReceived, packetDTOrequestType, connection);
+    if (!user_registration_processor_.Process(*this, packetListReceived,
+                                              packetDTOrequestType,
+                                              connection))
+      return false;
     break;
   }
   // create objects
   case RequestType::RqFrClientCreateUser:
   case RequestType::RqFrClientCreateChat:
   case RequestType::RqFrClientCreateMessage: {
-    if (!processingCreateObjects(packetListReceived, packetDTOrequestType, connection))
+    if (!user_object_creation_processor_.Process(*this, packetListReceived,
+                                                 packetDTOrequestType,
+                                                 connection))
       return false;
     break;
   }
     // get indexes and user Data
   case RequestType::RqFrClientGetUsersData: {
-    processingGetUserData(packetListReceived, packetDTOrequestType, connection);
+    if (!user_data_query_processor_.Process(*this, packetListReceived,
+                                            packetDTOrequestType,
+                                            connection))
+      return false;
     break;
   }
   case RequestType::RqFrClientBlockUser:
   case RequestType::RqFrClientUnBlockUser:
   case RequestType::RqFrClientBunUser:
   case RequestType::RqFrClientUnBunUser: {
-    processingRqFrClientBunBlockUser(packetListReceived, packetDTOrequestType, connection);
+    if (!user_ban_block_processor_.Process(*this, packetListReceived,
+                                           packetDTOrequestType,
+                                           connection))
+      return false;
     break;
   }
   default:
@@ -289,698 +209,20 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   }
   return true;
 }
-
-bool ServerSession::processingRqFrClientBunBlockUser(PacketListDTO &packetListReceived, const RequestType &requestType,
-                                                     int connection) {
-  // создали структуру вектора пакетов для отправки
-  PacketListDTO packetDTOListForSend;
-  packetDTOListForSend.packets.clear();
-
-  // отдельный пакет для отправки
-  PacketDTO packetDTOForSend;
-  packetDTOForSend.requestType = requestType;
-  packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
-  packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
-
-  const auto &packet = static_cast<const StructDTOClass<UserDTO> &>(*packetListReceived.packets[0].structDTOPtr)
-                           .getStructDTOClass();
-
-  // пакет для отправки
-  ResponceDTO responceDTO;
-  responceDTO.anyNumber = 0;
-  responceDTO.anyString = "";
-
-  switch (requestType) {
-  case RequestType::RqFrClientBlockUser: {
-    if (sql_requests_.block_user_srv_sql(packet, this->getPGConnection())) {
-      responceDTO.reqResult = true;
-      responceDTO.anyString = packet.login;
-    } else {
-      responceDTO.reqResult = false;
-    }
-    break;    
-} // case RqFrClientBlockUser
-case RequestType::RqFrClientUnBlockUser: {
-    if (sql_requests_.unblock_user_srv_sql(packet, this->getPGConnection())) {
-      responceDTO.reqResult = true;
-      responceDTO.anyString = packet.login;
-    } else {
-      responceDTO.reqResult = false;
-    }
-    break;
-} // case RqFrClientUnBlockUser
-case RequestType::RqFrClientBunUser: {
-    if (sql_requests_.bun_user_srv_sql(packet, this->getPGConnection())) {
-      responceDTO.reqResult = true;
-      responceDTO.anyString = packet.login;
-    } else {
-      responceDTO.reqResult = false;
-    }
-    break;
-} // case RqFrClientBunUser
-case RequestType::RqFrClientUnBunUser: {
-    if (sql_requests_.unbun_user_srv_sql(packet, this->getPGConnection())) {
-      responceDTO.reqResult = true;
-      responceDTO.anyString = packet.login;
-    } else {
-      responceDTO.reqResult = false;
-    }
-    break;
-} // case RqFrClientUnBunUser
-default:
-break;
-} // switch
-
-packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
-
-packetDTOListForSend.packets.push_back(packetDTOForSend);
-
-  sendPacketListDTO(packetDTOListForSend, connection);
-  return true;
-}
-
-bool ServerSession::processingRqFrClientchangeDataPassword(PacketListDTO &packetListReceived, const RequestType &requestType,
-                                                           int connection) {
-  // создали структуру вектора пакетов для отправки
-  PacketListDTO packetDTOListForSend;
-  packetDTOListForSend.packets.clear();
-
-  switch (requestType) {
-  case RequestType::RqFrClientChangeUserData: {
-    // отдельный пакет для отправки
-    PacketDTO packetDTOForSend;
-    packetDTOForSend.requestType = requestType;
-    packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
-    packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
-
-    const auto &packet = static_cast<const StructDTOClass<UserDTO> &>(*packetListReceived.packets[0].structDTOPtr)
-                             .getStructDTOClass();
-
-    // пакет для отправки
-    ResponceDTO responceDTO;
-    responceDTO.anyNumber = 0;
-    responceDTO.anyString = "";
-
-    if (changeUserDataSrvSQL(packet)) {
-      responceDTO.reqResult = true;
-      responceDTO.anyString = packet.login;
-    } else {
-      responceDTO.reqResult = false;
-    }
-
-    packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
-
-    packetDTOListForSend.packets.push_back(packetDTOForSend);
-    break;
-  }
-  case RequestType::RqFrClientChangeUserPassword: {
-    break;
-  }
-  default:
-    break;
-  } // switch
-
-  sendPacketListDTO(packetDTOListForSend, connection);
-  return true;
-}
-
-bool ServerSession::processingRqFrClientReInitializeBase(PacketListDTO &packetListReceived, const RequestType &requestType,
-                                                         int connection) {
-
-  bool result = sql_requests_.initDatabaseOnServer(_pqConnection);
-
-  // создали структуру вектора пакетов для отправки
-  PacketListDTO packetDTOListForSend;
-  packetDTOListForSend.packets.clear();
-
-  // отдельный пакет для отправки
-  PacketDTO packetDTOForSend;
-  packetDTOForSend.requestType = requestType;
-  packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
-  packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
-
-  const auto &packet = static_cast<const StructDTOClass<UserLoginDTO> &>(*packetListReceived.packets[0].structDTOPtr)
-                           .getStructDTOClass();
-
-  // пакет для отправки
-  ResponceDTO responceDTO;
-  responceDTO.anyNumber = 0;
-  responceDTO.anyString = "";
-
-  if (result) {
-    responceDTO.reqResult = true;
-  } else {
-    responceDTO.reqResult = false;
-  }
-
-  packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
-
-  packetDTOListForSend.packets.push_back(packetDTOForSend);
-
-  sendPacketListDTO(packetDTOListForSend, connection);
-  return true;
-}
-
-bool ServerSession::processingCheckAndRegistryUser(PacketListDTO &packetListReceived, const RequestType &requestType,
-                                                   int connection) {
-
-  // создали структуру вектора пакетов для отправки
-  PacketListDTO packetDTOListForSend;
-  packetDTOListForSend.packets.clear();
-
-  switch (requestType) {
-  case RequestType::RqFrClientCheckLogin: {
-
-    // отдельный пакет для отправки
-    PacketDTO packetDTOForSend;
-    packetDTOForSend.requestType = requestType;
-    packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
-    packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
-
-    const auto &packet = static_cast<const StructDTOClass<UserLoginDTO> &>(*packetListReceived.packets[0].structDTOPtr)
-                             .getStructDTOClass();
-
-    // пакет для отправки
-    ResponceDTO responceDTO;
-    responceDTO.anyNumber = 0;
-
-    if (checkUserLoginSrvSQL(packet.login)) {
-      responceDTO.reqResult = true;
-      responceDTO.anyString = packet.login;
-    } else {
-      responceDTO.reqResult = false;
-      responceDTO.anyString = "@";
-    }
-
-    packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
-
-    packetDTOListForSend.packets.push_back(packetDTOForSend);
-
-    break;
-  }
-  case RequestType::RqFrClientCheckLogPassword: {
-    // отдельный пакет для отправки
-    PacketDTO packetDTOForSend;
-    packetDTOForSend.requestType = requestType;
-    packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
-    packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
-
-    const auto &packet = static_cast<const StructDTOClass<UserLoginPasswordDTO> &>(
-                             *packetListReceived.packets[0].structDTOPtr)
-                             .getStructDTOClass();
-
-    // пакет для отправки
-    ResponceDTO responceDTO;
-    responceDTO.anyNumber = 0;
-
-    if (checkUserPasswordSrvSql(packet)) {
-      responceDTO.reqResult = true;
-      responceDTO.anyString = packet.login;
-    } else {
-      responceDTO.reqResult = false;
-      responceDTO.anyString = "@";
-    }
-
-    packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
-
-    packetDTOListForSend.packets.push_back(packetDTOForSend);
-
-    break;
-  }
-  case RequestType::RqFrClientRegisterUser: {
-
-    const auto &packet = static_cast<const StructDTOClass<UserLoginDTO> &>(*packetListReceived.packets[0].structDTOPtr)
-                             .getStructDTOClass();
-
-    const auto packetListDTOVector = registerOnDeviceDataSrvSQL(packet.login);
-
-    if (!packetListDTOVector.has_value())
-      return false;
-
-    packetDTOListForSend = packetListDTOVector.value();
-
-    break;
-  }
-  case RequestType::RqFrClientFindUserByPart: {
-    const auto &packet = static_cast<const StructDTOClass<UserLoginPasswordDTO> &>(
-                             *packetListReceived.packets[0].structDTOPtr)
-                             .getStructDTOClass();
-
-    auto userDTOVector = sql_requests_.getUsersByTextPartSQL(this->getPGConnection(), packet);
-
-    if (userDTOVector.has_value() && !userDTOVector->empty()) {
-
-      // пакет для отправки
-      PacketDTO packetDTOForSend;
-      packetDTOForSend.requestType = RequestType::RqFrClientFindUserByPart;
-      packetDTOForSend.structDTOClassType = StructDTOClassType::userDTO;
-      packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
-
-      for (const auto &userDTO : userDTOVector.value()) {
-
-        packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<UserDTO>>(userDTO);
-
-        packetDTOListForSend.packets.push_back(packetDTOForSend);
-      }
-    } // if
-    else {
-      // пустой ответ
-      ResponceDTO responceDTO{};
-      responceDTO.reqResult = false;
-      responceDTO.anyNumber = 0;
-      responceDTO.anyString = "";
-
-      PacketDTO packetDTOForSend;
-      packetDTOForSend.requestType = RequestType::RqFrClientFindUserByPart;
-      packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
-      packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
-      packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
-
-      packetDTOListForSend.packets.push_back(packetDTOForSend);
-    }
-
-    break;
-  }
-  case RequestType::RqFrClientSetLastReadMessage: {
-    const auto &packet = static_cast<const StructDTOClass<MessageDTO> &>(*packetListReceived.packets[0].structDTOPtr)
-                             .getStructDTOClass();
-
-    auto value = sql_requests_.setLastReadMessageSQL(this->getPGConnection(), packet);
-
-    ResponceDTO responceDTO;
-    responceDTO.anyNumber = 0;
-    responceDTO.anyString = "";
-
-    // пакет для отправки
-    PacketDTO packetDTOForSend;
-    packetDTOForSend.requestType = RequestType::RqFrClientSetLastReadMessage;
-    packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
-    packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
-
-    if (!value) {
-      std::cerr << "Сервер: RqFrClientSetLastReadMessage. Ошибка базы. Значение не установлено." << std::endl;
-      responceDTO.reqResult = false;
-    } else {
-      responceDTO.reqResult = true;
-    }
-
-    packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
-    packetDTOListForSend.packets.push_back(packetDTOForSend);
-    break;
-  }
-
-  default:
-    throw exc::HeaderWrongTypeException();
-    break;
-  }
-
-  sendPacketListDTO(packetDTOListForSend, connection);
-  return true;
-}
 //
 //
 //
-bool ServerSession::processingCreateObjects(PacketListDTO &packetListReceived, const RequestType &requestType,
-                                            int connection) { // создали структуру вектора пакетов для отправки
 
-  PacketListDTO packetDTOListForSend;
-  packetDTOListForSend.packets.clear();
 
-  try {
-    switch (requestType) {
-    case RequestType::RqFrClientCreateUser: {
 
-      if (packetListReceived.packets.empty() ||
-          packetListReceived.packets[0].structDTOClassType != StructDTOClassType::userDTO) {
-        throw exc::EmptyPacketException();
-      }
-
-      // отдельный пакет для отправки
-      PacketDTO packetDTOForSend;
-      packetDTOForSend.requestType = requestType;
-      packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
-      packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
-
-      const auto &packet = static_cast<const StructDTOClass<UserDTO> &>(*packetListReceived.packets[0].structDTOPtr)
-                               .getStructDTOClass();
-
-      // пакет для отправки
-      ResponceDTO responceDTO;
-      responceDTO.anyNumber = 0;
-      responceDTO.anyString = "";
-
-      if (sql_requests_.createUserSQL(this->getPGConnection(), packet)) {
-        responceDTO.reqResult = true;
-      } else
-        responceDTO.reqResult = false;
-
-      packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
-
-      packetDTOListForSend.packets.push_back(packetDTOForSend);
-
-      break;
-    }
-    case RequestType::RqFrClientCreateChat: {
-      // отдельный пакет для отправки
-      PacketDTO packetDTOForSend;
-      packetDTOForSend.requestType = requestType;
-      packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
-      packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
-
-      // берем чат
-      const auto &packetChat = static_cast<const StructDTOClass<ChatDTO> &>(*packetListReceived.packets[0].structDTOPtr)
-                                   .getStructDTOClass();
-
-      // берем cообщение
-      auto &packetMessage = static_cast<StructDTOClass<MessageChatDTO> &>(*packetListReceived.packets[1].structDTOPtr)
-                                .getStructDTOClass();
-
-      // пакет для отправки
-      ResponceDTO responceDTO;
-
-      const auto &result = (sql_requests_.createChatAndMessageSQL(this->getPGConnection(), packetChat, packetMessage));
-
-      if (result.size() > 0) {
-
-        responceDTO.reqResult = true;
-        // chat_id
-        responceDTO.anyNumber = static_cast<size_t>(std::stoull(result[1]));
-        // message_id
-        responceDTO.anyString = result[0];
-
-        packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
-
-        packetDTOListForSend.packets.push_back(packetDTOForSend);
-      } else {
-        responceDTO.reqResult = false;
-        responceDTO.anyString = "";
-        responceDTO.anyNumber = 0;
-      }
-      break;
-    }
-    case RequestType::RqFrClientCreateMessage: {
-
-      // отдельный пакет для отправки
-      PacketDTO packetDTOForSend;
-      packetDTOForSend.requestType = requestType;
-      packetDTOForSend.structDTOClassType = StructDTOClassType::responceDTO;
-      packetDTOForSend.reqDirection = RequestDirection::ClientToSrv;
-
-      // пакет для отправки
-      ResponceDTO responceDTO;
-      responceDTO.anyNumber = 0;
-
-      // доcтаем пакерт
-      const auto &messageDTO = static_cast<const StructDTOClass<MessageDTO> &>(
-                                   *packetListReceived.packets[0].structDTOPtr)
-                                   .getStructDTOClass();
-
-      const auto &result = sql_requests_.createMessageSQL(this->getPGConnection(), messageDTO);
-
-      if (result) {
-        responceDTO.reqResult = true;
-        responceDTO.anyString = std::to_string(result);
-
-        packetDTOForSend.structDTOPtr = std::make_shared<StructDTOClass<ResponceDTO>>(responceDTO);
-
-        packetDTOListForSend.packets.push_back(packetDTOForSend);
-      } // if result
-      else {
-        responceDTO.reqResult = false;
-        responceDTO.anyString = "0";
-      }
-
-      break;
-    }
-    default:
-      throw exc::HeaderWrongTypeException();
-      break;
-    }
-    // }// for
-    sendPacketListDTO(packetDTOListForSend, connection);
-  } // try
-  catch (const exc::SendDataException &ex) {
-    std::cerr << "Сервер: " << ex.what() << std::endl;
-    return false;
-  } catch (const exc::NetworkException &ex) {
-    std::cerr << "Сервер: " << ex.what() << std::endl;
-    return false;
-  } catch (const std::bad_cast &ex) {
-    std::cerr << "Сервер: Неправильный тип пакета. " << ex.what() << std::endl;
-    return false;
-  }
-  return true;
-}
 //
 //
 //
-bool ServerSession::processingGetUserData(PacketListDTO &packetListReceived, const RequestType &requestType,
-                                          int connection) {
 
-  // вектор логинов для запроса в базе
-  std::vector<std::string> logins;
-  logins.clear();
-
-  // создали структуру вектора пакетов для отправки
-  PacketListDTO packetDTOListForSend;
-
-  try {
-    // заполняем вектор логинов для запроса у базы
-    for (const auto &packetDTOReceived : packetListReceived.packets) {
-
-      if (packetDTOReceived.requestType != RequestType::RqFrClientGetUsersData)
-        throw exc::HeaderWrongTypeException();
-
-      const auto &packet = static_cast<const StructDTOClass<UserLoginDTO> &>(*packetDTOReceived.structDTOPtr)
-                               .getStructDTOClass();
-
-      auto result = checkUserLoginSrvSQL(packet.login);
-
-      if (!result)
-        throw exc::UserNotFoundException();
-
-      logins.push_back(packet.login);
-    } // for
-
-    // получаем массив пользователей
-    if (logins.size() == 0)
-      throw exc::UserNotFoundException();
-
-    auto userDTOVector = FillForSendSeveralUsersDTOFromSrvSQL(logins);
-
-    if (!userDTOVector.has_value())
-      throw exc::UserNotFoundException();
-
-    for (const auto &userDTO : userDTOVector.value()) {
-
-      // формируем пользователя
-      PacketDTO packetDTO;
-      packetDTO.requestType = RequestType::RqFrClientGetUsersData;
-      packetDTO.structDTOClassType = StructDTOClassType::userDTO;
-      packetDTO.reqDirection = RequestDirection::ClientToSrv;
-      packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserDTO>>(userDTO);
-
-      packetDTOListForSend.packets.push_back(packetDTO);
-    } // for user
-
-    sendPacketListDTO(packetDTOListForSend, connection);
-  } // try
-  catch (const exc::SendDataException &ex) {
-    std::cerr << "Сервер: " << ex.what() << std::endl;
-    return false;
-  } catch (const exc::HeaderWrongTypeException &ex) {
-    std::cerr << "Сервер: " << ex.what() << std::endl;
-    return false;
-  } catch (const exc::UserNotFoundException &ex) {
-    std::cerr << "Сервер: " << ex.what() << std::endl;
-    return false;
-  }
-  return true;
-}
 //
 //
 //
-bool ServerSession::changeUserDataSrvSQL(const UserDTO &userDTO) {
 
-  PGresult *result = nullptr;
-
-  std::string sql = "";
-  std::string login = userDTO.login;
-  std::string name = userDTO.userName;
-  std::string email = userDTO.email;
-  std::string phone = userDTO.phone;
-
-  try {
-
-    for (std::size_t pos = 0; (pos = login.find('\'', pos)) != std::string::npos; pos += 2) {
-      login.replace(pos, 1, "''");
-    }
-    for (std::size_t pos = 0; (pos = name.find('\'', pos)) != std::string::npos; pos += 2) {
-      name.replace(pos, 1, "''");
-    }
-    for (std::size_t pos = 0; (pos = email.find('\'', pos)) != std::string::npos; pos += 2) {
-      email.replace(pos, 1, "''");
-    }
-    for (std::size_t pos = 0; (pos = phone.find('\'', pos)) != std::string::npos; pos += 2) {
-      phone.replace(pos, 1, "''");
-    }
-
-    sql = "UPDATE public.users SET name = '" + name + "', email = '" + email + "', phone = '" + phone + "' WHERE login = '" + login + "';";
-
-    result = sql_requests_.execSQL(this->getPGConnection(), sql);
-
-    if (result == nullptr)
-      throw exc::SQLSelectException(", changeUserDataSrvSQL");
-
-    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-      PQclear(result);
-      return false;
-    }
-
-    const char *tuples = PQcmdTuples(result);
-    const long affectedRows = tuples != nullptr ? std::strtol(tuples, nullptr, 10) : 0;
-    PQclear(result);
-
-    return affectedRows > 0;
-  } // try
-  catch (const exc::SQLSelectException &ex) {
-    std::cerr << "Сервер: " << ex.what() << std::endl;
-    if (result != nullptr)
-      PQclear(result);
-    return false;
-  }
-}
-
-bool ServerSession::checkUserLoginSrvSQL(const std::string &login) {
-
-  PGresult *result;
-
-  std::string sql = "";
-
-  try {
-
-    std::string loginEsc = login;
-    for (std::size_t pos = 0; (pos = loginEsc.find('\'', pos)) != std::string::npos; pos += 2) {
-      loginEsc.replace(pos, 1, "''");
-    }
-
-    sql = R"(select id from public.users as u where u.login = ')";
-    sql += loginEsc + "';";
-
-    result = sql_requests_.execSQL(this->getPGConnection(), sql);
-
-    if (result == nullptr)
-      throw exc::SQLSelectException(", FindUserByLoginSrv");
-
-    if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result) > 0) {
-      PQclear(result);
-      return true;
-    } else {
-      return false;
-    }
-  } // try
-  catch (const exc::SQLSelectException &ex) {
-    std::cerr << "Сервер: " << ex.what() << std::endl;
-    return false;
-  }
-}
-//
-//
-//
-bool ServerSession::checkUserPasswordSrvSql(const UserLoginPasswordDTO &userLoginPasswordDTO) {
-  PGresult *result;
-
-  std::string sql = "";
-
-  try {
-
-    std::string loginEsc = userLoginPasswordDTO.login;
-    for (std::size_t pos = 0; (pos = loginEsc.find('\'', pos)) != std::string::npos; pos += 2) {
-      loginEsc.replace(pos, 1, "''");
-    }
-
-    std::string passwordHashEsc = userLoginPasswordDTO.passwordhash;
-    for (std::size_t pos = 0; (pos = passwordHashEsc.find('\'', pos)) != std::string::npos; pos += 2) {
-      passwordHashEsc.replace(pos, 1, "''");
-    }
-
-    sql = R"(with user_record as (
-		select id as user_id 
-		from public.users 
-		where login = ')";
-    sql += loginEsc + "')";
-
-    sql += R"(select password_hash from public.users_passhash as ph join user_record ur on ph
-	.user_id = ur.user_id where password_hash = ')";
-    sql += passwordHashEsc + "';";
-
-    result = sql_requests_.execSQL(this->getPGConnection(), sql);
-
-    if (result == nullptr)
-      throw exc::SQLSelectException(", checkUserPasswordSrvSql");
-
-    if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result) > 0) {
-      PQclear(result);
-      return true;
-    } else {
-      return false;
-    }
-  } // try
-  catch (const exc::SQLSelectException &ex) {
-    std::cerr << "Сервер: " << ex.what() << std::endl;
-    return false;
-  }
-}
-//
-//
-//
-std::string ServerSession::getUserPasswordSrvSql(const UserLoginPasswordDTO &userLoginPasswordDTO) {
-  PGresult *result;
-
-  std::string sql = "";
-
-  try {
-
-    std::string loginEsc = userLoginPasswordDTO.login;
-    for (std::size_t pos = 0; (pos = loginEsc.find('\'', pos)) != std::string::npos; pos += 2) {
-      loginEsc.replace(pos, 1, "''");
-    }
-
-    std::string passwordHashEsc = userLoginPasswordDTO.passwordhash;
-    for (std::size_t pos = 0; (pos = passwordHashEsc.find('\'', pos)) != std::string::npos; pos += 2) {
-      passwordHashEsc.replace(pos, 1, "''");
-    }
-
-    sql = R"(with user_record as (
-		select id as user_id 
-		from public.users 
-		where login = ')";
-    sql += loginEsc + "')";
-
-    sql += R"(select password_hash from public.users_passhash as ph join user_record ur on ph
-	.user_id = ur.user_id where password_hash = ')";
-    sql += passwordHashEsc + "';";
-
-    result = sql_requests_.execSQL(this->getPGConnection(), sql);
-
-    if (result == nullptr)
-      throw exc::SQLSelectException(", checkUserPasswordSrvSql");
-
-    if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result) > 0) {
-
-      std::string value = PQgetvalue(result, 0, 0);
-      PQclear(result);
-      return value;
-
-    } else {
-      return "";
-    }
-  } // try
-  catch (const exc::SQLSelectException &ex) {
-    std::cerr << "Сервер: " << ex.what() << std::endl;
-    return "";
-  }
-}
 
 //
 //
