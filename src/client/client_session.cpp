@@ -468,29 +468,15 @@ bool ClientSession::checkUserPasswordCl(const std::string &user_login,
 // transport
 //
 //
-bool ClientSession::findServerAddressCl(
-    ServerConnectionConfig &server_connection_config,
-    ServerConnectionMode &server_connection_mode) {
-  return _core.findServerAddressCore(server_connection_config,
-                                     server_connection_mode);
-}
+
 //
 //
 //
 
-int ClientSession::createConnectionCl(
-    ServerConnectionConfig &server_connection_config,
-    ServerConnectionMode &server_connection_mode) {
-  return _core.createConnectionCore(server_connection_config,
-                                    server_connection_mode);
-}
 //
 //
 //
-bool ClientSession::discoverServerOnLANCl(
-    ServerConnectionConfig &server_connection_config) {
-  return _core.discoverServerOnLANCore(server_connection_config);
-}
+
 //
 //
 //
@@ -511,10 +497,6 @@ PacketListDTO ClientSession::processingRequestToServerCl(
 //
 //
 // utilities
-
-bool ClientSession::initServerConnectionCl() {
-  return _core.initServerConnectionCore();
-}
 
 void ClientSession::resetSessionDataCl() { _core.resetSessionDataCore(); }
 

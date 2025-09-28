@@ -71,18 +71,12 @@ class ClientSession : public QObject {
   bool checkUserPasswordCl(const std::string &user_login,
                            const std::string &password);
 
-  bool findServerAddressCl(ServerConnectionConfig &server_connection_config,
-                           ServerConnectionMode &server_connection_mode);
-  int createConnectionCl(ServerConnectionConfig &server_connection_config,
-                         ServerConnectionMode &server_connection_mode);
-  bool discoverServerOnLANCl(ServerConnectionConfig &server_connection_config);
   PacketListDTO getDatafromServerCl(
       const std::vector<std::uint8_t> &packet_list_send);
   PacketListDTO processingRequestToServerCl(
       std::vector<PacketDTO> &packet_dto_vector,
       const RequestType &request_type);
 
-  bool initServerConnectionCl();
   void resetSessionDataCl();
   bool reInitilizeBaseCl();
 
