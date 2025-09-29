@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dto/dto_struct.h"
+#include "session_transport/session_transport.h"
 #include "sql_queries/message_sql_writer.h"
 #include "sql_queries/user_sql_reader.h"
 
@@ -9,8 +10,6 @@
 #include <vector>
 
 class ServerSession;
-class SessionTransport;
-
 class UserRegistrationProcessor {
  public:
   UserRegistrationProcessor(UserSqlReader &user_sql_reader,

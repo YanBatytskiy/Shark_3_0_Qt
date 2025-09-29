@@ -13,11 +13,10 @@
 #include "client/processors/client_session_dto_writer.h"
 #include "client/processors/client_session_modify_objects.h"
 #include "client/tcp_transport/session_types.h"
+#include "chat/chat.h"
+#include "chat_system/chat_system.h"
 #include "dto_struct.h"
-
-class ChatSystem;
-class Chat;
-class User;
+#include "user/user.h"
 
 class ClientSession : public QObject {
   Q_OBJECT

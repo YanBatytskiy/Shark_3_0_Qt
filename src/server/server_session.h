@@ -7,6 +7,7 @@
 #include "processors/user_object_creation_processor.h"
 #include "processors/user_registration_processor.h"
 #include "processors/user_data_query_processor.h"
+#include "session_transport/session_transport.h"
 #include "sql_queries/chat_sql_reader.h"
 #include "sql_queries/chat_sql_writer.h"
 #include "sql_queries/database_sql_manager.h"
@@ -20,8 +21,6 @@
 #include <vector>
 
 #define MESSAGE_LENGTH 4096 // Максимальный размер буфера для данных
-
-class SessionTransport;
 
 struct ServerConnectionConfig {
   std::string addressLocalHost = "127.0.0.1";

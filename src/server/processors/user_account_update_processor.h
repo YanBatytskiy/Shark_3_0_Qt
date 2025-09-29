@@ -2,10 +2,9 @@
 
 #include "dto/dto_struct.h"
 #include "sql_queries/user_sql_writer.h"
+#include "session_transport/session_transport.h"
 
 class ServerSession;
-class SessionTransport;
-
 class UserAccountUpdateProcessor {
  public:
   explicit UserAccountUpdateProcessor(
