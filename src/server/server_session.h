@@ -1,6 +1,6 @@
 #pragma once
 #include "dto/dto_struct.h"
-#include "packet_parser.h"
+#include "packet_parser/packet_parser.h"
 #include "processors/user_account_update_processor.h"
 #include "processors/user_ban_block_processor.h"
 #include "processors/user_database_init_processor.h"
@@ -13,14 +13,15 @@
 #include "sql_queries/message_sql_writer.h"
 #include "sql_queries/user_sql_reader.h"
 #include "sql_queries/user_sql_writer.h"
-#include "session_transport.h"
-#include "sql_commands.h"
+#include "sql_commands/sql_commands.h"
 #include <cstdint>
 #include <libpq-fe.h>
 #include <optional>
 #include <vector>
 
 #define MESSAGE_LENGTH 4096 // Максимальный размер буфера для данных
+
+class SessionTransport;
 
 struct ServerConnectionConfig {
   std::string addressLocalHost = "127.0.0.1";
@@ -32,7 +33,6 @@ struct ServerConnectionConfig {
 
 class ServerSession {
 private:
-  SessionTransport transport_;
   PacketParser packet_parser_;
   ServerConnectionConfig _serverConnectionConfig;
   PGconn *_pqConnection;
@@ -61,30 +61,20 @@ public:
 
   ServerConnectionConfig &getServerConnectionConfig();
 
-  int &getConnection();
-  const int &getConnection() const;
-  //
-  //
-  // setters
   void setPgConnection(PGconn *connection);
 
-  void setConnection(const int &connection);
-  //
-  //
-  // transport
+  void ProcessIncoming(SessionTransport &transport);
 
-  bool isConnected() const;
-
-  void runServer(int socketFd);
-
-  void listeningClients();
-
-  bool sendPacketListDTO(PacketListDTO &packetListForSend, int connection);
+  bool sendPacketListDTO(SessionTransport &transport,
+                         PacketListDTO &packetListForSend, int connection);
   //
   //
   // Request processing
 
-  bool routingRequestsFromClient(PacketListDTO &packetListReceived, const RequestType &requestType, int connection);
+  bool routingRequestsFromClient(SessionTransport &transport,
+                                 PacketListDTO &packetListReceived,
+                                 const RequestType &requestType,
+                                 int connection);
 
   // transport sending
   std::optional<UserDTO> FillForSendUserDTOFromSrvSQL(const std::string &userLogin, bool loginUser);

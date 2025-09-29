@@ -1,7 +1,9 @@
 #include "db/postgres_db.h"
 #include "server_session.h"
-#include "sql_commands.h"
+#include "session_transport/session_transport.h"
+#include "sql_commands/sql_commands.h"
 #include "system/system_function.h"
+#include "exceptions_cpp/network_exception.h"
 #include <arpa/inet.h>
 #include <cstring>
 #include <fstream>
@@ -50,6 +52,7 @@ int main() {
   std::cout << "Port: " << postgress.getPort() << std::endl;
   std::cout << "Base: " << postgress.getBaseName() << std::endl << std::endl;
 
+  SessionTransport session_transport;
   ServerSession serverSession(SQLRequests{});
   serverSession.setPgConnection(conn);
 
@@ -90,27 +93,31 @@ int main() {
 
   std::cout << "[INFO] TCP-сервер запущен на порту " << serverSession.getServerConnectionConfig().port << std::endl;
 
-while (true) {
-  serverSession.runServer(socket_file_descriptor);
+  while (true) {
+    try {
+      session_transport.EnsureConnected(socket_file_descriptor);
+    } catch (const exc::ConnectNotAcceptException &ex) {
+      std::cerr << "Сервер. " << ex.what() << std::endl;
+    } catch (const std::exception &ex) {
+      std::cerr << "Сервер. Неизвестная ошибка. " << ex.what() << std::endl;
+    }
 
-  if (serverSession.isConnected()) {
-    int fd = serverSession.getConnection();
+    if (session_transport.IsConnected()) {
+      int fd = session_transport.Connection();
 
-    pollfd pfd{};
-    pfd.fd = fd;
-    pfd.events = POLLIN;
+      pollfd pfd{};
+      pfd.fd = fd;
+      pfd.events = POLLIN;
 
-    int pr = ::poll(&pfd, 1, 0);            // без блокировки
-    if (pr > 0) {
-      if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
-        close(fd);
-        serverSession.setConnection(-1);
-      } else if (pfd.revents & POLLIN) {
-        serverSession.listeningClients();
+      int pr = ::poll(&pfd, 1, 0); // без блокировки
+      if (pr > 0) {
+        if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+          session_transport.Reset();
+        } else if (pfd.revents & POLLIN) {
+          serverSession.ProcessIncoming(session_transport);
+        }
       }
     }
-  }
-
 
     usleep(50000);
   }

@@ -14,6 +14,7 @@ UserDataQueryProcessor::UserDataQueryProcessor(
     : user_sql_reader_(user_sql_reader) {}
 
 bool UserDataQueryProcessor::Process(ServerSession &session,
+                                     SessionTransport &transport,
                                      PacketListDTO &packet_list,
                                      const RequestType &request_type,
                                      int connection) {
@@ -62,7 +63,7 @@ bool UserDataQueryProcessor::Process(ServerSession &session,
       response_packet_list.packets.push_back(packet);
     }
 
-    session.sendPacketListDTO(response_packet_list, connection);
+    session.sendPacketListDTO(transport, response_packet_list, connection);
   } catch (const exc::SendDataException &ex) {
     std::cerr << "Сервер: " << ex.what() << std::endl;
     return false;

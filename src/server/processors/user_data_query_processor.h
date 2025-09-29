@@ -8,13 +8,15 @@
 #include <vector>
 
 class ServerSession;
+class SessionTransport;
 
 class UserDataQueryProcessor {
  public:
   explicit UserDataQueryProcessor(UserSqlReader &user_sql_reader);
 
-  bool Process(ServerSession &session, PacketListDTO &packet_list,
-               const RequestType &request_type, int connection);
+  bool Process(ServerSession &session, SessionTransport &transport,
+               PacketListDTO &packet_list, const RequestType &request_type,
+               int connection);
 
  private:
   UserSqlReader &user_sql_reader_;

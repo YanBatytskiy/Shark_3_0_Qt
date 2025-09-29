@@ -3,6 +3,36 @@
 #include <poll.h>
 #include <unistd.h>
 
+#include <QString>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <memory>
+#include <optional>
+#include <string>
+#include <thread>
+#include <utility>
+#include <vector>
+
+#include "chat/chat.h"
+#include "chat_system/chat_system.h"
+#include "dto/dto_struct.h"
+#include "exceptions_cpp/login_exception.h"
+#include "exceptions_qt/exception_login.h"
+#include "exceptions_qt/exception_network.h"
+#include "exceptions_qt/exception_router.h"
+#include "system/date_time_utils.h"
+#include "system/picosha2.h"
+#include "system/serialize.h"
+#include "system/system_function.h"
+#include "user/user.h"
+#include "user/user_chat_list.h"
+
+#ifndef POLLRDHUP
+#define POLLRDHUP 0
+#endif
+
 namespace {
 constexpr int kInvalidSocket = -1;
 }
@@ -136,48 +166,43 @@ void ClientCore::updateConnectionStateCore(bool online,
 }
 
 // === monitoring ===
-void ClientCore::connectionMonitorLoopCore() {
-  try {
-    bool online = getIsServerOnlineCore();
+void ClientCore::connectionMonitorLoopCore(std::atomic_bool &running_flag) {
+  bool online = getIsServerOnlineCore();
 
-    while (connection_thread_running_.load(std::memory_order_acquire)) {
-      if (!online) {
-        auto &config = getServerConnectionConfigCore();
-        auto &mode_ref = getServerConnectionModeCore();
+  while (running_flag.load(std::memory_order_acquire)) {
+    if (!online) {
+      auto &config = getServerConnectionConfigCore();
+      auto &mode_ref = getServerConnectionModeCore();
 
-        if (!findServerAddressCore(config, mode_ref)) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(500));
-          continue;
-        }
-
-        const int fd = createConnectionCore(config, mode_ref);
-
-        if (fd < 0) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(500));
-          continue;
-        }
-
-        online = true;
+      if (!findServerAddressCore(config, mode_ref)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         continue;
       }
 
-      const int fd = getSocketFdCore();
-      if (!socketAliveCore(fd)) {
-        if (fd >= 0) {
-          ::close(fd);
-        }
-        setSocketFdCore(-1);
-        online = false;
+      const int fd = createConnectionCore(config, mode_ref);
+
+      if (fd < 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         continue;
       }
 
+      online = true;
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      continue;
     }
-  } catch (const std::exception &) {
-    connection_thread_running_.store(false, std::memory_order_release);
-    return;
+
+    const int fd = getSocketFdCore();
+    if (!socketAliveCore(fd)) {
+      if (fd >= 0) {
+        ::close(fd);
+      }
+      setSocketFdCore(-1);
+      online = false;
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      continue;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 }
 

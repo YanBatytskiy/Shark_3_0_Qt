@@ -6,6 +6,7 @@
 #include "sql_queries/user_sql_writer.h"
 
 class ServerSession;
+class SessionTransport;
 
 class UserObjectCreationProcessor {
  public:
@@ -13,8 +14,9 @@ class UserObjectCreationProcessor {
                               ChatSqlWriter &chat_sql_writer,
                               MessageSqlWriter &message_sql_writer);
 
-  bool Process(ServerSession &session, PacketListDTO &packet_list,
-               const RequestType &request_type, int connection);
+  bool Process(ServerSession &session, SessionTransport &transport,
+               PacketListDTO &packet_list, const RequestType &request_type,
+               int connection);
 
  private:
   UserSqlWriter &user_sql_writer_;

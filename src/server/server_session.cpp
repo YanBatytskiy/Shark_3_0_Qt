@@ -5,7 +5,8 @@
 #include "exceptions_cpp/sql_exception.h"
 #include "exceptions_cpp/validation_exception.h"
 #include "message/message.h"
-#include "sql_commands.h"
+#include "sql_commands/sql_commands.h"
+#include "session_transport/session_transport.h"
 #include "processors/user_account_update_processor.h"
 #include "processors/user_ban_block_processor.h"
 #include "processors/user_database_init_processor.h"
@@ -30,8 +31,7 @@
 #include <vector>
 
 ServerSession::ServerSession(SQLRequests sql_requests)
-    : transport_(),
-      packet_parser_(),
+    : packet_parser_(),
       _serverConnectionConfig(),
       _pqConnection(nullptr),
       sql_requests_(std::move(sql_requests)),
@@ -57,70 +57,48 @@ ServerConnectionConfig &ServerSession::getServerConnectionConfig() {
   return _serverConnectionConfig;
 }
 
-int &ServerSession::getConnection() { return transport_.Connection(); }
-
-const int &ServerSession::getConnection() const {
-  return transport_.Connection();
-}
-
 // setters
 void ServerSession::setPgConnection(PGconn *connection) { _pqConnection = connection; }
 
-void ServerSession::setConnection(const int &connection) {
-  transport_.SetConnection(connection);
-}
 //
 //
 // transport
 
-bool ServerSession::isConnected() const { return transport_.IsConnected(); }
-
-void ServerSession::runServer(int socketFd) {
+void ServerSession::ProcessIncoming(SessionTransport &transport) {
   try {
-    transport_.EnsureConnected(socketFd);
-  } catch (const exc::ConnectNotAcceptException &ex) {
-    std::cerr << "Сервер. " << ex.what() << std::endl;
-  } catch (const std::exception &ex) {
-    std::cerr << "Сервер. Неизвестная ошибка. " << ex.what() << std::endl;
-  }
-}
-//
-//
-//
-void ServerSession::listeningClients() {
-  try {
-    if (!transport_.IsConnected()) {
+    if (!transport.IsConnected()) {
       throw exc::SocketInvalidException();
     }
 
-    auto buffer = transport_.ReceiveFrame();
+    auto buffer = transport.ReceiveFrame();
     auto parsed = packet_parser_.ParseIncoming(buffer);
     auto packetListReceived = std::move(parsed.payload);
 
-    routingRequestsFromClient(packetListReceived, parsed.request_type,
-                              transport_.Connection());
+    routingRequestsFromClient(transport, packetListReceived,
+                              parsed.request_type, transport.Connection());
   } catch (const exc::SocketInvalidException &ex) {
     std::cerr << "Сервер: " << ex.what() << " = "
-              << transport_.Connection() << std::endl;
-    transport_.Reset();
+              << transport.Connection() << std::endl;
+    transport.Reset();
   } catch (const exc::CreateBufferException &ex) {
     std::cerr << "Сервер: " << ex.what() << " = " << MESSAGE_LENGTH
               << std::endl;
   } catch (const exc::ReceiveDataException &ex) {
     std::cerr << "Сервер: " << ex.what() << std::endl;
-    transport_.Reset();
+    transport.Reset();
   } catch (const exc::HeaderWrongTypeException &ex) {
     std::cerr << "Сервер: " << ex.what() << std::endl;
-    transport_.Reset();
+    transport.Reset();
   } catch (const exc::HeaderWrongDataException &ex) {
     std::cerr << "Сервер: " << ex.what() << std::endl;
-    transport_.Reset();
+    transport.Reset();
   }
 }
 //
 //
 //
-bool ServerSession::sendPacketListDTO(PacketListDTO &packetListForSend,
+bool ServerSession::sendPacketListDTO(SessionTransport &transport,
+                                      PacketListDTO &packetListForSend,
                                       int connection) {
   try {
     auto packetBinary = serializePacketList(packetListForSend.packets);
@@ -129,7 +107,7 @@ bool ServerSession::sendPacketListDTO(PacketListDTO &packetListForSend,
       throw exc::SendDataException();
     }
 
-    transport_.SendFrame(packetBinary, connection);
+    transport.SendFrame(packetBinary, connection);
   } catch (const exc::SendDataException &ex) {
     std::cerr << "Сервер: " << ex.what() << std::endl;
     return false;
@@ -148,7 +126,9 @@ bool ServerSession::sendPacketListDTO(PacketListDTO &packetListForSend,
 //
 // Request processing
 
-bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived, const RequestType &requestType,
+bool ServerSession::routingRequestsFromClient(SessionTransport &transport,
+                                              PacketListDTO &packetListReceived,
+                                              const RequestType &requestType,
                                               int connection) {
 
   const auto packetDTOrequestType = packetListReceived.packets[0].requestType;
@@ -157,7 +137,8 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   switch (packetDTOrequestType) {
   case RequestType::RqFrClientChangeUserData:
   case RequestType::RqFrClientChangeUserPassword: {
-    if (!user_account_update_processor_.Process(*this, packetListReceived,
+    if (!user_account_update_processor_.Process(*this, transport,
+                                                packetListReceived,
                                                 packetDTOrequestType,
                                                 connection))
       return false;
@@ -165,7 +146,8 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   }
 
   case RequestType::RqFrClientReInitializeBase: {
-    if (!user_database_init_processor_.Process(*this, packetListReceived,
+    if (!user_database_init_processor_.Process(*this, transport,
+                                               packetListReceived,
                                                packetDTOrequestType,
                                                connection))
       return false;
@@ -177,7 +159,8 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   case RequestType::RqFrClientFindUserByPart:
   case RequestType::RqFrClientSetLastReadMessage:
   case RequestType::RqFrClientFindUserByLogin: {
-    if (!user_registration_processor_.Process(*this, packetListReceived,
+    if (!user_registration_processor_.Process(*this, transport,
+                                              packetListReceived,
                                               packetDTOrequestType,
                                               connection))
       return false;
@@ -187,7 +170,8 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   case RequestType::RqFrClientCreateUser:
   case RequestType::RqFrClientCreateChat:
   case RequestType::RqFrClientCreateMessage: {
-    if (!user_object_creation_processor_.Process(*this, packetListReceived,
+    if (!user_object_creation_processor_.Process(*this, transport,
+                                                 packetListReceived,
                                                  packetDTOrequestType,
                                                  connection))
       return false;
@@ -195,7 +179,8 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   }
     // get indexes and user Data
   case RequestType::RqFrClientGetUsersData: {
-    if (!user_data_query_processor_.Process(*this, packetListReceived,
+    if (!user_data_query_processor_.Process(*this, transport,
+                                            packetListReceived,
                                             packetDTOrequestType,
                                             connection))
       return false;
@@ -205,7 +190,8 @@ bool ServerSession::routingRequestsFromClient(PacketListDTO &packetListReceived,
   case RequestType::RqFrClientUnBlockUser:
   case RequestType::RqFrClientBunUser:
   case RequestType::RqFrClientUnBunUser: {
-    if (!user_ban_block_processor_.Process(*this, packetListReceived,
+    if (!user_ban_block_processor_.Process(*this, transport,
+                                           packetListReceived,
                                            packetDTOrequestType,
                                            connection))
       return false;

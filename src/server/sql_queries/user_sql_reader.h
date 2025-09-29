@@ -1,7 +1,7 @@
 #pragma once
 
 #include "dto/dto_struct.h"
-#include "sql_commands.h"
+#include "sql_commands/sql_commands.h"
 
 #include <libpq-fe.h>
 

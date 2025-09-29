@@ -10,6 +10,7 @@ UserBanBlockProcessor::UserBanBlockProcessor(UserSqlWriter &user_sql_writer)
     : user_sql_writer_(user_sql_writer) {}
 
 bool UserBanBlockProcessor::Process(ServerSession &session,
+                                    SessionTransport &transport,
                                     PacketListDTO &packet_list,
                                     const RequestType &request_type,
                                     int connection) {
@@ -80,7 +81,7 @@ bool UserBanBlockProcessor::Process(ServerSession &session,
         std::make_shared<StructDTOClass<ResponceDTO>>(responce_dto);
     response_packet_list.packets.push_back(response_packet);
 
-    session.sendPacketListDTO(response_packet_list, connection);
+    session.sendPacketListDTO(transport, response_packet_list, connection);
   } catch (const exc::EmptyPacketException &ex) {
     std::cerr << "Сервер: " << ex.what() << std::endl;
     return false;

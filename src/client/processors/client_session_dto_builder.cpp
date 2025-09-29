@@ -6,6 +6,7 @@
 
 #include "chat/chat.h"
 #include "client/client_session.h"
+#include "core/chat_system/chat_system.h"
 #include "dto_struct.h"
 #include "exceptions_qt/exception_valid.h"
 #include "message/message.h"

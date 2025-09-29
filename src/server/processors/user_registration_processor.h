@@ -9,14 +9,16 @@
 #include <vector>
 
 class ServerSession;
+class SessionTransport;
 
 class UserRegistrationProcessor {
  public:
   UserRegistrationProcessor(UserSqlReader &user_sql_reader,
                             MessageSqlWriter &message_sql_writer);
 
-  bool Process(ServerSession &session, PacketListDTO &packet_list,
-               const RequestType &request_type, int connection);
+  bool Process(ServerSession &session, SessionTransport &transport,
+               PacketListDTO &packet_list, const RequestType &request_type,
+               int connection);
 
  private:
   UserSqlReader &user_sql_reader_;

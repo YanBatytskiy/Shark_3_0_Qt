@@ -4,10 +4,7 @@
 #include <memory>
 #include <vector>
 
-#include "chat/chat.h"
-#include "client/client_request_executor.h"
 #include "client/client_session.h"
-#include "client/processors/client_session_dto_builder.h"
 #include "dto_struct.h"
 #include "exceptions_qt/exception_network.h"
 #include "exceptions_qt/exception_router.h"

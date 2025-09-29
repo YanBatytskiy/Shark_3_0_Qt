@@ -47,7 +47,7 @@ class ClientCore : public QObject {
 
   bool initServerConnectionCore();
 
-  void connectionMonitorLoopCore();
+  void connectionMonitorLoopCore(std::atomic_bool &running_flag);
   static bool socketAliveCore(int fd);
 
   // utilities

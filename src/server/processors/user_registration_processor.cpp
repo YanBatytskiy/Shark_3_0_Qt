@@ -15,6 +15,7 @@ UserRegistrationProcessor::UserRegistrationProcessor(
       message_sql_writer_(message_sql_writer) {}
 
 bool UserRegistrationProcessor::Process(ServerSession &session,
+                                        SessionTransport &transport,
                                         PacketListDTO &packet_list,
                                         const RequestType &request_type,
                                         int connection) {
@@ -186,7 +187,7 @@ bool UserRegistrationProcessor::Process(ServerSession &session,
     }
 
     if (!response_packet_list.packets.empty()) {
-      session.sendPacketListDTO(response_packet_list, connection);
+      session.sendPacketListDTO(transport, response_packet_list, connection);
     }
   } catch (const exc::SendDataException &ex) {
     std::cerr << "Сервер: " << ex.what() << std::endl;

@@ -2,9 +2,7 @@
 
 #include <vector>
 
-#include "client/client_request_executor.h"
 #include "client/client_session.h"
-#include "dto_struct.h"
 
 ClientSessionModifyObjects::ClientSessionModifyObjects(
     ClientSession &session, ClientRequestExecutor &request_executor)

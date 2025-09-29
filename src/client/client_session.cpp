@@ -1,8 +1,5 @@
 #include "client_session.h"
 
-#include <poll.h>
-#include <unistd.h>
-
 #include <QString>
 #include <chrono>
 #include <cstddef>
@@ -795,7 +792,7 @@ bool ClientSession::checkAndAddParticipantToSystemCl(
 
 void ClientSession::connectionMonitorLoopCl() {
   try {
-    _core.connectionMonitorLoopCore();
+    _core.connectionMonitorLoopCore(connection_thread_running_);
   } catch (const std::exception &) {
     connection_thread_running_.store(false, std::memory_order_release);
   }

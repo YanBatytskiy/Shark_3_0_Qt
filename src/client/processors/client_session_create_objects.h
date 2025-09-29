@@ -3,16 +3,14 @@
 #include <cstddef>
 #include <memory>
 
+#include "chat/chat.h"
+#include "client/client_request_executor.h"
+#include "client/processors/client_session_dto_builder.h"
+#include "dto_struct.h"
+#include "message/message.h"
+#include "user/user.h"
+
 class ClientSession;
-class ClientRequestExecutor;
-class ClientSessionDtoBuilder;
-class Chat;
-class Message;
-class User;
-struct ChatDTO;
-struct MessageChatDTO;
-struct MessageDTO;
-struct UserDTO;
 
 class ClientSessionCreateObjects {
  public:

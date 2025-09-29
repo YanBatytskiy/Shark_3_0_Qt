@@ -14,6 +14,7 @@ UserAccountUpdateProcessor::UserAccountUpdateProcessor(
     : user_sql_writer_(user_sql_writer) {}
 
 bool UserAccountUpdateProcessor::Process(ServerSession &session,
+                                         SessionTransport &transport,
                                          PacketListDTO &packet_list,
                                          const RequestType &request_type,
                                          int connection) {
@@ -61,7 +62,7 @@ bool UserAccountUpdateProcessor::Process(ServerSession &session,
     }
 
     if (!response_packet_list.packets.empty()) {
-      session.sendPacketListDTO(response_packet_list, connection);
+      session.sendPacketListDTO(transport, response_packet_list, connection);
     }
   } catch (const exc::SendDataException &ex) {
     std::cerr << "Сервер: " << ex.what() << std::endl;

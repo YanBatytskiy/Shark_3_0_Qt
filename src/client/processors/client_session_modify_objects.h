@@ -2,9 +2,10 @@
 
 #include <memory>
 
+#include "client/client_request_executor.h"
+#include "dto_struct.h"
+
 class ClientSession;
-class ClientRequestExecutor;
-struct UserDTO;
 
 class ClientSessionModifyObjects {
  public:
