@@ -2,12 +2,7 @@
 
 #include <QObject>
 #include <atomic>
-#include <map>
-#include <memory>
 #include <mutex>
-#include <optional>
-#include <string>
-#include <vector>
 
 #include "client/request_dispatcher/request_dispatcher.h"
 #include "client/tcp_transport/session_types.h"
@@ -20,7 +15,7 @@ class User;
 
 class ClientCore : public QObject {
   Q_OBJECT
-public:
+ public:
   ClientCore(ChatSystem &chat_system, QObject *parent = nullptr);
   ClientCore(const ClientCore &) = delete;
   ClientCore &operator=(const ClientCore &) = delete;
@@ -52,6 +47,9 @@ public:
 
   bool initServerConnectionCore();
 
+  void connectionMonitorLoopCore();
+  static bool socketAliveCore(int fd);
+
   // utilities
   PacketListDTO getDatafromServerCore(const std::vector<std::uint8_t> &payload);
   PacketListDTO processingRequestToServerCore(std::vector<PacketDTO> &packets,
@@ -59,13 +57,10 @@ public:
 
   void resetSessionDataCore();
 
-  const std::vector<UserDTO>
-  findUserByTextPartOnServerCore(const std::string &text_to_find);
-
-signals:
+ signals:
   void serverStatusChanged(bool online, ServerConnectionMode mode);
 
-private:
+ private:
   void updateConnectionStateCore(bool online, ServerConnectionMode mode);
 
   ChatSystem &chat_system_;

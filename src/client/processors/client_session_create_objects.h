@@ -5,6 +5,7 @@
 
 class ClientSession;
 class ClientRequestExecutor;
+class ClientSessionDtoBuilder;
 class Chat;
 class Message;
 class User;
@@ -16,7 +17,8 @@ struct UserDTO;
 class ClientSessionCreateObjects {
  public:
   ClientSessionCreateObjects(ClientSession &session,
-                             ClientRequestExecutor &request_executor);
+                             ClientRequestExecutor &request_executor,
+                             ClientSessionDtoBuilder &dto_builder);
 
   bool createUserProcessing(const UserDTO &user_dto);
   bool createNewChatProcessing(std::shared_ptr<Chat> &chat, ChatDTO &chat_dto,
@@ -28,4 +30,5 @@ class ClientSessionCreateObjects {
  private:
   ClientSession &session_;
   ClientRequestExecutor &request_executor_;
+  ClientSessionDtoBuilder &dto_builder_;
 };

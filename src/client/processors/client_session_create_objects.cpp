@@ -7,6 +7,7 @@
 #include "chat/chat.h"
 #include "client/client_request_executor.h"
 #include "client/client_session.h"
+#include "client/processors/client_session_dto_builder.h"
 #include "dto_struct.h"
 #include "exceptions_qt/exception_network.h"
 #include "exceptions_qt/exception_router.h"
@@ -17,8 +18,11 @@
 #include "user/user.h"
 
 ClientSessionCreateObjects::ClientSessionCreateObjects(
-    ClientSession &session, ClientRequestExecutor &request_executor)
-    : session_(session), request_executor_(request_executor) {}
+    ClientSession &session, ClientRequestExecutor &request_executor,
+    ClientSessionDtoBuilder &dto_builder)
+    : session_(session),
+      request_executor_(request_executor),
+      dto_builder_(dto_builder) {}
 
 bool ClientSessionCreateObjects::createUserProcessing(const UserDTO &user_dto) {
   PacketDTO packet_dto;
@@ -193,8 +197,8 @@ std::size_t ClientSessionCreateObjects::createMessageProcessing(
     const std::shared_ptr<User> &user) {
   auto message_ptr = std::make_shared<Message>(message);
 
-  MessageDTO message_dto =
-      session_.fillOneMessageDTOFromCl(message_ptr, chat_ptr->getChatId());
+  MessageDTO message_dto = dto_builder_.fillOneMessageDTOFromProcessing(
+      message_ptr, chat_ptr->getChatId());
 
   PacketDTO packet_dto;
   packet_dto.requestType = RequestType::RqFrClientCreateMessage;

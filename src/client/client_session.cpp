@@ -8,7 +8,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
-#include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
@@ -17,7 +16,6 @@
 
 #include "chat/chat.h"
 #include "chat_system/chat_system.h"
-#include "client/core/client_core.h"
 #include "dto/dto_struct.h"
 #include "exceptions_cpp/login_exception.h"
 #include "exceptions_qt/exception_login.h"
@@ -25,6 +23,7 @@
 #include "exceptions_qt/exception_router.h"
 #include "message/message_content_struct.h"
 #include "system/date_time_utils.h"
+#include "system/picosha2.h"
 #include "system/serialize.h"
 #include "user/user.h"
 #include "user/user_chat_list.h"
@@ -41,7 +40,7 @@ ClientSession::ClientSession(ChatSystem &chat_system, QObject *parent)
       _requestExecutor(_core),
       _dtoWriter(*this),
       _dtoBuilder(*this),
-      _createObjects(*this, _requestExecutor),
+      _createObjects(*this, _requestExecutor, _dtoBuilder),
       _modifyObjects(*this, _requestExecutor) {
   QObject::connect(&_core, &ClientCore::serverStatusChanged, this,
                    &ClientSession::serverStatusChanged);
@@ -321,20 +320,68 @@ void ClientSession::setSocketFdCl(int socket_fd) {
   _core.setSocketFdCore(socket_fd);
 }
 
-//
-//
-//
-// checking and finding
-//
-//
-//
 const std::vector<UserDTO> ClientSession::findUserByTextPartOnServerCl(
     const std::string &text_to_find) {
-  return _core.findUserByTextPartOnServerCore(text_to_find);
+  std::vector<UserDTO> result;
+  result.clear();
+
+  const auto &active_user = _instance.getActiveUser();
+  if (!active_user) {
+    return result;
+  }
+
+  UserLoginPasswordDTO user_login_password_dto;
+  user_login_password_dto.login = active_user->getLogin();
+  user_login_password_dto.passwordhash = text_to_find;
+
+  PacketDTO packet_dto;
+  packet_dto.requestType = RequestType::RqFrClientFindUserByPart;
+  packet_dto.structDTOClassType = StructDTOClassType::userLoginPasswordDTO;
+  packet_dto.reqDirection = RequestDirection::ClientToSrv;
+  packet_dto.structDTOPtr =
+      std::make_shared<StructDTOClass<UserLoginPasswordDTO>>(
+          user_login_password_dto);
+
+  std::vector<PacketDTO> packet_list_send;
+  packet_list_send.push_back(packet_dto);
+
+  auto response_packet_list = _requestExecutor.processingRequestToServer(
+      packet_list_send, packet_dto.requestType);
+
+  for (const auto &packet : response_packet_list.packets) {
+    if (packet.requestType != RequestType::RqFrClientFindUserByPart) {
+      continue;
+    }
+
+    if (!packet.structDTOPtr) {
+      continue;
+    }
+
+    switch (packet.structDTOClassType) {
+      case StructDTOClassType::userDTO: {
+        const auto &packet_user_dto =
+            static_cast<const StructDTOClass<UserDTO> &>(*packet.structDTOPtr)
+                .getStructDTOClass();
+        result.push_back(packet_user_dto);
+        break;
+      }
+      case StructDTOClassType::responceDTO: {
+        const auto &response = static_cast<const StructDTOClass<ResponceDTO> &>(
+                                   *packet.structDTOPtr)
+                                   .getStructDTOClass();
+        if (!response.reqResult) {
+          result.clear();
+          return result;
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  return result;
 }
-//
-//
-//
 bool ClientSession::checkUserLoginCl(const std::string &user_login) {
   const auto is_on_client_device = _instance.findUserByLogin(user_login);
   if (is_on_client_device != nullptr) {
@@ -385,9 +432,6 @@ bool ClientSession::checkUserLoginCl(const std::string &user_login) {
     return false;
   }
 }
-//
-//
-//
 bool ClientSession::checkUserPasswordCl(const std::string &user_login,
                                         const std::string &password) {
   const auto is_on_client_device = _instance.findUserByLogin(user_login);
@@ -444,25 +488,6 @@ bool ClientSession::checkUserPasswordCl(const std::string &user_login,
     return false;
   }
 }
-// transport
-//
-//
-
-//
-//
-//
-
-//
-//
-//
-
-//
-//
-//
-//
-//
-//
-// utilities
 
 void ClientSession::resetSessionDataCl() { _core.resetSessionDataCore(); }
 
@@ -511,9 +536,6 @@ bool ClientSession::reInitilizeBaseCl() {
   }
 }
 
-//
-//
-//
 bool ClientSession::registerClientToSystemCl(const std::string &login) {
   UserLoginDTO user_login_dto;
   user_login_dto.login = login;
@@ -597,10 +619,6 @@ bool ClientSession::registerClientToSystemCl(const std::string &login) {
   return true;
 }
 
-//
-//
-//
-
 bool ClientSession::changeUserDataCl(const UserDTO &user_dto) {
   return _modifyObjects.changeUserDataProcessing(user_dto);
 }
@@ -615,27 +633,13 @@ bool ClientSession::createNewChatCl(std::shared_ptr<Chat> &chat,
   return _createObjects.createNewChatProcessing(chat, chat_dto,
                                                 message_chat_dto);
 }
-//
-//
-//
-MessageDTO ClientSession::fillOneMessageDTOFromCl(
-    const std::shared_ptr<Message> &message, std::size_t chat_id) {
-  return _dtoBuilder.fillOneMessageDTOFromProcessing(message, chat_id);
-}
 
-//
-//
-//
 std::size_t ClientSession::createMessageCl(const Message &message,
                                            std::shared_ptr<Chat> &chat_ptr,
                                            const std::shared_ptr<User> &user) {
   return _createObjects.createMessageProcessing(message, chat_ptr, user);
 }
 
-//
-//
-//
-// отправка пакета LastReadMessage
 bool ClientSession::sendLastReadMessageFromClientCl(
     const std::shared_ptr<Chat> &chat_ptr, std::size_t message_id) {
   MessageDTO message_dto;
@@ -789,78 +793,10 @@ bool ClientSession::checkAndAddParticipantToSystemCl(
   return true;
 }
 
-std::optional<ChatDTO> ClientSession::fillChatDTOCl(
-    const std::shared_ptr<Chat> &chat_ptr) {
-  return _dtoBuilder.fillChatDTOProcessing(chat_ptr);
-}
-
 void ClientSession::connectionMonitorLoopCl() {
   try {
-    bool online = _core.getIsServerOnlineCore();
-
-    while (connection_thread_running_.load(std::memory_order_acquire)) {
-      if (!online) {
-        auto &config = _core.getServerConnectionConfigCore();
-        auto &mode_ref = _core.getServerConnectionModeCore();
-
-        if (!_core.findServerAddressCore(config, mode_ref)) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(500));
-          continue;
-        }
-
-        const int fd = _core.createConnectionCore(config, mode_ref);
-
-        if (fd < 0) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(500));
-          continue;
-        }
-
-        online = true;
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        continue;
-      }
-
-      const int fd = _core.getSocketFdCore();
-      if (!socketAliveCl(fd)) {
-        if (fd >= 0) {
-          ::close(fd);
-        }
-        _core.setSocketFdCore(-1);
-        online = false;
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        continue;
-      }
-
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
+    _core.connectionMonitorLoopCore();
   } catch (const std::exception &) {
     connection_thread_running_.store(false, std::memory_order_release);
-    return;
   }
-}
-
-bool ClientSession::socketAliveCl(int fd) {
-  if (fd < 0) {
-    return false;
-  }
-
-  pollfd descriptor{};
-  descriptor.fd = fd;
-  descriptor.events = POLLIN | POLLERR | POLLHUP | POLLRDHUP;
-
-  const int result = ::poll(&descriptor, 1, 0);
-
-  if (result < 0) {
-    return false;
-  }
-
-  if (result == 0) {
-    return true;
-  }
-
-  if (descriptor.revents & (POLLERR | POLLHUP | POLLRDHUP)) {
-    return false;
-  }
-
-  return true;
 }

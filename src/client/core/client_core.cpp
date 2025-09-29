@@ -1,30 +1,7 @@
 #include "client/core/client_core.h"
 
-#include <netinet/in.h>
-
-#include <QString>
-#include <cstddef>
-#include <cstdint>
-#include <exception>
-#include <memory>
-#include <optional>
-#include <string>
-#include <utility>
-#include <vector>
-
-#include "chat/chat.h"
-#include "chat_system/chat_system.h"
-#include "dto/dto_struct.h"
-#include "exceptions_cpp/login_exception.h"
-#include "exceptions_qt/exception_login.h"
-#include "exceptions_qt/exception_network.h"
-#include "exceptions_qt/exception_router.h"
-#include "system/date_time_utils.h"
-#include "system/picosha2.h"
-#include "system/serialize.h"
-#include "system/system_function.h"
-#include "user/user.h"
-#include "user/user_chat_list.h"
+#include <poll.h>
+#include <unistd.h>
 
 namespace {
 constexpr int kInvalidSocket = -1;
@@ -75,66 +52,6 @@ void ClientCore::setSocketFdCore(int socket_fd) {
   } else {
     updateConnectionStateCore(true, server_connection_mode_);
   }
-}
-
-const std::vector<UserDTO> ClientCore::findUserByTextPartOnServerCore(
-    const std::string &text_to_find) {
-  UserLoginPasswordDTO user_login_password_dto;
-  user_login_password_dto.login = chat_system_.getActiveUser()->getLogin();
-  user_login_password_dto.passwordhash = text_to_find;
-
-  PacketDTO packet_dto;
-  packet_dto.requestType = RequestType::RqFrClientFindUserByPart;
-  packet_dto.structDTOClassType = StructDTOClassType::userLoginPasswordDTO;
-  packet_dto.reqDirection = RequestDirection::ClientToSrv;
-  packet_dto.structDTOPtr =
-      std::make_shared<StructDTOClass<UserLoginPasswordDTO>>(
-          user_login_password_dto);
-
-  std::vector<PacketDTO> packet_list_send;
-  packet_list_send.push_back(packet_dto);
-
-  PacketListDTO response_packet_list;
-  response_packet_list.packets.clear();
-
-  response_packet_list =
-      processingRequestToServerCore(packet_list_send, packet_dto.requestType);
-
-  std::vector<UserDTO> result;
-  result.clear();
-
-  for (const auto &packet : response_packet_list.packets) {
-    if (packet.requestType != RequestType::RqFrClientFindUserByPart) {
-      continue;
-    }
-
-    if (!packet.structDTOPtr) {
-      continue;
-    }
-
-    switch (packet.structDTOClassType) {
-      case StructDTOClassType::userDTO: {
-        const auto &packet_user_dto =
-            static_cast<const StructDTOClass<UserDTO> &>(*packet.structDTOPtr)
-                .getStructDTOClass();
-        result.push_back(packet_user_dto);
-        break;
-      }
-      case StructDTOClassType::responceDTO: {
-        const auto &response = static_cast<const StructDTOClass<ResponceDTO> &>(
-                                   *packet.structDTOPtr)
-                                   .getStructDTOClass();
-        if (!response.reqResult) {
-          result.clear();
-          return result;
-        }
-        break;
-      }
-      default:
-        break;
-    }
-  }
-  return result;
 }
 
 bool ClientCore::findServerAddressCore(ServerConnectionConfig &config,
@@ -216,4 +133,76 @@ void ClientCore::updateConnectionStateCore(bool online,
     server_connection_mode_ = mode;
     emit serverStatusChanged(online, mode);
   }
+}
+
+// === monitoring ===
+void ClientCore::connectionMonitorLoopCore() {
+  try {
+    bool online = getIsServerOnlineCore();
+
+    while (connection_thread_running_.load(std::memory_order_acquire)) {
+      if (!online) {
+        auto &config = getServerConnectionConfigCore();
+        auto &mode_ref = getServerConnectionModeCore();
+
+        if (!findServerAddressCore(config, mode_ref)) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(500));
+          continue;
+        }
+
+        const int fd = createConnectionCore(config, mode_ref);
+
+        if (fd < 0) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(500));
+          continue;
+        }
+
+        online = true;
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        continue;
+      }
+
+      const int fd = getSocketFdCore();
+      if (!socketAliveCore(fd)) {
+        if (fd >= 0) {
+          ::close(fd);
+        }
+        setSocketFdCore(-1);
+        online = false;
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        continue;
+      }
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+  } catch (const std::exception &) {
+    connection_thread_running_.store(false, std::memory_order_release);
+    return;
+  }
+}
+
+bool ClientCore::socketAliveCore(int fd) {
+  if (fd < 0) {
+    return false;
+  }
+
+  pollfd descriptor{};
+  descriptor.fd = fd;
+  descriptor.events = POLLIN | POLLERR | POLLHUP | POLLRDHUP;
+
+  const int result = ::poll(&descriptor, 1, 0);
+
+  if (result < 0) {
+    return false;
+  }
+
+  if (result == 0) {
+    return true;
+  }
+
+  if (descriptor.revents & (POLLERR | POLLHUP | POLLRDHUP)) {
+    return false;
+  }
+
+  return true;
 }

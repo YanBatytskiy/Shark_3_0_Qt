@@ -2,8 +2,6 @@
 
 #include <QObject>
 #include <atomic>
-#include <map>
-#include <memory>
 #include <optional>
 #include <thread>
 #include <vector>
@@ -16,7 +14,6 @@
 #include "client/processors/client_session_modify_objects.h"
 #include "client/tcp_transport/session_types.h"
 #include "dto_struct.h"
-#include "message/message.h"
 
 class ChatSystem;
 class Chat;
@@ -50,59 +47,59 @@ class ClientSession : public QObject {
   ~ClientSession();
 
   // getters
+  ChatSystem &getInstanceCl();
+  const std::shared_ptr<User> getActiveUserCl() const;
+  std::size_t getSocketFdCl() const;
   bool getIsServerOnlineCl() const noexcept;
   ServerConnectionConfig &getserverConnectionConfigCl();
   const ServerConnectionConfig &getserverConnectionConfigCl() const;
   ServerConnectionMode &getserverConnectionModeCl();
   const ServerConnectionMode &getserverConnectionModeCl() const;
 
+  std::optional<
+      std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>>
+  getChatListCl();
+
+  // setters
+  void setActiveUserCl(const std::shared_ptr<User> &user);
+  void setSocketFdCl(int socket_fd);
+
   // threads
   void startConnectionThreadCl();
   void stopConnectionThreadCl();
 
-  std::optional<
-      std::multimap<std::int64_t, ChatDTO, std::greater<std::int64_t>>>
-  getChatListCl();
+  // utilities
+  void resetSessionDataCl();
+  bool reInitilizeBaseCl();
+  bool registerClientToSystemCl(const std::string &login);
+
   bool CreateAndSendNewChatCl(std::shared_ptr<Chat> &chat_ptr,
                               std::vector<UserDTO> &participants,
                               Message &new_message);
-  bool changeUserPasswordCl(UserDTO user_dto);
-  bool blockUnblockUserCl(const std::string &login, bool is_blocked,
-                          const std::string &disable_reason);
-  bool bunUnbunUserCl(const std::string &login, bool is_banned,
-                      std::int64_t banned_to);
-
-  const std::shared_ptr<User> getActiveUserCl() const;
-  ChatSystem &getInstanceCl();
-  std::size_t getSocketFdCl() const;
-
-  void setActiveUserCl(const std::shared_ptr<User> &user);
-  void setSocketFdCl(int socket_fd);
-
-  const std::vector<UserDTO> findUserByTextPartOnServerCl(
-      const std::string &text_to_find);
-  bool checkUserLoginCl(const std::string &user_login);
-  bool checkUserPasswordCl(const std::string &user_login,
-                           const std::string &password);
-
-  void resetSessionDataCl();
-  bool reInitilizeBaseCl();
-
-  bool registerClientToSystemCl(const std::string &login);
-  bool changeUserDataCl(const UserDTO &user_dto);
   bool createUserCl(const UserDTO &user_dto);
   bool createNewChatCl(std::shared_ptr<Chat> &chat, ChatDTO &chat_dto,
                        MessageChatDTO &message_chat_dto);
   std::size_t createMessageCl(const Message &message,
                               std::shared_ptr<Chat> &chat,
                               const std::shared_ptr<User> &user);
+
+  bool changeUserDataCl(const UserDTO &user_dto);
+  bool changeUserPasswordCl(UserDTO user_dto);
+  bool blockUnblockUserCl(const std::string &login, bool is_blocked,
+                          const std::string &disable_reason);
+  bool bunUnbunUserCl(const std::string &login, bool is_banned,
+                      std::int64_t banned_to);
   bool sendLastReadMessageFromClientCl(const std::shared_ptr<Chat> &chat_ptr,
                                        std::size_t message_id);
+
+  bool checkUserLoginCl(const std::string &user_login);
+  bool checkUserPasswordCl(const std::string &user_login,
+                           const std::string &password);
   bool checkAndAddParticipantToSystemCl(
       const std::vector<std::string> &participants);
-  MessageDTO fillOneMessageDTOFromCl(const std::shared_ptr<Message> &message,
-                                     std::size_t chat_id);
-  std::optional<ChatDTO> fillChatDTOCl(const std::shared_ptr<Chat> &chat);
+
+  const std::vector<UserDTO> findUserByTextPartOnServerCl(
+      const std::string &text_to_find);
 
  signals:
   void serverStatusChanged(bool online, ServerConnectionMode mode);
