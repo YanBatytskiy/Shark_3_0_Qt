@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
@@ -19,6 +20,7 @@
 #include "chat_system/chat_system.h"
 #include "dto/dto_struct.h"
 #include "exceptions_cpp/login_exception.h"
+#include "exceptions_qt/errorbus.h"
 #include "exceptions_qt/exception_login.h"
 #include "exceptions_qt/exception_network.h"
 #include "exceptions_qt/exception_router.h"
@@ -38,10 +40,7 @@ constexpr int kInvalidSocket = -1;
 }
 
 ClientCore::ClientCore(ChatSystem &chat_system, QObject *parent)
-    : QObject(parent),
-      chat_system_(chat_system),
-      transport_(),
-      request_dispatcher_(chat_system_, transport_) {}
+    : QObject(parent), chat_system_(chat_system), transport_() {}
 
 ClientCore::~ClientCore() = default;
 
@@ -123,14 +122,58 @@ PacketListDTO ClientCore::getDatafromServerCore(
 
 PacketListDTO ClientCore::processingRequestToServerCore(
     std::vector<PacketDTO> &packets, const RequestType &request_type) {
+  PacketListDTO result;
+  result.packets.clear();
+
   const int socket_fd = getSocketFdCore();
-  if (socket_fd < 0) {
-    PacketListDTO empty;
-    empty.packets.clear();
-    return empty;
+  if (socket_fd < 0 || !status_online_.load(std::memory_order_acquire)) {
+    const auto time_stamp =
+        formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto time_stamp_qt = QString::fromStdString(time_stamp);
+
+    emit exc_qt::ErrorBus::i().error(
+        QString::fromUtf8(""),
+        QStringLiteral(
+            "[%1]   [ERROR]   [NETWORK]   processingRequestToServer   no "
+            "connection with server")
+            .arg(time_stamp_qt));
+    return result;
   }
-  return request_dispatcher_.process(socket_fd, status_online_, packets,
-                                     request_type);
+
+  try {
+    UserLoginPasswordDTO header;
+    if (const auto &active_user = chat_system_.getActiveUser()) {
+      header.login = active_user->getLogin();
+    } else {
+      header.login = "!";
+    }
+    header.passwordhash = "UserHeder";
+
+    std::vector<PacketDTO> send_packets;
+    send_packets.reserve(packets.size() + 1);
+
+    PacketDTO header_packet;
+    header_packet.requestType = request_type;
+    header_packet.structDTOClassType = StructDTOClassType::userLoginPasswordDTO;
+    header_packet.reqDirection = RequestDirection::ClientToSrv;
+    header_packet.structDTOPtr =
+        std::make_shared<StructDTOClass<UserLoginPasswordDTO>>(header);
+
+    send_packets.push_back(std::move(header_packet));
+    for (const auto &packet : packets) {
+      send_packets.push_back(packet);
+    }
+
+    auto payload = serializePacketList(send_packets);
+    result = transport_.getDataFromServer(socket_fd, status_online_, payload);
+  } catch (const exc_qt::LostConnectionException &ex) {
+    emit exc_qt::ErrorBus::i().error(
+        QString::fromUtf8(ex.what()),
+        QStringLiteral("Клиент processingRequestToServer: "));
+    result.packets.clear();
+  }
+
+  return result;
 }
 
 bool ClientCore::initServerConnectionCore() {
@@ -143,13 +186,6 @@ bool ClientCore::initServerConnectionCore() {
 
   const int fd = createConnectionCore(config, mode);
   return fd >= 0;
-}
-
-void ClientCore::resetSessionDataCore() {
-  chat_system_.reset();
-  server_connection_config_ = {};
-  server_connection_mode_ = ServerConnectionMode::Offline;
-  setSocketFdCore(kInvalidSocket);
 }
 
 void ClientCore::updateConnectionStateCore(bool online,

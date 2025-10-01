@@ -8,11 +8,10 @@
 
 #include "chat/chat.h"
 #include "chat_system/chat_system.h"
-#include "client/client_request_executor.h"
 #include "client/core/client_core.h"
 #include "client/processors/client_session_create_objects.h"
 #include "client/processors/client_session_dto_builder.h"
-#include "client/processors/client_session_dto_writer.h"
+#include "client/processors/client_session_dto_setter.h"
 #include "client/processors/client_session_modify_objects.h"
 #include "client/tcp_transport/session_types.h"
 #include "dto_struct.h"
@@ -27,7 +26,6 @@ private:
 
   ChatSystem &_instance;
   ClientCore _core;
-  ClientRequestExecutor _requestExecutor;
   ClientSessionDtoSetter _dtoSetter;
   ClientSessionDtoBuilder _dtoBuilder;
   ClientSessionCreateObjects _createObjects;
@@ -68,7 +66,7 @@ public:
   void stopConnectionThreadCl();
 
   // utilities
-  void resetSessionDataCl();
+  void clearChatSystemCl();
   bool reInitilizeBaseCl();
   bool registerClientToSystemCl(const std::string &login);
 

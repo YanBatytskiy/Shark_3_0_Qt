@@ -1,14 +1,15 @@
 #include "session_transport.h"
 
-#include "exceptions_cpp/network_exception.h"
-
 #include <arpa/inet.h>
-#include <cerrno>
-#include <cstring>
 #include <fcntl.h>
-#include <iostream>
 #include <sys/socket.h>
 #include <unistd.h>
+
+#include <cerrno>
+#include <cstring>
+#include <iostream>
+
+#include "exceptions_cpp/network_exception.h"
 
 SessionTransport::SessionTransport() : connection_(-1) {}
 
@@ -45,16 +46,14 @@ bool SessionTransport::EnsureConnected(int listener_fd) {
 
   sockaddr_in client_addr{};
   socklen_t client_len = sizeof(client_addr);
-  int accepted =
-      ::accept(listener_fd, reinterpret_cast<sockaddr *>(&client_addr),
-               &client_len);
+  int accepted = ::accept(
+      listener_fd, reinterpret_cast<sockaddr *>(&client_addr), &client_len);
   if (accepted < 0) {
     throw exc::ConnectNotAcceptException();
   }
 
   connection_ = accepted;
-  static const char kNewConnectionMsg[] =
-      "[Инфо] Новое соединение установлено";
+  static const char kNewConnectionMsg[] = "[Инфо] Новое соединение установлено";
   std::cout << kNewConnectionMsg << std::endl;
   return true;
 }
@@ -115,8 +114,8 @@ void SessionTransport::SendFrame(const std::vector<std::uint8_t> &data,
 
   std::size_t bytes_sent = 0;
   while (bytes_sent < data.size()) {
-    ssize_t sent = ::send(fd, data.data() + bytes_sent,
-                          data.size() - bytes_sent, 0);
+    ssize_t sent =
+        ::send(fd, data.data() + bytes_sent, data.size() - bytes_sent, 0);
     if (sent <= 0) {
       throw exc::SendDataException();
     }

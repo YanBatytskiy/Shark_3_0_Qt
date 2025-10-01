@@ -32,9 +32,9 @@
 // constructor
 ClientSession::ClientSession(ChatSystem &chat_system, QObject *parent)
     : QObject(parent), _instance(chat_system), _core(chat_system, this),
-      _requestExecutor(_core), _dtoSetter(*this), _dtoBuilder(*this),
-      _createObjects(*this, _requestExecutor, _dtoBuilder),
-      _modifyObjects(*this, _requestExecutor) {
+      _dtoSetter(*this), _dtoBuilder(*this),
+      _createObjects(*this, _core, _dtoBuilder),
+      _modifyObjects(*this, _core) {
   QObject::connect(&_core, &ClientCore::serverStatusChanged, this,
                    &ClientSession::serverStatusChanged);
 }
@@ -224,7 +224,7 @@ bool ClientSession::blockUnblockUserCl(const std::string &login, bool isBlocked,
     PacketListDTO packetListDTOresult;
     packetListDTOresult.packets.clear();
 
-    packetListDTOresult = _requestExecutor.processingRequestToServer(
+    packetListDTOresult = _core.processingRequestToServerCore(
         packetDTOListSend, packetDTO.requestType);
 
     const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(
@@ -339,7 +339,7 @@ ClientSession::findUserByTextPartOnServerCl(const std::string &text_to_find) {
   std::vector<PacketDTO> packet_list_send;
   packet_list_send.push_back(packet_dto);
 
-  auto response_packet_list = _requestExecutor.processingRequestToServer(
+  auto response_packet_list = _core.processingRequestToServerCore(
       packet_list_send, packet_dto.requestType);
 
   for (const auto &packet : response_packet_list.packets) {
@@ -395,7 +395,7 @@ bool ClientSession::checkUserLoginCl(const std::string &user_login) {
   std::vector<PacketDTO> packet_list_send;
   packet_list_send.push_back(packet_dto);
 
-  auto packet_list_result = _requestExecutor.processingRequestToServer(
+  auto packet_list_result = _core.processingRequestToServerCore(
       packet_list_send, packet_dto.requestType);
 
   try {
@@ -428,12 +428,8 @@ bool ClientSession::checkUserLoginCl(const std::string &user_login) {
 }
 bool ClientSession::checkUserPasswordCl(const std::string &user_login,
                                         const std::string &password) {
-  const auto is_on_client_device = _instance.findUserByLogin(user_login);
-  const auto password_hash = picosha2::hash256_hex_string(password);
 
-  if (is_on_client_device != nullptr) {
-    return _instance.checkPasswordValidForUser(password_hash, user_login);
-  }
+  const auto password_hash = picosha2::hash256_hex_string(password);
 
   UserLoginPasswordDTO user_login_password_dto;
   user_login_password_dto.login = user_login;
@@ -450,7 +446,7 @@ bool ClientSession::checkUserPasswordCl(const std::string &user_login,
   std::vector<PacketDTO> packet_list_send;
   packet_list_send.push_back(packet_dto);
 
-  auto packet_list_result = _requestExecutor.processingRequestToServer(
+  auto packet_list_result = _core.processingRequestToServerCore(
       packet_list_send, packet_dto.requestType);
 
   try {
@@ -483,7 +479,9 @@ bool ClientSession::checkUserPasswordCl(const std::string &user_login,
   }
 }
 
-void ClientSession::resetSessionDataCl() { _core.resetSessionDataCore(); }
+void ClientSession::clearChatSystemCl() {
+  _instance.clear_chat_system();
+}
 
 bool ClientSession::reInitilizeBaseCl() {
   UserLoginDTO user_login_dto;
@@ -499,7 +497,7 @@ bool ClientSession::reInitilizeBaseCl() {
   std::vector<PacketDTO> packet_list_send;
   packet_list_send.push_back(packet_dto);
 
-  auto packet_list_result = _requestExecutor.processingRequestToServer(
+  auto packet_list_result = _core.processingRequestToServerCore(
       packet_list_send, packet_dto.requestType);
 
   try {
@@ -544,7 +542,7 @@ bool ClientSession::registerClientToSystemCl(const std::string &login) {
   std::vector<PacketDTO> packet_list_send;
   packet_list_send.push_back(packet_dto);
 
-  auto packet_list_result = _requestExecutor.processingRequestToServer(
+  auto packet_list_result = _core.processingRequestToServerCore(
       packet_list_send, packet_dto.requestType);
 
   try {
@@ -654,7 +652,7 @@ bool ClientSession::sendLastReadMessageFromClientCl(
   std::vector<PacketDTO> packet_list_send;
   packet_list_send.push_back(packet_dto);
 
-  auto response_packet_list = _requestExecutor.processingRequestToServer(
+  auto response_packet_list = _core.processingRequestToServerCore(
       packet_list_send, RequestType::RqFrClientSetLastReadMessage);
 
   try {
@@ -722,7 +720,7 @@ bool ClientSession::checkAndAddParticipantToSystemCl(
     }
 
     if (need_request) {
-      auto packet_list_result = _requestExecutor.processingRequestToServer(
+      auto packet_list_result = _core.processingRequestToServerCore(
           packet_list_send, RequestType::RqFrClientGetUsersData);
 
       for (const auto &response_packet : packet_list_result.packets) {

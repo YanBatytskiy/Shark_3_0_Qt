@@ -4,18 +4,17 @@
 #include <memory>
 
 #include "chat/chat.h"
-#include "client/client_request_executor.h"
 #include "client/processors/client_session_dto_builder.h"
 #include "dto_struct.h"
 #include "message/message.h"
 #include "user/user.h"
 
 class ClientSession;
+class ClientCore;
 
 class ClientSessionCreateObjects {
  public:
-  ClientSessionCreateObjects(ClientSession &session,
-                             ClientRequestExecutor &request_executor,
+  ClientSessionCreateObjects(ClientSession &session, ClientCore &core,
                              ClientSessionDtoBuilder &dto_builder);
 
   bool createUserProcessing(const UserDTO &user_dto);
@@ -27,6 +26,6 @@ class ClientSessionCreateObjects {
 
  private:
   ClientSession &session_;
-  ClientRequestExecutor &request_executor_;
+  ClientCore &core_;
   ClientSessionDtoBuilder &dto_builder_;
 };

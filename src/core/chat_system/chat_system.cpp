@@ -29,21 +29,32 @@ std::shared_ptr<Chat> ChatSystem::getChatById(std::size_t chatId) const {
   return nullptr;
 }
 
-const std::vector<std::shared_ptr<User>> &ChatSystem::getUsers() const { return _users; }
+const std::vector<std::shared_ptr<User>> &ChatSystem::getUsers() const {
+  return _users;
+}
 
-const std::vector<std::shared_ptr<Chat>> &ChatSystem::getChats() const { return _chats; }
+const std::vector<std::shared_ptr<Chat>> &ChatSystem::getChats() const {
+  return _chats;
+}
 
-const std::shared_ptr<User> &ChatSystem::getActiveUser() const { return _activeUser; }
+const std::shared_ptr<User> &ChatSystem::getActiveUser() const {
+  return _activeUser;
+}
 
-const std::unordered_map<std::string, std::shared_ptr<User>> &ChatSystem::getLoginUserMap() const {
+const std::unordered_map<std::string, std::shared_ptr<User>> &
+ChatSystem::getLoginUserMap() const {
   return _loginUserMap;
 }
 
 // setters
 
-void ChatSystem::setIsServerStatus(const bool &serverStatus) { _isServerStatus = serverStatus; }
+void ChatSystem::setIsServerStatus(const bool &serverStatus) {
+  _isServerStatus = serverStatus;
+}
 
-void ChatSystem::setActiveUser(const std::shared_ptr<User> &user) { _activeUser = user; }
+void ChatSystem::setActiveUser(const std::shared_ptr<User> &user) {
+  _activeUser = user;
+}
 
 void ChatSystem::addUserToSystem(std::shared_ptr<User> &user) {
   _users.push_back(user);
@@ -52,66 +63,26 @@ void ChatSystem::addUserToSystem(std::shared_ptr<User> &user) {
 
 bool ChatSystem::addChatToInstance(const std::shared_ptr<Chat> &chat_ptr) {
 
-  if (!chat_ptr)
-    throw exc::ChatNotFoundException();
-
-  const std::size_t chatId = chat_ptr->getChatId();
   bool result = true;
-
-  // чтобы сделать откат
-  std::vector<std::shared_ptr<User>> addParticipantsChatList;
-
+  const std::size_t chatId = chat_ptr->getChatId();
   try {
-    if (_isServerStatus) {
-      for (const auto &participant : chat_ptr->getParticipants()) {
-        if (auto user_ptr = participant._user.lock()) {
+    if (!chat_ptr)
+      throw exc::ChatNotFoundException();
 
-          // добавление чата в чат-лист
-          auto userChatList = user_ptr->getUserChatList();
-
-          if (userChatList) {
-            userChatList->addChatToChatList(chat_ptr);
-            addParticipantsChatList.push_back(user_ptr);
-          } else
-            throw exc::ChatListNotFoundException(user_ptr->getLogin());
-        } // if user_ptr
-        else
-          throw exc::UserNotFoundException();
-      }
-    } else
-      _activeUser->getUserChatList()->addChatToChatList(chat_ptr);
-
-    const auto temp = _activeUser->getUserChatList()->getChatFromList();
-
-    int x = 0;
+    _activeUser->getUserChatList()->addChatToChatList(chat_ptr);
 
   } // try
-  catch (const exc::ChatListNotFoundException &ex) {
+  catch (const exc::ChatNotFoundException &ex) {
     std::cout << " ! " << ex.what() << std::endl;
-    result = false;
-  } catch (const exc::ChatNotFoundException &ex) {
-    std::cout << " ! " << ex.what() << std::endl;
-    result = false;
-  } catch (const exc::UserNotFoundException &ex) {
-    std::cout << " ! " << ex.what() << std::endl;
-    result = false;
+    return false;
   }
-  if (result) {
-    _chats.push_back(chat_ptr);
-    _chatIdChatMap.insert({chatId, chat_ptr});
-  } else {
-    for (const auto &participant : addParticipantsChatList) {
+  _chats.push_back(chat_ptr);
+  _chatIdChatMap.insert({chatId, chat_ptr});
 
-      auto userChatList = participant->getUserChatList();
-
-      userChatList->deleteChatFromList(chat_ptr);
-    }
-    addParticipantsChatList.clear();
-  }
-  return result;
+  return true;
 }
 
-void ChatSystem::reset() {
+void ChatSystem::clear_chat_system() {
   _activeUser.reset();
   _users.clear();
   _chats.clear();
@@ -137,13 +108,15 @@ std::vector<std::shared_ptr<User>> ChatSystem::findUserByTextPart(
     std::string LowerLogin = TextToLower(user->getLogin());
     std::string LowerName = TextToLower(user->getUserName());
 
-    if (LowerLogin.find(textToFindLower) != std::string::npos || LowerName.find(textToFindLower) != std::string::npos)
+    if (LowerLogin.find(textToFindLower) != std::string::npos ||
+        LowerName.find(textToFindLower) != std::string::npos)
       foundUsers.push_back(user);
   }
   return foundUsers;
 }
 
-std::shared_ptr<User> ChatSystem::findUserByLogin(const std::string &userLogin) const {
+std::shared_ptr<User>
+ChatSystem::findUserByLogin(const std::string &userLogin) const {
 
   auto it = this->getLoginUserMap().find(userLogin);
   if (it == this->getLoginUserMap().end())
@@ -152,7 +125,8 @@ std::shared_ptr<User> ChatSystem::findUserByLogin(const std::string &userLogin) 
     return it->second;
 }
 
-const std::shared_ptr<User> ChatSystem::RqFrClientCheckLoginExists(const std::string &login) const {
+const std::shared_ptr<User>
+ChatSystem::RqFrClientCheckLoginExists(const std::string &login) const {
 
   auto it = this->_loginUserMap.find(login);
 
@@ -162,7 +136,8 @@ const std::shared_ptr<User> ChatSystem::RqFrClientCheckLoginExists(const std::st
     return nullptr;
 }
 
-bool ChatSystem::checkPasswordValidForUser(const std::string &passwordHash, const std::string &userLogin) {
+bool ChatSystem::checkPasswordValidForUser(const std::string &passwordHash,
+                                           const std::string &userLogin) {
 
   auto user = findUserByLogin(userLogin);
 

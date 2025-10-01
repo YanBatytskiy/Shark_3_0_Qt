@@ -1,4 +1,4 @@
-#include "client/processors/client_session_dto_writer.h"
+#include "client/processors/client_session_dto_setter.h"
 
 #include <QString>
 #include <memory>
@@ -15,24 +15,24 @@
 #include "user/user.h"
 #include "user/user_chat_list.h"
 
-ClientSessionDtoWriter::ClientSessionDtoWriter(ClientSession &session)
+ClientSessionDtoSetter::ClientSessionDtoSetter(ClientSession &session)
     : session_(session) {}
 
-void ClientSessionDtoWriter::setActiveUserDTOFromSrvProcessing(
+void ClientSessionDtoSetter::setActiveUserDTOFromSrvProcessing(
     const UserDTO &user_dto) const {
   auto user_ptr = std::make_shared<User>(
       UserData(user_dto.login, user_dto.userName, user_dto.passwordhash,
                user_dto.email, user_dto.phone, user_dto.disable_reason,
                user_dto.is_active, user_dto.disabled_at, user_dto.ban_until));
-  user_ptr->createChatList(std::make_shared<UserChatList>(user_ptr));
 
   auto &instance = session_.getInstanceCl();
 
   instance.addUserToSystem(user_ptr);
   instance.setActiveUser(user_ptr);
+  user_ptr->createChatList(std::make_shared<UserChatList>(user_ptr));
 }
 
-void ClientSessionDtoWriter::setUserDTOFromSrvProcessing(
+void ClientSessionDtoSetter::setUserDTOFromSrvProcessing(
     const UserDTO &user_dto) const {
   auto user_ptr = std::make_shared<User>(
       UserData(user_dto.login, user_dto.userName, "-1", user_dto.email,
@@ -41,9 +41,10 @@ void ClientSessionDtoWriter::setUserDTOFromSrvProcessing(
 
   auto &instance = session_.getInstanceCl();
   instance.addUserToSystem(user_ptr);
-}
 
-void ClientSessionDtoWriter::setOneMessageDTOProcessing(
+  }
+
+void ClientSessionDtoSetter::setOneMessageDTOProcessing(
     const MessageDTO &message_dto, const std::shared_ptr<Chat> &chat) const {
   auto sender =
       session_.getInstanceCl().findUserByLogin(message_dto.senderLogin);
@@ -54,7 +55,7 @@ void ClientSessionDtoWriter::setOneMessageDTOProcessing(
   chat->addMessageToChat(std::make_shared<Message>(message), sender, false);
 }
 
-bool ClientSessionDtoWriter::setOneChatMessageDTOProcessing(
+bool ClientSessionDtoSetter::setOneChatMessageDTOProcessing(
     const MessageChatDTO &message_chat_dto) const {
   const auto &active_user = session_.getInstanceCl().getActiveUser();
   if (!active_user) {
@@ -81,7 +82,7 @@ bool ClientSessionDtoWriter::setOneChatMessageDTOProcessing(
   return true;
 }
 
-void ClientSessionDtoWriter::setOneChatDTOFromSrvProcessing(
+void ClientSessionDtoSetter::setOneChatDTOFromSrvProcessing(
     const ChatDTO &chat_dto) {
   auto chat_ptr = std::make_shared<Chat>();
   auto active_user = session_.getActiveUserCl();

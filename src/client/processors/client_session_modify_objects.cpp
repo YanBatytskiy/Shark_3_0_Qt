@@ -4,9 +4,9 @@
 
 #include "client/client_session.h"
 
-ClientSessionModifyObjects::ClientSessionModifyObjects(
-    ClientSession &session, ClientRequestExecutor &request_executor)
-    : session_(session), request_executor_(request_executor) {}
+ClientSessionModifyObjects::ClientSessionModifyObjects(ClientSession &session,
+                                                       ClientCore &core)
+    : session_(session), core_(core) {}
 
 bool ClientSessionModifyObjects::changeUserDataProcessing(
     const UserDTO &user_dto) {
@@ -22,8 +22,8 @@ bool ClientSessionModifyObjects::changeUserDataProcessing(
   PacketListDTO packet_list_result;
   packet_list_result.packets.clear();
 
-  packet_list_result = request_executor_.processingRequestToServer(
-      packet_list_send, packet_dto.requestType);
+  packet_list_result =
+      core_.processingRequestToServerCore(packet_list_send, packet_dto.requestType);
 
   const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(
                            *packet_list_result.packets[0].structDTOPtr)

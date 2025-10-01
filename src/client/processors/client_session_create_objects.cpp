@@ -15,11 +15,9 @@
 #include "user/user.h"
 
 ClientSessionCreateObjects::ClientSessionCreateObjects(
-    ClientSession &session, ClientRequestExecutor &request_executor,
+    ClientSession &session, ClientCore &core,
     ClientSessionDtoBuilder &dto_builder)
-    : session_(session),
-      request_executor_(request_executor),
-      dto_builder_(dto_builder) {}
+    : session_(session), core_(core), dto_builder_(dto_builder) {}
 
 bool ClientSessionCreateObjects::createUserProcessing(const UserDTO &user_dto) {
   PacketDTO packet_dto;
@@ -34,8 +32,8 @@ bool ClientSessionCreateObjects::createUserProcessing(const UserDTO &user_dto) {
   PacketListDTO packet_list_result;
   packet_list_result.packets.clear();
 
-  packet_list_result = request_executor_.processingRequestToServer(
-      packet_list_send, packet_dto.requestType);
+  packet_list_result =
+      core_.processingRequestToServerCore(packet_list_send, packet_dto.requestType);
 
   const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(
                            *packet_list_result.packets[0].structDTOPtr)
@@ -68,7 +66,7 @@ bool ClientSessionCreateObjects::createNewChatProcessing(
   PacketListDTO response_packet_list;
   response_packet_list.packets.clear();
 
-  response_packet_list = request_executor_.processingRequestToServer(
+  response_packet_list = core_.processingRequestToServerCore(
       packet_list_send, RequestType::RqFrClientCreateChat);
 
   try {
@@ -210,7 +208,7 @@ std::size_t ClientSessionCreateObjects::createMessageProcessing(
   PacketListDTO response_packet_list;
   response_packet_list.packets.clear();
 
-  response_packet_list = request_executor_.processingRequestToServer(
+  response_packet_list = core_.processingRequestToServerCore(
       packet_list_for_send, packet_dto.requestType);
 
   std::size_t new_message_id = 0;

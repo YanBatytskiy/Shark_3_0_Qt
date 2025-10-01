@@ -80,20 +80,23 @@ void MainWindow::setworkForm() {
 }
 
 void MainWindow::onLoggedIn(QString login) {
+
+  client_session_ptr_->clearChatSystemCl();
+
   client_session_ptr_->registerClientToSystemCl(login.toStdString());
   ui->pageWork->createSession();
   setworkForm();
 }
 
 void MainWindow::slotOnLogOut() {
-  client_session_ptr_->resetSessionDataCl();
+  client_session_ptr_->clearChatSystemCl();
   setLoginForm();
 }
 
 void MainWindow::slotonRejectedRequested() {
   if (client_session_ptr_) {
     client_session_ptr_
-        ->stopConnectionThreadCl();  // ← остановка фонового соединения
+        ->stopConnectionThreadCl(); // ← остановка фонового соединения
   }
   close();
 }

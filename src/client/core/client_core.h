@@ -4,7 +4,6 @@
 #include <atomic>
 #include <mutex>
 
-#include "client/request_dispatcher/request_dispatcher.h"
 #include "client/tcp_transport/session_types.h"
 #include "client/tcp_transport/tcp_transport.h"
 #include "dto_struct.h"
@@ -15,7 +14,7 @@ class User;
 
 class ClientCore : public QObject {
   Q_OBJECT
- public:
+public:
   ClientCore(ChatSystem &chat_system, QObject *parent = nullptr);
   ClientCore(const ClientCore &) = delete;
   ClientCore &operator=(const ClientCore &) = delete;
@@ -55,18 +54,14 @@ class ClientCore : public QObject {
   PacketListDTO processingRequestToServerCore(std::vector<PacketDTO> &packets,
                                               const RequestType &request_type);
 
-  void resetSessionDataCore();
-
- signals:
+signals:
   void serverStatusChanged(bool online, ServerConnectionMode mode);
 
- private:
+private:
   void updateConnectionStateCore(bool online, ServerConnectionMode mode);
 
   ChatSystem &chat_system_;
   TcpTransport transport_;
-  RequestDispatcher request_dispatcher_;
-
   std::atomic_bool status_online_{false};
   ServerConnectionConfig server_connection_config_{};
   ServerConnectionMode server_connection_mode_{ServerConnectionMode::Offline};
