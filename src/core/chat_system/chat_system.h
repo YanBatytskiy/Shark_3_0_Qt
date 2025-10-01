@@ -63,6 +63,8 @@ public:
 
   bool addChatToInstance(const std::shared_ptr<Chat> &chat);
 
+  void reset();
+
   // utilities
   std::vector<std::shared_ptr<User>> findUserByTextPart(const std::string &textToFind) const; // поиск пользователя
 

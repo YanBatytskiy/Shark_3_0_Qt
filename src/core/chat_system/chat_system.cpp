@@ -111,6 +111,15 @@ bool ChatSystem::addChatToInstance(const std::shared_ptr<Chat> &chat_ptr) {
   return result;
 }
 
+void ChatSystem::reset() {
+  _activeUser.reset();
+  _users.clear();
+  _chats.clear();
+  _loginUserMap.clear();
+  _chatIdChatMap.clear();
+  _isServerStatus = false;
+}
+
 // utilities
 std::vector<std::shared_ptr<User>> ChatSystem::findUserByTextPart(
     const std::string &textToFind) const { // поиск пользователя

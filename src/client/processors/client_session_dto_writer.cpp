@@ -28,10 +28,7 @@ void ClientSessionDtoWriter::setActiveUserDTOFromSrvProcessing(
 
   auto &instance = session_.getInstanceCl();
 
-  if (!instance.findUserByLogin(user_dto.login)) {
-    instance.addUserToSystem(user_ptr);
-  }
-
+  instance.addUserToSystem(user_ptr);
   instance.setActiveUser(user_ptr);
 }
 
@@ -41,13 +38,9 @@ void ClientSessionDtoWriter::setUserDTOFromSrvProcessing(
       UserData(user_dto.login, user_dto.userName, "-1", user_dto.email,
                user_dto.phone, user_dto.disable_reason, user_dto.is_active,
                user_dto.disabled_at, user_dto.ban_until));
-  user_ptr->createChatList();
 
   auto &instance = session_.getInstanceCl();
-
-  if (!instance.findUserByLogin(user_dto.login)) {
-    instance.addUserToSystem(user_ptr);
-  }
+  instance.addUserToSystem(user_ptr);
 }
 
 void ClientSessionDtoWriter::setOneMessageDTOProcessing(

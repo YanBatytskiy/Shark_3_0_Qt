@@ -31,12 +31,8 @@
 
 // constructor
 ClientSession::ClientSession(ChatSystem &chat_system, QObject *parent)
-    : QObject(parent),
-      _instance(chat_system),
-      _core(chat_system, this),
-      _requestExecutor(_core),
-      _dtoWriter(*this),
-      _dtoBuilder(*this),
+    : QObject(parent), _instance(chat_system), _core(chat_system, this),
+      _requestExecutor(_core), _dtoSetter(*this), _dtoBuilder(*this),
       _createObjects(*this, _requestExecutor, _dtoBuilder),
       _modifyObjects(*this, _requestExecutor) {
   QObject::connect(&_core, &ClientCore::serverStatusChanged, this,
@@ -120,7 +116,7 @@ bool ClientSession::CreateAndSendNewChatCl(std::shared_ptr<Chat> &chat_ptr,
     participantsDTO.deletedFromChat = false;
 
     chatDTO.participants.push_back(participantsDTO);
-  }  // for
+  } // for
 
   MessageDTO messageDTO;
   messageDTO.messageId = 0;
@@ -170,15 +166,15 @@ bool ClientSession::CreateAndSendNewChatCl(std::shared_ptr<Chat> &chat_ptr,
 
           this->getInstanceCl().addUserToSystem(newUser_ptr);
           chat_ptr->addParticipant(newUser_ptr, 0, false);
-        }  // if
+        } // if
         else
           chat_ptr->addParticipant(user_ptr, 0, false);
-      }  // if activeuser
-    }  // for
+      } // if activeuser
+    } // for
 
     // затем добавляем чат в систему
     this->getInstanceCl().addChatToInstance(chat_ptr);
-  }  // if
+  } // if
 
   return result;
 }
@@ -193,7 +189,8 @@ bool ClientSession::blockUnblockUserCl(const std::string &login, bool isBlocked,
   const auto user_ptr = _instance.findUserByLogin(login);
 
   try {
-    if (!user_ptr) throw exc::UserNotFoundException();
+    if (!user_ptr)
+      throw exc::UserNotFoundException();
 
     UserDTO userDTO;
 
@@ -239,7 +236,7 @@ bool ClientSession::blockUnblockUserCl(const std::string &login, bool isBlocked,
     else
       return false;
 
-  }  // try
+  } // try
   catch (const exc::UserNotFoundException &ex) {
     const auto time_sdtamp =
         formatTimeStampToString(getCurrentDateTimeInt(), true);
@@ -286,8 +283,8 @@ ServerConnectionConfig &ClientSession::getserverConnectionConfigCl() {
   return _core.getServerConnectionConfigCore();
 }
 
-const ServerConnectionConfig &ClientSession::getserverConnectionConfigCl()
-    const {
+const ServerConnectionConfig &
+ClientSession::getserverConnectionConfigCl() const {
   return _core.getServerConnectionConfigCore();
 }
 
@@ -317,8 +314,8 @@ void ClientSession::setSocketFdCl(int socket_fd) {
   _core.setSocketFdCore(socket_fd);
 }
 
-const std::vector<UserDTO> ClientSession::findUserByTextPartOnServerCl(
-    const std::string &text_to_find) {
+const std::vector<UserDTO>
+ClientSession::findUserByTextPartOnServerCl(const std::string &text_to_find) {
   std::vector<UserDTO> result;
   result.clear();
 
@@ -355,25 +352,25 @@ const std::vector<UserDTO> ClientSession::findUserByTextPartOnServerCl(
     }
 
     switch (packet.structDTOClassType) {
-      case StructDTOClassType::userDTO: {
-        const auto &packet_user_dto =
-            static_cast<const StructDTOClass<UserDTO> &>(*packet.structDTOPtr)
-                .getStructDTOClass();
-        result.push_back(packet_user_dto);
-        break;
+    case StructDTOClassType::userDTO: {
+      const auto &packet_user_dto =
+          static_cast<const StructDTOClass<UserDTO> &>(*packet.structDTOPtr)
+              .getStructDTOClass();
+      result.push_back(packet_user_dto);
+      break;
+    }
+    case StructDTOClassType::responceDTO: {
+      const auto &response =
+          static_cast<const StructDTOClass<ResponceDTO> &>(*packet.structDTOPtr)
+              .getStructDTOClass();
+      if (!response.reqResult) {
+        result.clear();
+        return result;
       }
-      case StructDTOClassType::responceDTO: {
-        const auto &response = static_cast<const StructDTOClass<ResponceDTO> &>(
-                                   *packet.structDTOPtr)
-                                   .getStructDTOClass();
-        if (!response.reqResult) {
-          result.clear();
-          return result;
-        }
-        break;
-      }
-      default:
-        break;
+      break;
+    }
+    default:
+      break;
     }
   }
 
@@ -563,40 +560,39 @@ bool ClientSession::registerClientToSystemCl(const std::string &login) {
       }
 
       switch (packet.structDTOClassType) {
-        case StructDTOClassType::userDTO: {
-          const auto &user_dto =
-              static_cast<const StructDTOClass<UserDTO> &>(*packet.structDTOPtr)
-                  .getStructDTOClass();
-          _dtoWriter.setActiveUserDTOFromSrvProcessing(user_dto);
-          break;
+      case StructDTOClassType::userDTO: {
+        const auto &user_dto =
+            static_cast<const StructDTOClass<UserDTO> &>(*packet.structDTOPtr)
+                .getStructDTOClass();
+        _dtoSetter.setActiveUserDTOFromSrvProcessing(user_dto);
+        break;
+      }
+      case StructDTOClassType::chatDTO: {
+        const auto &chat_dto =
+            static_cast<const StructDTOClass<ChatDTO> &>(*packet.structDTOPtr)
+                .getStructDTOClass();
+        _dtoSetter.setOneChatDTOFromSrvProcessing(chat_dto);
+        break;
+      }
+      case StructDTOClassType::messageChatDTO: {
+        const auto &message_chat_dto =
+            static_cast<const StructDTOClass<MessageChatDTO> &>(
+                *packet.structDTOPtr)
+                .getStructDTOClass();
+        _dtoSetter.setOneChatMessageDTOProcessing(message_chat_dto);
+        break;
+      }
+      case StructDTOClassType::responceDTO: {
+        const auto &response = static_cast<const StructDTOClass<ResponceDTO> &>(
+                                   *packet.structDTOPtr)
+                                   .getStructDTOClass();
+        if (!response.reqResult) {
+          return false;
         }
-        case StructDTOClassType::chatDTO: {
-          const auto &chat_dto =
-              static_cast<const StructDTOClass<ChatDTO> &>(*packet.structDTOPtr)
-                  .getStructDTOClass();
-          _dtoWriter.setOneChatDTOFromSrvProcessing(chat_dto);
-          break;
-        }
-        case StructDTOClassType::messageChatDTO: {
-          const auto &message_chat_dto =
-              static_cast<const StructDTOClass<MessageChatDTO> &>(
-                  *packet.structDTOPtr)
-                  .getStructDTOClass();
-          _dtoWriter.setOneChatMessageDTOProcessing(message_chat_dto);
-          break;
-        }
-        case StructDTOClassType::responceDTO: {
-          const auto &response =
-              static_cast<const StructDTOClass<ResponceDTO> &>(
-                  *packet.structDTOPtr)
-                  .getStructDTOClass();
-          if (!response.reqResult) {
-            return false;
-          }
-          break;
-        }
-        default:
-          break;
+        break;
+      }
+      default:
+        break;
       }
     }
   } catch (const std::exception &ex) {

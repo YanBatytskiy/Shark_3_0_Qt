@@ -6,6 +6,8 @@
 #include <thread>
 #include <vector>
 
+#include "chat/chat.h"
+#include "chat_system/chat_system.h"
 #include "client/client_request_executor.h"
 #include "client/core/client_core.h"
 #include "client/processors/client_session_create_objects.h"
@@ -13,29 +15,27 @@
 #include "client/processors/client_session_dto_writer.h"
 #include "client/processors/client_session_modify_objects.h"
 #include "client/tcp_transport/session_types.h"
-#include "chat/chat.h"
-#include "chat_system/chat_system.h"
 #include "dto_struct.h"
 #include "user/user.h"
 
 class ClientSession : public QObject {
   Q_OBJECT
 
- private:
+private:
   void connectionMonitorLoopCl();
   static bool socketAliveCl(int fd);
 
   ChatSystem &_instance;
   ClientCore _core;
   ClientRequestExecutor _requestExecutor;
-  ClientSessionDtoWriter _dtoWriter;
+  ClientSessionDtoSetter _dtoSetter;
   ClientSessionDtoBuilder _dtoBuilder;
   ClientSessionCreateObjects _createObjects;
   ClientSessionModifyObjects _modifyObjects;
   std::atomic_bool connection_thread_running_{false};
   std::thread connection_thread_;
 
- public:
+public:
   explicit ClientSession(ChatSystem &chat_system, QObject *parent = nullptr);
   ClientSession(const ClientSession &) = delete;
   ClientSession &operator=(const ClientSession &) = delete;
@@ -97,9 +97,9 @@ class ClientSession : public QObject {
   bool checkAndAddParticipantToSystemCl(
       const std::vector<std::string> &participants);
 
-  const std::vector<UserDTO> findUserByTextPartOnServerCl(
-      const std::string &text_to_find);
+  const std::vector<UserDTO>
+  findUserByTextPartOnServerCl(const std::string &text_to_find);
 
- signals:
+signals:
   void serverStatusChanged(bool online, ServerConnectionMode mode);
 };

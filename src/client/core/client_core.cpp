@@ -146,8 +146,7 @@ bool ClientCore::initServerConnectionCore() {
 }
 
 void ClientCore::resetSessionDataCore() {
-  chat_system_.setActiveUser(std::shared_ptr<User>{});
-  chat_system_.setIsServerStatus(false);
+  chat_system_.reset();
   server_connection_config_ = {};
   server_connection_mode_ = ServerConnectionMode::Offline;
   setSocketFdCore(kInvalidSocket);

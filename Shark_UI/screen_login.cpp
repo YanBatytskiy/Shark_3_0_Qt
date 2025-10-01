@@ -62,9 +62,9 @@ void ScreenLogin::setDatabase(std::shared_ptr<ClientSession> client_session_ptr,
 
     const QString log_line = QStringLiteral("[%1]   [%2]   [%3]   %4")
                                  .arg(time_stamp,
-                                      "INFO",     // Уровни логгирования:
-                                      "NETWORK",  // Ключевые модули для чата
-                                      event);     // Event
+                                      "INFO", // Уровни логгирования:
+                                      "NETWORK", // Ключевые модули для чата
+                                      event); // Event
 
     emit logger_ptr_->signalWriteLine(log_line);
 
@@ -79,9 +79,9 @@ void ScreenLogin::setDatabase(std::shared_ptr<ClientSession> client_session_ptr,
 
     const QString log_line = QStringLiteral("[%1]   [%2]   [%3]   %4")
                                  .arg(time_stamp,
-                                      "INFO",     // Уровни логгирования:
-                                      "NETWORK",  // Ключевые модули для чата
-                                      event);     // Event
+                                      "INFO", // Уровни логгирования:
+                                      "NETWORK", // Ключевые модули для чата
+                                      event); // Event
 
     emit logger_ptr_->signalWriteLine(log_line);
   } else if (mode == ServerConnectionMode::Offline)
@@ -129,9 +129,9 @@ void ScreenLogin::onConnectionStatusChanged(bool connectionStatus,
 
     const QString log_line = QStringLiteral("[%1]   [%2]   [%3]   %4")
                                  .arg(time_stamp,
-                                      "INFO",     // Уровни логгирования:
-                                      "NETWORK",  // Ключевые модули для чата
-                                      event);     // Event
+                                      "INFO", // Уровни логгирования:
+                                      "NETWORK", // Ключевые модули для чата
+                                      event); // Event
 
     emit logger_ptr_->signalWriteLine(log_line);
 
@@ -147,9 +147,9 @@ void ScreenLogin::onConnectionStatusChanged(bool connectionStatus,
 
     const QString log_line = QStringLiteral("[%1]   [%2]   [%3]   %4")
                                  .arg(time_stamp,
-                                      "INFO",     // Уровни логгирования:
-                                      "NETWORK",  // Ключевые модули для чата
-                                      event);     // Event
+                                      "INFO", // Уровни логгирования:
+                                      "NETWORK", // Ключевые модули для чата
+                                      event); // Event
 
     emit logger_ptr_->signalWriteLine(log_line);
 
@@ -159,9 +159,9 @@ void ScreenLogin::onConnectionStatusChanged(bool connectionStatus,
     const QString event = "Connection to Server lost";
     const QString log_line = QStringLiteral("[%1]   [%2]   [%3]   %4")
                                  .arg(time_stamp,
-                                      "ERROR",    // Уровни логгирования:
-                                      "NETWORK",  // Ключевые модули для чата
-                                      event);     // Event
+                                      "ERROR", // Уровни логгирования:
+                                      "NETWORK", // Ключевые модули для чата
+                                      event); // Event
 
     emit logger_ptr_->signalWriteLine(log_line);
 
@@ -210,7 +210,7 @@ void ScreenLogin::slot_show_logger_form(
 void ScreenLogin::on_registerModeButton_clicked() {
   if (!client_session_ptr_->getIsServerOnlineCl()) {
     QMessageBox::warning(this, tr("No!"), tr("Сервер не доступен."));
-  } else {
+
     clearFields();
     emit registrationRequested();
   }
@@ -224,21 +224,21 @@ void ScreenLogin::checkSignIn() {
   try {
     const auto newInput = ui->passwordEdit->text().toStdString();
 
-    if (ui->loginEdit->text().toStdString() == "" || newInput == "") return;
+    if (ui->loginEdit->text().toStdString() == "" || newInput == "")
+      return;
 
     if (!client_session_ptr_->getIsServerOnlineCl()) {
-      const auto time_stamp = QString::fromStdString(
+      auto time_stamp = QString::fromStdString(
           formatTimeStampToString(getCurrentDateTimeInt(), true));
-      const QString event = "Server unavailable";
-      const QString user_login = ui->loginEdit->text();
+      QString event = "Server unavailable";
+      QString user_login = ui->loginEdit->text();
 
-      const QString log_line =
-          QStringLiteral("[%1]   [%2]   [%3]   [user=%4]   %5")
-              .arg(time_stamp,
-                   "ERROR",     // Уровни логгирования:
-                   "NETWORK",   // Ключевые модули для чата
-                   user_login,  // User
-                   event);      // Event
+      QString log_line = QStringLiteral("[%1]   [%2]   [%3]   [user=%4]   %5")
+                             .arg(time_stamp,
+                                  "ERROR", // Уровни логгирования:
+                                  "NETWORK", // Ключевые модули для чата
+                                  user_login, // User
+                                  event);     // Event
 
       emit logger_ptr_->signalWriteLine(log_line);
 
@@ -246,24 +246,23 @@ void ScreenLogin::checkSignIn() {
       return;
     }
 
-    const auto login = ui->loginEdit->text().toStdString();
-    const auto password = ui->passwordEdit->text().toStdString();
+    auto login = ui->loginEdit->text().toStdString();
+    auto password = ui->passwordEdit->text().toStdString();
 
     auto result = client_session_ptr_->checkUserPasswordCl(login, password);
 
     if (!result) {
-      const auto time_stamp = QString::fromStdString(
+      auto time_stamp = QString::fromStdString(
           formatTimeStampToString(getCurrentDateTimeInt(), true));
-      const QString event = "Authentication failed: invalid token";
-      const QString user_login = ui->loginEdit->text();
+      QString event = "Authentication failed: invalid token";
+      QString user_login = ui->loginEdit->text();
 
-      const QString log_line =
-          QStringLiteral("[%1]   [%2]   [%3]   [user=%4]   %5")
-              .arg(time_stamp,
-                   "ERROR",     // Уровни логгирования:
-                   "AUTH",      // Ключевые модули для чата
-                   user_login,  // User
-                   event);      // Event
+      QString log_line = QStringLiteral("[%1]   [%2]   [%3]   [user=%4]   %5")
+                             .arg(time_stamp,
+                                  "ERROR", // Уровни логгирования:
+                                  "AUTH", // Ключевые модули для чата
+                                  user_login, // User
+                                  event);     // Event
 
       emit logger_ptr_->signalWriteLine(log_line);
       emit exc_qt::ErrorBus::i().error(tr("Login or Password is wrong"),
@@ -271,30 +270,56 @@ void ScreenLogin::checkSignIn() {
       return;
     }
 
-    const auto time_stamp = QString::fromStdString(
+    auto time_stamp = QString::fromStdString(
         formatTimeStampToString(getCurrentDateTimeInt(), true));
-    const QString event = "Authentification sucsessed";
-    const QString user_login = ui->loginEdit->text();
+    QString event = "Authentification sucsessed";
+    QString user_login = ui->loginEdit->text();
 
-    const QString log_line =
-        QStringLiteral("[%1]   [%2]   [%3]   [user=%4]   %5")
-            .arg(time_stamp,
-                 "INFO",      // Уровни логгирования:
-                 "AUTH",      // Ключевые модули для чата
-                 user_login,  // User
-                 event);      // Event
+    QString log_line = QStringLiteral("[%1]   [%2]   [%3]   [user=%4]   %5")
+                           .arg(time_stamp,
+                                "INFO", // Уровни логгирования:
+                                "AUTH", // Ключевые модули для чата
+                                user_login, // User
+                                event);     // Event
 
     emit logger_ptr_->signalWriteLine(log_line);
 
     emit accepted(ui->loginEdit->text());
+    
+//     event = "Connection to Server established to local network " +
+//             QString::fromStdString(
+//                 client_session_ptr_->getserverConnectionConfigCl()
+//                     .addressLocalNetwork) +
+//             "port: " +
+//             QString::number(
+//                 client_session_ptr_->getserverConnectionConfigCl().port);
 
-  } catch (const std::exception &) {
-    return;
-  }
+//     log_line = QStringLiteral("[%1]   [%2]   [%3]   %4")
+//                    .arg(time_stamp,
+//                         "INFO",    // Уровни логгирования:
+//                         "NETWORK", // Ключевые модули для чата
+//                         event);    // Event
+
+//     emit logger_ptr_->signalWriteLine(log_line);
+  
+//   else if (mode == ServerConnectionMode::Offline) {
+//     auto time_stamp = QString::fromStdString(
+//         formatTimeStampToString(getCurrentDateTimeInt(), true));
+//     QString event = "Connection to Server lost";
+//     QString log_line = QStringLiteral("[%1]   [%2]   [%3]   %4")
+//                                  .arg(time_stamp,
+//                                       "ERROR", // Уровни логгирования:
+//                                       "NETWORK", // Ключевые модули для чата
+//   }
+}
+catch (const std::exception &) {
+  return;
+}
 }
 
 void ScreenLogin::on_loginEdit_returnPressed() {
-  if (ui->loginEdit->text().toStdString() != "") ui->passwordEdit->setFocus();
+  if (ui->loginEdit->text().toStdString() != "")
+    ui->passwordEdit->setFocus();
 }
 
 void ScreenLogin::on_passwordEdit_returnPressed() {
@@ -316,10 +341,10 @@ void ScreenLogin::on_baseReInitialisationPushButton_clicked() {
     const QString log_line =
         QStringLiteral("[%1]   [%2]   [%3]   [user=%4]   %5")
             .arg(time_stamp,
-                 "ERROR",     // Уровни логгирования:
-                 "DATABASE",  // Ключевые модули для чата
-                 user_login,  // User
-                 event);      // Event
+                 "ERROR",    // Уровни логгирования:
+                 "DATABASE", // Ключевые модули для чата
+                 user_login, // User
+                 event);     // Event
 
     emit logger_ptr_->signalWriteLine(log_line);
 
@@ -334,10 +359,10 @@ void ScreenLogin::on_baseReInitialisationPushButton_clicked() {
     const QString log_line =
         QStringLiteral("[%1]   [%2]   [%3]   [user=%4]   %5")
             .arg(time_stamp,
-                 "INFO",      // Уровни логгирования:
-                 "DATABASE",  // Ключевые модули для чата
-                 user_login,  // User
-                 event);      // Event
+                 "INFO",     // Уровни логгирования:
+                 "DATABASE", // Ключевые модули для чата
+                 user_login, // User
+                 event);     // Event
 
     emit logger_ptr_->signalWriteLine(log_line);
 
@@ -355,7 +380,8 @@ void ScreenLogin::slotOn_logFileClearPushButton_clicked() {
   message.exec();
 
   const auto clicked = message.clickedButton();
-  if (clicked != clearButton) return;
+  if (clicked != clearButton)
+    return;
 
   if (!logger_ptr_) {
     QMessageBox::warning(this, "Ошибка", "Логгер недоступен.");
