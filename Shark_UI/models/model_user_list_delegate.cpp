@@ -40,18 +40,14 @@ void UserListItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
 
   const QString login           = index.data(Qt::UserRole + 1).toString();
   const QString name            = index.data(Qt::UserRole + 2).toString();
-  // const QString email           = index.data(Qt::UserRole + 3).toString();
-  // const QString phone           = index.data(Qt::UserRole + 4).toString();
-  // const QString disableReason   = index.data(Qt::UserRole + 5).toString();
   const bool isActive           = index.data(Qt::UserRole + 6).toBool();
-  // const std::int64_t disableAt  = index.data(Qt::UserRole + 7).toLongLong();
   const std::int64_t bunUntil = index.data(Qt::UserRole + 8).toLongLong();
 
   lineText = "Имя (логин): " + name + " (" + login + ")";
 
-  if (!isActive) lineText += "    забанен навсегда.";
+  std::int64_t currentTimeStamp = getCurrentDateTimeInt();
+  if (!isActive) lineText += " заблокирован.";
   else if (bunUntil > 0) {
-    std::int64_t currentTimeStamp = getCurrentDateTimeInt();
     if (bunUntil > currentTimeStamp)
       lineText += "    Забанен до " + QString::fromStdString(formatTimeStampToString(bunUntil, true));
   }
@@ -81,7 +77,7 @@ void UserListItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
 
   QColor colorLine1;
 
-  if (!isActive || bunUntil != 0)
+  if (!isActive || bunUntil > currentTimeStamp)
     colorLine1 = selected ? kGrayMiddleText : kGrayLightText;
     else
     colorLine1 = selected ? kSelText : kText1;

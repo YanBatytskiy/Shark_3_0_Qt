@@ -72,18 +72,19 @@ void ScreenUserData::setUserDataToLabels(const QModelIndex &index)
 
   const bool status = w->isEnabled();
 
+  //простой просмотр данных пользователя
   if (!status)
   {
   if (bunTo != 0 && bunTo > getCurrentDateTimeInt()) {
     ui->bunnedToDateUserLabel->setText("Бан до: " + QString::fromStdString(
                                                         formatTimeStampToString(bunTo, true)));
-    ui->unBunPushButton->setEnabled(true);
     ui->banPushButton->setEnabled(false);
-    ui->reasonDisableabel->setText("Причина блокировки: " + reasonDisable);
+    ui->unBunPushButton->setEnabled(true);
+    ui->reasonDisableabel->setText("");
   } else {
     ui->bunnedToDateUserLabel->setText("");
-    ui->unBunPushButton->setEnabled(false);
     ui->banPushButton->setEnabled(true);
+    ui->unBunPushButton->setEnabled(false);
   }
 
   if (isActive) {
@@ -95,11 +96,13 @@ void ScreenUserData::setUserDataToLabels(const QModelIndex &index)
     ui->blockedUserLabel->setText("Пользователь заблокирован.");
     ui->unblockPushButton->setEnabled(true);
     ui->blockPushButton->setEnabled(false);
+
     ui->banPushButton->setEnabled(false);
     ui->reasonDisableabel->setText("Причина блокировки: " + reasonDisable);
     ui->reasonDisableabel->setText("");
   }
 }
+  //режим добавления контактов к новому чату
   else {
     ui->unBunPushButton->setEnabled(false);
     ui->banPushButton->setEnabled(false);

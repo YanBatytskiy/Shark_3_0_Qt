@@ -21,7 +21,7 @@ public:
   void clearFields();
 
 signals:
-  void registrationRequested();
+  void signal_registration_requested();
   void accepted(QString login);
   void rejected();
 
@@ -32,7 +32,7 @@ public slots:
   void slot_show_logger_form(const std::multimap<qint64, QString> &logger_model);
 
 private slots:
-  void on_registerModeButton_clicked();
+  void slot_on_register_mode_button_clicked();
   void on_loginButtonBox_accepted();
   void on_loginButtonBox_rejected();
 

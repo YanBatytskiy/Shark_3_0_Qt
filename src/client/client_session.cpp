@@ -186,11 +186,11 @@ bool ClientSession::changeUserPasswordCl(UserDTO userDTO) {
 
 bool ClientSession::blockUnblockUserCl(const std::string &login, bool isBlocked,
                                        const std::string &disableReason) {
-  const auto user_ptr = _instance.findUserByLogin(login);
+  // const auto user_ptr = _instance.findUserByLogin(login);
 
   try {
-    if (!user_ptr)
-      throw exc::UserNotFoundException();
+  //   if (!user_ptr)
+  //     throw exc::UserNotFoundException();
 
     UserDTO userDTO;
 

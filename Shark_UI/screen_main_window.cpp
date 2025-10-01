@@ -19,7 +19,7 @@ MainWindow::MainWindow(std::shared_ptr<ClientSession> client_session_ptr,
   ui->pageRegister->setDatabase(client_session_ptr_, logger_ptr_);
   ui->pageWork->setDatabase(client_session_ptr_, logger_ptr_);
 
-  connect(ui->pageLogin, &ScreenLogin::registrationRequested, this,
+  connect(ui->pageLogin, &ScreenLogin::signal_registration_requested, this,
           &MainWindow::setRegistrationForm);
 
   connect(ui->pageLogin, &ScreenLogin::rejected, this,
