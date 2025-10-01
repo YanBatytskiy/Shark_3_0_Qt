@@ -140,28 +140,23 @@ std::optional<std::vector<UserDTO>> UserSqlReader::GetUsersByTextPartSQL(
 
   try {
     std::string sql;
-    sql = R"( with user_record as (
-  	select *
-  		from public.users us
-  	where login = ')";
+    sql = R"(select * 
+	from public.users 
+	where (lower(login) similar to '%)";
 
-    sql += makeStringForSQL(packet.login) + "'\n";
+    sql += makeStringForSQL(packet.passwordhash);
 
-    sql += R"())
-	select users.login, users.name, users.email, users.phone, users.is_active, 
-		users.disabled_at, users.ban_until, users.disable_reason
-	from public.users
-		left join user_record on true
-	where lower(users.login) like lower('%";
+    sql += R"(%'
+  or lower(name) similar to '%)";
 
-    std::string text_to_find_lower = packet.passwordhash;
+    const std::string text_to_find_lower = TextToLower(packet.passwordhash);
     sql += makeStringForSQL(text_to_find_lower);
-    sql += R"(%')
-	and users.login <> ')";
 
-    const std::string login_exclude = packet.login;
-    sql += makeStringForSQL(login_exclude) + "'";
-    sql += R"( order by login asc;)";
+    sql += R"(%') and login <>')";
+
+    const std::string login_exclude = TextToLower(packet.login);
+    sql += makeStringForSQL(login_exclude);
+    sql += "';";
 
     result = executor_.execSQL(conn, sql);
 
@@ -169,19 +164,19 @@ std::optional<std::vector<UserDTO>> UserSqlReader::GetUsersByTextPartSQL(
       throw exc::SQLSelectException(", GetUsersByTextPartSQL");
     }
 
-    if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result) > 0) {
-      auto quantity = PQntuples(result);
+    const auto quantity = PQntuples(result);
 
+    if (PQresultStatus(result) == PGRES_TUPLES_OK && quantity > 0) {
       for (int i = 0; i < quantity; ++i) {
         UserDTO user_dto;
-        user_dto.login = PQgetvalue(result, i, 0);
-        user_dto.userName = PQgetvalue(result, i, 1);
-        user_dto.email = PQgetvalue(result, i, 2);
-        user_dto.phone = PQgetvalue(result, i, 3);
-        user_dto.is_active = (*PQgetvalue(result, i, 4) == 't');
-        user_dto.disabled_at = std::stoull(PQgetvalue(result, i, 5));
-        user_dto.ban_until = std::stoull(PQgetvalue(result, i, 6));
-        user_dto.disable_reason = PQgetvalue(result, i, 7);
+        user_dto.login = PQgetvalue(result, i, 1);
+        user_dto.userName = PQgetvalue(result, i, 2);
+        user_dto.email = PQgetvalue(result, i, 3);
+        user_dto.phone = PQgetvalue(result, i, 4);
+        user_dto.is_active = (*PQgetvalue(result, i, 5) == 't');
+        user_dto.disabled_at = std::stoull(PQgetvalue(result, i, 6));
+        user_dto.ban_until = std::stoull(PQgetvalue(result, i, 7));
+        user_dto.disable_reason = PQgetvalue(result, i, 8);
         value.push_back(user_dto);
       }
 
