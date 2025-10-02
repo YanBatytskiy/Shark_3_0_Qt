@@ -362,10 +362,6 @@ ChatSystem &ClientSession::getInstanceCl() { return _instance; }
 //   return _core.getSocketFdCore();
 // }
 
-void ClientSession::setActiveUserCl(const std::shared_ptr<User> &user) {
-  _instance.setActiveUser(user);
-}
-
 // void ClientSession::setSocketFdCl(int socket_fd) {
 //   _core.setSocketFdCore(socket_fd);
 // }

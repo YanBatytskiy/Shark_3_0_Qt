@@ -12,8 +12,6 @@ public:
   int &Connection();
   const int &Connection() const;
 
-  void SetConnection(int fd);
-
   bool EnsureConnected(int listener_fd);
 
   std::vector<std::uint8_t> ReceiveFrame();

@@ -58,7 +58,6 @@ public:
   getChatListCl();
 
   // setters
-  void setActiveUserCl(const std::shared_ptr<User> &user);
 //   void setSocketFdCl(int socket_fd);
 
   // threads

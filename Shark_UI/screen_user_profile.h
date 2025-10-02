@@ -24,7 +24,6 @@ public:
   explicit ScreenUserProfile(QWidget *parent = nullptr);
   ~ScreenUserProfile();
   void setDatabase(std::shared_ptr<ClientSession> client_session_ptr);
-  const UserDataQt getUserData() const;
 
 protected:
   bool eventFilter(QObject *watched, QEvent *event) override;

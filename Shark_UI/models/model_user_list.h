@@ -45,13 +45,8 @@ public:
 
   void appendItem(const UserItem& userItem);
   void removeItem(int row);
-  void setLoginUserList(int row, const QString& textValue);
-  void setNameUserList(int row, const QString& textValue);
-  void setEmailUserList(int row, const QString& textValue);
-  void setPhoneUserList(int row, const QString& textValue);
   void setDisableReasonUserList(int row, const QString& textValue);
   void setIsActiveUserList(int row, bool newValue);
-  void setDisableAtUserList(int row, std::int64_t newValue);
   void setBunUntilUserList(int row, std::int64_t newValue);
   void clear();
   QString findNameByLogin(const QString &login) const;

@@ -21,20 +21,6 @@ int &SessionTransport::Connection() { return connection_; }
 
 const int &SessionTransport::Connection() const { return connection_; }
 
-void SessionTransport::SetConnection(int file_descriptor) {
-  if (file_descriptor == connection_) {
-    return;
-  }
-
-  if (file_descriptor < 0) {
-    Reset();
-    return;
-  }
-
-  CloseInternal();
-  connection_ = file_descriptor;
-}
-
 bool SessionTransport::EnsureConnected(int listener_fd) {
   if (IsDescriptorValid(connection_)) {
     return false;

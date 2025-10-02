@@ -10,12 +10,6 @@ UserChatList::UserChatList(const std::shared_ptr<User> &owner) : _owner(owner) {
 
 // getters
 /**
- * @brief Gets the owner of the chat list.
- * @return Weak pointer to the user who owns the chat list.
- */
-std::weak_ptr<User> UserChatList::getOwner() const { return _owner; }
-
-/**
  * @brief Gets the list of chats for the user.
  * @return Vector of weak pointers to chats.
  */
@@ -38,14 +32,3 @@ auto new_ptr = chat.lock();
       return;
 
   _chatList.push_back(chat);}
-
-void UserChatList::deleteChatFromList(const std::weak_ptr<Chat> &chat) {
-
-  auto it = std::find_if(_chatList.begin(), _chatList.end(), [&chat](const std::weak_ptr<Chat> &item) {
-    return !item.owner_before(chat) && !chat.owner_before(item);
-  });
-
-  if (it != _chatList.end()) {
-    _chatList.erase(it);
-  }
-}

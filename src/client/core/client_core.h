@@ -41,10 +41,6 @@ class ClientCore : public QObject {
   int createConnectionCore(const ServerConnectionConfig &config,
                            ServerConnectionMode mode);
 
-  bool discoverServerOnLANCore(ServerConnectionConfig &config);
-
-  bool initServerConnectionCore();
-
   void connectionMonitorLoopCore(std::atomic_bool &running_flag);
   static bool socketAliveCore(int fd);
 

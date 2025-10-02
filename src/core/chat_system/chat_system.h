@@ -39,13 +39,9 @@ public:
 
   // getters
 
-  const bool &getIsServerStatus() const;
-
   std::shared_ptr<Chat> getChatById(std::size_t chatId) const;
 
   const std::vector<std::shared_ptr<User>> &getUsers() const;
-
-  const std::vector<std::shared_ptr<Chat>> &getChats() const;
 
   const std::shared_ptr<User> &getActiveUser() const;
 
@@ -66,11 +62,5 @@ public:
   void clear_chat_system();
 
   // utilities
-  std::vector<std::shared_ptr<User>> findUserByTextPart(const std::string &textToFind) const; // поиск пользователя
-
   std::shared_ptr<User> findUserByLogin(const std::string &userLogin) const;
-
-  const std::shared_ptr<User> RqFrClientCheckLoginExists(const std::string &login) const;
-
-  bool checkPasswordValidForUser(const std::string &userPassword, const std::string &userLogin);
 };

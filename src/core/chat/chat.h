@@ -65,8 +65,6 @@ public:
 
   const std::unordered_map<std::size_t, int64_t> &getMessageIdToTimeStamp() const;
 
-  const std::int64_t getTimeStampForLastMessage(const std::size_t &messageId) const;
-
   const std::multimap<int64_t, std::shared_ptr<Message>> &getMessages() const;
   std::multimap<int64_t, std::shared_ptr<Message>> &getMessages();
 
@@ -86,7 +84,6 @@ public:
   void setChatId(const std::size_t &chatId);
 
   void setMessageIdToTimeStamp(const std::size_t &messageId, const int64_t &timeStamp);
-  void updateMessageIdToTimeStamp(const std::size_t &oldMessageId, const std::size_t &newMessageId);
 
   void addParticipant(const std::shared_ptr<User> &user, std::size_t lastReadMessageIndex, bool deletedFromChat);
 
@@ -96,10 +93,6 @@ public:
   void setLastReadMessageId(const std::shared_ptr<User> &user, std::size_t newLastReadMessageId);
 
   bool setDeletedMessageMap(const std::string &userLogin, const std::size_t &deletedMessageId);
-
-  // utilities
-
-  bool clearChat();
 
   std::size_t getUnreadMessageCount(const std::shared_ptr<User> &user_ptr);
 

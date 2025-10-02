@@ -32,18 +32,6 @@ void ClientSessionDtoSetter::setActiveUserDTOFromSrvProcessing(
   user_ptr->createChatList(std::make_shared<UserChatList>(user_ptr));
 }
 
-void ClientSessionDtoSetter::setUserDTOFromSrvProcessing(
-    const UserDTO &user_dto) const {
-  auto user_ptr = std::make_shared<User>(
-      UserData(user_dto.login, user_dto.userName, "-1", user_dto.email,
-               user_dto.phone, user_dto.disable_reason, user_dto.is_active,
-               user_dto.disabled_at, user_dto.ban_until));
-
-  auto &instance = session_.getInstanceCl();
-  instance.addUserToSystem(user_ptr);
-
-  }
-
 void ClientSessionDtoSetter::setOneMessageDTOProcessing(
     const MessageDTO &message_dto, const std::shared_ptr<Chat> &chat) const {
   auto sender =

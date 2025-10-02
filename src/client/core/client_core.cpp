@@ -102,10 +102,6 @@ int ClientCore::createConnectionCore(const ServerConnectionConfig &config,
   return fd;
 }
 
-bool ClientCore::discoverServerOnLANCore(ServerConnectionConfig &config) {
-  return transport_.discoverServerOnLAN(config);
-}
-
 PacketListDTO ClientCore::processingRequestToServerCore(
     std::vector<PacketDTO> &packets, const RequestType &request_type) {
   PacketListDTO result;
@@ -160,18 +156,6 @@ PacketListDTO ClientCore::processingRequestToServerCore(
   }
 
   return result;
-}
-
-bool ClientCore::initServerConnectionCore() {
-  auto config = server_connection_config_;
-  auto mode = server_connection_mode_;
-
-  if (!findServerAddressCore(config, mode)) {
-    return false;
-  }
-
-  const int fd = createConnectionCore(config, mode);
-  return fd >= 0;
 }
 
 void ClientCore::updateConnectionStateCore(bool online,

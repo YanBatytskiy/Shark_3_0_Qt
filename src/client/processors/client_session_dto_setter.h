@@ -14,7 +14,6 @@ public:
   explicit ClientSessionDtoSetter(ClientSession &session);
 
   void setActiveUserDTOFromSrvProcessing(const UserDTO &user_dto) const;
-  void setUserDTOFromSrvProcessing(const UserDTO &user_dto) const;
   void setOneMessageDTOProcessing(const MessageDTO &message_dto,
                                   const std::shared_ptr<Chat> &chat) const;
   bool

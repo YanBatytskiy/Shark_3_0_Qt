@@ -60,8 +60,6 @@ void ScreenUserProfile::setDatabase(
   client_session_ptr_ = client_session_ptr;
 }
 
-const UserDataQt ScreenUserProfile::getUserData() const { return _userData; }
-
 void ScreenUserProfile::slotFillDataToForm() {
   _userData._login = QString::fromStdString(
       client_session_ptr_->getActiveUserCl()->getLogin());

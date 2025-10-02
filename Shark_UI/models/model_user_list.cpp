@@ -66,38 +66,6 @@ void UserListModel::removeItem(int row)
   _items.erase(_items.begin() + row);
   endRemoveRows();}
 
-void UserListModel::setLoginUserList(int row, const QString &textValue)
-{
-  if (row<0 || row >=rowCount()) return;
-  _items[static_cast<size_t>(row)].Login = textValue;
-  const QModelIndex i = index(row);
-  emit dataChanged(i, i, {LoginRole});
-}
-
-void UserListModel::setNameUserList(int row, const QString &textValue)
-{
-  if (row<0 || row >=rowCount()) return;
-  _items[static_cast<size_t>(row)].Name = textValue;
-  const QModelIndex i = index(row);
-  emit dataChanged(i, i, {NameRole});
-}
-
-void UserListModel::setEmailUserList(int row, const QString &textValue)
-{
-  if (row<0 || row >=rowCount()) return;
-  _items[static_cast<size_t>(row)].Email = textValue;
-  const QModelIndex i = index(row);
-  emit dataChanged(i, i, {EmailRole});
-}
-
-void UserListModel::setPhoneUserList(int row, const QString &textValue)
-{
-  if (row<0 || row >=rowCount()) return;
-  _items[static_cast<size_t>(row)].Phone = textValue;
-  const QModelIndex i = index(row);
-  emit dataChanged(i, i, {PhoneRole});
-}
-
 void UserListModel::setDisableReasonUserList(int row, const QString &textValue)
 {
   if (row<0 || row >=rowCount()) return;
@@ -111,14 +79,6 @@ void UserListModel::setIsActiveUserList(int row, bool newValue) {
   _items[static_cast<size_t>(row)].IsActive = newValue;
   const QModelIndex i = index(row);
   emit dataChanged(i, i, {IsActiveRole});
-}
-
-void UserListModel::setDisableAtUserList(int row, std::int64_t newValue)
-{
-  if (row<0 || row >=rowCount()) return;
-  _items[static_cast<size_t>(row)].DisableAt = newValue;
-  const QModelIndex i = index(row);
-  emit dataChanged(i, i, {DisableAtRole});
 }
 
 void UserListModel::setBunUntilUserList(int row, std::int64_t newValue) {

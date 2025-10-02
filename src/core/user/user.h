@@ -71,8 +71,6 @@ public:
 
   std::string getPhone() const;
 
-  std::string getDisableReason() const;
-
   bool getIsActive() const;
 
   std::int64_t getDisabledAt() const;
@@ -81,17 +79,7 @@ public:
 
   std::shared_ptr<UserChatList> getUserChatList() const;
 
-  void setLogin(const std::string &login);
-
-  void setUserName(const std::string &userName);
-
   void setPassword(const std::string &passwordHash);
-
-  void setEmail(const std::string &email);
-
-  void setPhone(const std::string &phone);
-
-  bool checkPassword(const std::string &passwordHash) const;
 
   bool RqFrClientCheckLogin(const std::string &login) const;
 };

@@ -55,23 +55,6 @@ void Chat::setMessageIdToTimeStamp(const std::size_t &messageId, const int64_t &
 //
 //
 //
-void Chat::updateMessageIdToTimeStamp(const std::size_t &oldMessageId, const std::size_t &newMessageId) {
-  auto it = _messageIdToTimeStamp.find(oldMessageId);
-  if (it != _messageIdToTimeStamp.end()) {
-    _messageIdToTimeStamp[newMessageId] = it->second;
-    _messageIdToTimeStamp.erase(it); // если нужно удалить старый
-  }
-}
-//
-//
-//
-const std::int64_t Chat::getTimeStampForLastMessage(const std::size_t &messageId) const {
-  return _messageIdToTimeStamp.find(messageId)->second;
-}
-
-//
-//
-//
 void Chat::addParticipant(const std::shared_ptr<User> &user, std::size_t lastReadMessageIndex, bool deletedFromChat) {
 
   Participant participant;
@@ -128,19 +111,6 @@ bool Chat::setDeletedMessageMap(const std::string &userLogin, const std::size_t 
     else
       return false;
   }
-  return true;
-}
-
-// utilities
-
-bool Chat::clearChat() {
-  _chatId = 0;
-  _participants.clear();
-  _messages.clear();
-  _messageIdMap.clear();
-  _lastReadMessageMap.clear();
-  _messageIdToTimeStamp.clear();
-  _deletedMessagesMap.clear();
   return true;
 }
 

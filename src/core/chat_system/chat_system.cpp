@@ -20,8 +20,6 @@ ChatSystem::ChatSystem() {}
 
 // getters
 
-const bool &ChatSystem::getIsServerStatus() const { return _isServerStatus; }
-
 std::shared_ptr<Chat> ChatSystem::getChatById(std::size_t chatId) const {
   auto it = _chatIdChatMap.find(chatId);
   if (it != _chatIdChatMap.end())
@@ -31,10 +29,6 @@ std::shared_ptr<Chat> ChatSystem::getChatById(std::size_t chatId) const {
 
 const std::vector<std::shared_ptr<User>> &ChatSystem::getUsers() const {
   return _users;
-}
-
-const std::vector<std::shared_ptr<Chat>> &ChatSystem::getChats() const {
-  return _chats;
 }
 
 const std::shared_ptr<User> &ChatSystem::getActiveUser() const {
@@ -91,30 +85,6 @@ void ChatSystem::clear_chat_system() {
   _isServerStatus = false;
 }
 
-// utilities
-std::vector<std::shared_ptr<User>> ChatSystem::findUserByTextPart(
-    const std::string &textToFind) const { // поиск пользователя
-
-  std::vector<std::shared_ptr<User>> foundUsers;
-
-  std::string textToFindLower = TextToLower(textToFind);
-
-  // перебираем всех пользователей в векторе
-  for (const auto &user : _users) {
-
-    if (user == _activeUser)
-      continue;
-
-    std::string LowerLogin = TextToLower(user->getLogin());
-    std::string LowerName = TextToLower(user->getUserName());
-
-    if (LowerLogin.find(textToFindLower) != std::string::npos ||
-        LowerName.find(textToFindLower) != std::string::npos)
-      foundUsers.push_back(user);
-  }
-  return foundUsers;
-}
-
 std::shared_ptr<User>
 ChatSystem::findUserByLogin(const std::string &userLogin) const {
 
@@ -123,28 +93,4 @@ ChatSystem::findUserByLogin(const std::string &userLogin) const {
     return nullptr;
   else
     return it->second;
-}
-
-const std::shared_ptr<User>
-ChatSystem::RqFrClientCheckLoginExists(const std::string &login) const {
-
-  auto it = this->_loginUserMap.find(login);
-
-  if (it != this->_loginUserMap.end())
-    return it->second;
-  else
-    return nullptr;
-}
-
-bool ChatSystem::checkPasswordValidForUser(const std::string &passwordHash,
-                                           const std::string &userLogin) {
-
-  auto user = findUserByLogin(userLogin);
-
-  if (user == nullptr)
-    return false;
-
-  const auto &check = user->getPasswordHash();
-
-  return passwordHash == user->getPasswordHash();
 }

@@ -29,12 +29,6 @@ public:
 
   // getters
   /**
-   * @brief Gets the owner of the chat list.
-   * @return Weak pointer to the user who owns the chat list.
-   */
-  std::weak_ptr<User> getOwner() const;
-
-  /**
    * @brief Gets the list of chats for the user.
    * @return Vector of weak pointers to chats.
    */
@@ -50,12 +44,6 @@ public:
    * @param chat Weak pointer to the chat to add.
    */
   void addChatToChatList(const std::weak_ptr<Chat> &chat);
-
-  /**
-   * @brief Delete a chat to the user's chat list.
-   * @param chat Weak pointer to the chat to add.
-   */
-  void deleteChatFromList(const std::weak_ptr<Chat> &chat);
 
   // --- Дополнительные методы ---
 };
