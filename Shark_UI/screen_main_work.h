@@ -93,10 +93,10 @@ private:
   std::shared_ptr<Logger> logger_ptr_;
 
   QButtonGroup *_findRadoButtonGroup{nullptr};
-  ChatListModel *_ChatListModel;
-  UserListModel *_userListModel;
-  MessageModel *_MessageModel;
-  UserListModel *_newChatUserListModel;
+  ChatListModel *_ChatListModel{nullptr};
+  UserListModel *_userListModel{nullptr};
+  MessageModel *_MessageModel{nullptr};
+  UserListModel *_newChatUserListModel{nullptr};
   ChatDTO _newChatDTO;
 
   bool _startFind{true};

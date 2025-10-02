@@ -46,7 +46,7 @@ public:
   // getters
   ChatSystem &getInstanceCl();
   const std::shared_ptr<User> getActiveUserCl() const;
-  std::size_t getSocketFdCl() const;
+//   int getSocketFdCl() const;
   bool getIsServerOnlineCl() const noexcept;
   ServerConnectionConfig &getserverConnectionConfigCl();
   const ServerConnectionConfig &getserverConnectionConfigCl() const;
@@ -59,7 +59,7 @@ public:
 
   // setters
   void setActiveUserCl(const std::shared_ptr<User> &user);
-  void setSocketFdCl(int socket_fd);
+//   void setSocketFdCl(int socket_fd);
 
   // threads
   void startConnectionThreadCl();

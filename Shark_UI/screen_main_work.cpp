@@ -75,6 +75,18 @@ void ScreenMainWork::setDatabase(
   client_session_ptr_ = client_session_ptr;
   logger_ptr_ = logger_ptr;
 
+  if (auto *chat_list = ui->mainWorkTabChatsList) {
+    chat_list->setDatabase(client_session_ptr_);
+  }
+
+  if (auto *chatting = ui->mainWorkPageChatting) {
+    chatting->setDatabase(client_session_ptr_);
+  }
+
+  if (auto *user_data = ui->mainWorkPageUserDataView) {
+    user_data->setDatabase(client_session_ptr_, _userListModel);
+  }
+
   ui->findLineEdit->setEnabled(false);
   ui->mainWorkChatUserTabWidget->setCurrentIndex(0);
   ui->mainWorkRightStackedWidget->setCurrentIndex(0);
@@ -625,6 +637,10 @@ void ScreenMainWork::setupUserList() {
 
   // связь- изменение индекса при выборе контакта - заполнение окна списка чатов
   // контакта slotConnectUserListToChatListchange(true);
+
+  if (auto *user_data = ui->mainWorkPageUserDataView) {
+    user_data->setDatabase(client_session_ptr_, _userListModel);
+  }
 }
 
 void ScreenMainWork::setupScreenChatting() {

@@ -147,19 +147,106 @@ bool UserSqlWriter::BlockUserSQL(const UserDTO &user_dto, PGconn *conn) {
 
 bool UserSqlWriter::UnblockUserSQL(const UserDTO &user_dto,
                                           PGconn *conn) {
-  (void)user_dto;
-  (void)conn;
-  return false;
+  PGresult *result = nullptr;
+
+  try {
+    const std::string login = makeStringForSQL(user_dto.login);
+    const std::string disable_reason = makeStringForSQL(user_dto.disable_reason);
+
+    const std::string sql =
+        "UPDATE public.users SET is_active = true, disable_reason = '' WHERE login = '" + login + "';";
+
+    result = executor_.execSQL(conn, sql);
+
+    if (result == nullptr) {
+      throw exc::SQLSelectException("UnBlockUserSQL");
+    }
+
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+      PQclear(result);
+      return false;
+    }
+
+    const char *tuples = PQcmdTuples(result);
+    const long affected_rows =
+        tuples != nullptr ? std::strtol(tuples, nullptr, 10) : 0;
+    PQclear(result);
+
+    return affected_rows > 0;
+  } catch (const exc::SQLSelectException &ex) {
+    std::cerr << "Сервер: " << ex.what() << std::endl;
+    if (result != nullptr) {
+      PQclear(result);
+    }
+    return false;
+  }
 }
 
 bool UserSqlWriter::BanUserSQL(const UserDTO &user_dto, PGconn *conn) {
-  (void)user_dto;
-  (void)conn;
-  return false;
+  PGresult *result = nullptr;
+
+  try {
+    const std::string login = makeStringForSQL(user_dto.login);
+
+    std::string sql = "UPDATE public.users SET bun_until = ";
+    sql += std::to_string(user_dto.ban_until) + " WHERE login = '" + login + "';";
+
+    result = executor_.execSQL(conn, sql);
+
+    if (result == nullptr) {
+      throw exc::SQLSelectException("BunUserSQL");
+    }
+
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+      PQclear(result);
+      return false;
+    }
+
+    const char *tuples = PQcmdTuples(result);
+    const long affected_rows =
+        tuples != nullptr ? std::strtol(tuples, nullptr, 10) : 0;
+    PQclear(result);
+
+    return affected_rows > 0;
+  } catch (const exc::SQLSelectException &ex) {
+    std::cerr << "Сервер: " << ex.what() << std::endl;
+    if (result != nullptr) {
+      PQclear(result);
+    }
+    return false;
+  }
 }
 
 bool UserSqlWriter::UnbanUserSQL(const UserDTO &user_dto, PGconn *conn) {
-  (void)user_dto;
-  (void)conn;
-  return false;
+  PGresult *result = nullptr;
+
+  try {
+    const std::string login = makeStringForSQL(user_dto.login);
+
+    std::string sql = "UPDATE public.users SET bun_until = 0 WHERE login = '" + login + "';";
+
+    result = executor_.execSQL(conn, sql);
+
+    if (result == nullptr) {
+      throw exc::SQLSelectException("BunUserSQL");
+    }
+
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+      PQclear(result);
+      return false;
+    }
+
+    const char *tuples = PQcmdTuples(result);
+    const long affected_rows =
+        tuples != nullptr ? std::strtol(tuples, nullptr, 10) : 0;
+    PQclear(result);
+
+    return affected_rows > 0;
+  } catch (const exc::SQLSelectException &ex) {
+    std::cerr << "Сервер: " << ex.what() << std::endl;
+    if (result != nullptr) {
+      PQclear(result);
+    }
+    return false;
+  }
 }

@@ -2,7 +2,6 @@
 
 #include <QObject>
 #include <atomic>
-#include <mutex>
 
 #include "client/tcp_transport/session_types.h"
 #include "client/tcp_transport/tcp_transport.h"
@@ -14,7 +13,7 @@ class User;
 
 class ClientCore : public QObject {
   Q_OBJECT
-public:
+ public:
   ClientCore(ChatSystem &chat_system, QObject *parent = nullptr);
   ClientCore(const ClientCore &) = delete;
   ClientCore &operator=(const ClientCore &) = delete;
@@ -50,14 +49,13 @@ public:
   static bool socketAliveCore(int fd);
 
   // utilities
-  PacketListDTO getDatafromServerCore(const std::vector<std::uint8_t> &payload);
   PacketListDTO processingRequestToServerCore(std::vector<PacketDTO> &packets,
                                               const RequestType &request_type);
 
-signals:
+ signals:
   void serverStatusChanged(bool online, ServerConnectionMode mode);
 
-private:
+ private:
   void updateConnectionStateCore(bool online, ServerConnectionMode mode);
 
   ChatSystem &chat_system_;
@@ -66,6 +64,5 @@ private:
   ServerConnectionConfig server_connection_config_{};
   ServerConnectionMode server_connection_mode_{ServerConnectionMode::Offline};
 
-  mutable std::mutex socket_mutex_;
   int socket_fd_{-1};
 };

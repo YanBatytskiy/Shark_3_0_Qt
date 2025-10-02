@@ -66,19 +66,16 @@ const ServerConnectionMode &ClientCore::getServerConnectionModeCore() const {
 }
 
 int ClientCore::getSocketFdCore() const {
-  std::scoped_lock lock(socket_mutex_);
   return socket_fd_;
 }
 
 void ClientCore::setSocketFdCore(int socket_fd) {
-  {
-    std::scoped_lock lock(socket_mutex_);
-    socket_fd_ = socket_fd;
-  }
 
-  if (socket_fd_ < 0) {
+  if (socket_fd < 0) {
+    socket_fd_ = -1;
     updateConnectionStateCore(false, ServerConnectionMode::Offline);
   } else {
+    socket_fd_ = socket_fd;
     updateConnectionStateCore(true, server_connection_mode_);
   }
 }
@@ -107,17 +104,6 @@ int ClientCore::createConnectionCore(const ServerConnectionConfig &config,
 
 bool ClientCore::discoverServerOnLANCore(ServerConnectionConfig &config) {
   return transport_.discoverServerOnLAN(config);
-}
-
-PacketListDTO ClientCore::getDatafromServerCore(
-    const std::vector<std::uint8_t> &payload) {
-  const int socket_fd = getSocketFdCore();
-  if (socket_fd < 0) {
-    PacketListDTO empty;
-    empty.packets.clear();
-    return empty;
-  }
-  return transport_.getDataFromServer(socket_fd, status_online_, payload);
 }
 
 PacketListDTO ClientCore::processingRequestToServerCore(

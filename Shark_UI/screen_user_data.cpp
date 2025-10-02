@@ -1,5 +1,8 @@
 #include "screen_user_data.h"
+
 #include "model_user_list.h"
+#include "screen_chat_list.h"
+#include "screen_chatting.h"
 #include "system/date_time_utils.h"
 #include "ui_screen_user_data.h"
 #include <QCalendarWidget>
@@ -9,6 +12,7 @@
 
 ScreenUserData::ScreenUserData(QWidget *parent)
     : QWidget(parent), ui(new Ui::ScreenUserData) {
+
   ui->setupUi(this);
 
   connect(ui->blockPushButton, &QPushButton::clicked, this,
@@ -26,9 +30,19 @@ ScreenUserData::ScreenUserData(QWidget *parent)
 
 ScreenUserData::~ScreenUserData() { delete ui; }
 
-void ScreenUserData::setDatabase(std::shared_ptr<ClientSession> client_session_ptr)
+void ScreenUserData::setDatabase(std::shared_ptr<ClientSession> client_session_ptr,
+                                 UserListModel* user_list_model)
 {
   client_session_ptr_ = client_session_ptr;
+  _userListModel = user_list_model;
+
+  if (auto *chat_list = ui->ScreenUserDataChatsListWidget) {
+    chat_list->setDatabase(client_session_ptr_);
+  }
+
+  if (auto *chatting = ui->ScreenUserDataMessagesListWidget) {
+    chatting->setDatabase(client_session_ptr_);
+  }
 
 }
 
@@ -48,25 +62,26 @@ void ScreenUserData::slotClearUserDataToLabels() {
   ui->blockPushButton->setEnabled(false);
 }
 
-void ScreenUserData::setUserDataToLabels(const QModelIndex &index)
+void ScreenUserData::setUserDataToLabels(const QModelIndex &idx)
 {
+  user_list_index_ = std::make_shared<QModelIndex>(idx);
 
-  QString textValue = index.data(UserListModel::LoginRole).toString();
+  QString textValue = idx.data(UserListModel::LoginRole).toString();
   ui->loginLineEdit->setText(textValue);
 
-  textValue = index.data(UserListModel::NameRole).toString();
+  textValue = idx.data(UserListModel::NameRole).toString();
   ui->nameLineEdit->setText(textValue);
 
-  textValue = index.data(UserListModel::EmailRole).toString();
+  textValue = idx.data(UserListModel::EmailRole).toString();
   ui->emailLineEdit->setText(textValue);
 
-  textValue = index.data(UserListModel::PhoneRole).toString();
+  textValue = idx.data(UserListModel::PhoneRole).toString();
   ui->phoneLineEdit->setText(textValue);
 
-  const auto &isActive = index.data(UserListModel::IsActiveRole).toBool();
-  const auto& reasonDisable = index.data(UserListModel::DisableReasonRole).toString();
+  const auto &isActive = idx.data(UserListModel::IsActiveRole).toBool();
+  const auto& reasonDisable = idx.data(UserListModel::DisableReasonRole).toString();
 
-  const auto &bunTo = index.data(UserListModel::BunUntilRole).toLongLong();
+  const auto &bunTo = idx.data(UserListModel::BunUntilRole).toLongLong();
 
   const auto w = ui->ScreenNewChatParticipantsWidget;
 
@@ -99,7 +114,6 @@ void ScreenUserData::setUserDataToLabels(const QModelIndex &index)
 
     ui->banPushButton->setEnabled(false);
     ui->reasonDisableabel->setText("Причина блокировки: " + reasonDisable);
-    ui->reasonDisableabel->setText("");
   }
 }
   //режим добавления контактов к новому чату
@@ -123,7 +137,6 @@ void ScreenUserData::setUserDataToLabels(const QModelIndex &index)
     } else {
       ui->blockedUserLabel->setText("Пользователь заблокирован.");
       ui->reasonDisableabel->setText("Причина блокировки: " + reasonDisable);
-      ui->reasonDisableabel->setText("");
     }
 
 }
@@ -146,26 +159,44 @@ void ScreenUserData::slot_on_block_push_button_clicked() {
   if (block_reason == "")
     return;
 
-  client_session_ptr_->blockUnblockUserCl(ui->loginLineEdit->text().toStdString(), true,
+  bool result = client_session_ptr_->blockUnblockUserCl(ui->loginLineEdit->text().toStdString(), true,
                                   block_reason.toStdString());
+
+  if (!result) {
+    QMessageBox::warning(this, " Ошибка.", "Блокировка не удалась");
+  }
+  else {
+    QMessageBox::information(this, " Сообщение", "Блокировка установлена");
+
+    // заменили в модели контактов
+    _userListModel->setIsActiveUserList(user_list_index_->row(), false);
+    _userListModel->setDisableReasonUserList(user_list_index_->row(), block_reason);
+
+    setUserDataToLabels(*user_list_index_);
+  }
 }
 
 void ScreenUserData::slot_on_unblock_push_button_clicked() {
 
-  bool ok = (QMessageBox::question(
-                 this, "Разблокировка", "Вы хотите снять бан с пользователя?",
-                 QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes);
+  const bool ok = (QMessageBox::question(
+                       this, "Разблокировка",
+                       "Вы хотите разблокировать пользователя?",
+                       QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes);
+  if (!ok) return;
 
-  if (!ok)
-    return;
-
-  if (client_session_ptr_->blockUnblockUserCl(ui->loginLineEdit->text().toStdString(),
-                                      false, "")) {
-    QMessageBox::information(this, "Сообщение", "Пользователь разблокирован");
-  } else {
+  if (!client_session_ptr_->blockUnblockUserCl(
+          ui->loginLineEdit->text().toStdString(), false, "")) {
     QMessageBox::warning(this, "Ошибка",
                          "Не смогли разблокировать пользователя");
+    return;
   }
+
+  QMessageBox::information(this, "Сообщение", "Пользователь разблокирован");
+
+  _userListModel->setIsActiveUserList(user_list_index_->row(), true);
+  _userListModel->setDisableReasonUserList(user_list_index_->row(), {});
+
+  setUserDataToLabels(*user_list_index_);
 }
 
 void ScreenUserData::slot_on_bun_push_button_clicked() {
@@ -179,7 +210,7 @@ void ScreenUserData::slot_on_bun_push_button_clicked() {
   layout->addWidget(label);
 
   QCalendarWidget *calendar = new QCalendarWidget(&dialog);
-  calendar->setSelectedDate(QDate::currentDate()); // Текущая дата по умолчанию
+  calendar->setSelectedDate(QDate::currentDate());
   layout->addWidget(calendar);
 
   QDialogButtonBox *buttonBox = new QDialogButtonBox(
@@ -189,32 +220,47 @@ void ScreenUserData::slot_on_bun_push_button_clicked() {
   connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
   connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
-  bool ok = (dialog.exec() == QDialog::Accepted);
-  if (!ok)
+  if (dialog.exec() != QDialog::Accepted) return;
+
+  const QDate selected_date = calendar->selectedDate();
+  if (selected_date <= QDate::currentDate()) return;
+
+  const auto time_stamp =
+      makeTimeStamp(selected_date.year(), selected_date.month(),
+                    selected_date.day(), 23, 59, 59);
+
+  if (!client_session_ptr_->bunUnbunUserCl(
+          ui->loginLineEdit->text().toStdString(), true, time_stamp)) {
+    QMessageBox::warning(this, "Ошибка",
+                         "Установить бан не удалось");
     return;
+  }
 
-  QDate selected_date = calendar->selectedDate();
-  if (selected_date == QDate::currentDate())
-    return;
+  QMessageBox::information(this, "Сообщение", "Бан установлен");
 
-  int year = selected_date.year();
-  int month = selected_date.month();
-  int day = selected_date.day();
+  _userListModel->setBunUntilUserList(user_list_index_->row(), time_stamp);
 
-  const auto time_stamp = makeTimeStamp(year, month, day, 23, 59, 59);
-
-  client_session_ptr_->bunUnbunUserCl(ui->loginLineEdit->text().toStdString(), true,
-                              time_stamp);
+  setUserDataToLabels(*user_list_index_);
 }
 
 void ScreenUserData::slot_on_unbun_push_button_clicked() {
 
-  bool ok = (QMessageBox::question(
-                 this, "Разблокировка", "Вы хотите снять бан с пользователя?",
-                 QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes);
-  if (!ok)
-    return;
+  const bool ok = (QMessageBox::question(
+                       this, "Разблокировка",
+                       "Вы хотите снять бан с пользователя?",
+                       QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes);
+  if (!ok) return;
 
-  client_session_ptr_->bunUnbunUserCl(ui->loginLineEdit->text().toStdString(), false,
-                              0);
+  if (!client_session_ptr_->bunUnbunUserCl(
+          ui->loginLineEdit->text().toStdString(), false, 0)) {
+    QMessageBox::warning(this, "Ошибка",
+                         "Снять бан не удалось");
+    return;
+  }
+
+  QMessageBox::information(this, "Сообщение", "Бан снят");
+
+  _userListModel->setBunUntilUserList(user_list_index_->row(), 0);
+
+  setUserDataToLabels(*user_list_index_);
 }

@@ -186,11 +186,8 @@ bool ClientSession::changeUserPasswordCl(UserDTO userDTO) {
 
 bool ClientSession::blockUnblockUserCl(const std::string &login, bool isBlocked,
                                        const std::string &disableReason) {
-  // const auto user_ptr = _instance.findUserByLogin(login);
 
   try {
-  //   if (!user_ptr)
-  //     throw exc::UserNotFoundException();
 
     UserDTO userDTO;
 
@@ -227,14 +224,16 @@ bool ClientSession::blockUnblockUserCl(const std::string &login, bool isBlocked,
     packetListDTOresult = _core.processingRequestToServerCore(
         packetDTOListSend, packetDTO.requestType);
 
+    if (packetListDTOresult.packets.empty() ||
+        !packetListDTOresult.packets.front().structDTOPtr) {
+      return false;
+    }
+
     const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(
-                             *packetListDTOresult.packets[0].structDTOPtr)
+                             *packetListDTOresult.packets.front().structDTOPtr)
                              .getStructDTOClass();
 
-    if (packet.reqResult)
-      return true;
-    else
-      return false;
+    return packet.reqResult;
 
   } // try
   catch (const exc::UserNotFoundException &ex) {
@@ -254,10 +253,67 @@ bool ClientSession::blockUnblockUserCl(const std::string &login, bool isBlocked,
 
 bool ClientSession::bunUnbunUserCl(const std::string &login, bool isBanned,
                                    std::int64_t bunnedTo) {
-  (void)login;
-  (void)isBanned;
-  (void)bunnedTo;
-  return false;
+ try {
+
+    UserDTO userDTO;
+
+    userDTO.login = login;
+    userDTO.userName = "";
+    userDTO.email = "";
+    userDTO.phone = "";
+    userDTO.passwordhash = "";
+    userDTO.disabled_at = 0;
+	userDTO.disable_reason = "";
+	userDTO.is_active = true;
+	
+    PacketDTO packetDTO;
+    packetDTO.structDTOClassType = StructDTOClassType::userDTO;
+    packetDTO.reqDirection = RequestDirection::ClientToSrv;
+
+    if (isBanned) {
+		userDTO.ban_until = bunnedTo;
+      packetDTO.requestType = RequestType::RqFrClientBunUser;
+    } else {
+		userDTO.ban_until = 0;
+      packetDTO.requestType = RequestType::RqFrClientUnBunUser;
+    }
+
+    packetDTO.structDTOPtr = std::make_shared<StructDTOClass<UserDTO>>(userDTO);
+
+    std::vector<PacketDTO> packetDTOListSend;
+    packetDTOListSend.push_back(packetDTO);
+
+    PacketListDTO packetListDTOresult;
+    packetListDTOresult.packets.clear();
+
+    packetListDTOresult = _core.processingRequestToServerCore(
+        packetDTOListSend, packetDTO.requestType);
+
+    if (packetListDTOresult.packets.empty() ||
+        !packetListDTOresult.packets.front().structDTOPtr) {
+      return false;
+    }
+
+    const auto &packet = static_cast<const StructDTOClass<ResponceDTO> &>(
+                             *packetListDTOresult.packets.front().structDTOPtr)
+                             .getStructDTOClass();
+
+    return packet.reqResult;
+
+  } // try
+  catch (const exc::UserNotFoundException &ex) {
+    const auto time_sdtamp =
+        formatTimeStampToString(getCurrentDateTimeInt(), true);
+    const auto timeStampQt = QString::fromStdString(time_sdtamp);
+    const auto userLoginQt = QString::fromStdString(login);
+
+    emit exc_qt::ErrorBus::i().error(
+        QString::fromUtf8(ex.what()),
+        QStringLiteral(
+            "[%1]   [ERROR]   [AUTH]   [user=%2]   changeUserPasswordQt   ")
+            .arg(timeStampQt, userLoginQt));
+    return false;
+  }
 }
 
 // threads
@@ -302,17 +358,17 @@ const std::shared_ptr<User> ClientSession::getActiveUserCl() const {
 
 ChatSystem &ClientSession::getInstanceCl() { return _instance; }
 
-std::size_t ClientSession::getSocketFdCl() const {
-  return static_cast<std::size_t>(_core.getSocketFdCore());
-}
+// int ClientSession::getSocketFdCl() const {
+//   return _core.getSocketFdCore();
+// }
 
 void ClientSession::setActiveUserCl(const std::shared_ptr<User> &user) {
   _instance.setActiveUser(user);
 }
 
-void ClientSession::setSocketFdCl(int socket_fd) {
-  _core.setSocketFdCore(socket_fd);
-}
+// void ClientSession::setSocketFdCl(int socket_fd) {
+//   _core.setSocketFdCore(socket_fd);
+// }
 
 const std::vector<UserDTO>
 ClientSession::findUserByTextPartOnServerCl(const std::string &text_to_find) {

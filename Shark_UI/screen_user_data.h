@@ -3,7 +3,9 @@
 
 #include <QWidget>
 #include <QPushButton>
+#include <QModelIndex>
 #include "client_session.h"
+#include "model_user_list.h"
 
 namespace Ui {
 class ScreenUserData;
@@ -19,7 +21,8 @@ public:
   QPushButton* unblockPushButton;
   QPushButton* bunToPushButton;
   QPushButton* unBunToPushButton;
-  void setDatabase(std::shared_ptr<ClientSession> client_session_ptr);
+  void setDatabase(std::shared_ptr<ClientSession> client_session_ptr,
+                   UserListModel* user_list_model);
 
   void slotClearUserDataToLabels();
 
@@ -41,6 +44,8 @@ private slots:
 private:
   Ui::ScreenUserData *ui;
   std::shared_ptr<ClientSession> client_session_ptr_;
+  UserListModel *_userListModel{nullptr};
+  std::shared_ptr<QModelIndex> user_list_index_;
 
 };
 
