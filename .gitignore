@@ -7,6 +7,8 @@ gi# 📦 Системные файлы
 .idea/
 .out/
 build/
+build_macos/
+scripts/scripts_postgres/
 build_linux_static/
 
 # 🏗️ Файлы сборки CMake
