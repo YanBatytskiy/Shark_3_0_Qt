@@ -1,0 +1,8 @@
+set(__QT_DEPLOY_TARGET_Shark_ui_FILE /Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/Shark_UI/Shark_ui)
+set(__QT_DEPLOY_TARGET_Shark_ui_TYPE EXECUTABLE)
+set(__QT_DEPLOY_TARGET_core_FILE /Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/libcore.dylib)
+set(__QT_DEPLOY_TARGET_core_TYPE SHARED_LIBRARY)
+set(__QT_DEPLOY_TARGET_clientlib_FILE /Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/libclientlib.a)
+set(__QT_DEPLOY_TARGET_clientlib_TYPE STATIC_LIBRARY)
+set(__QT_DEPLOY_TARGET_server_FILE /Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/server)
+set(__QT_DEPLOY_TARGET_server_TYPE EXECUTABLE)

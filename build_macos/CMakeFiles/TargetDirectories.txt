@@ -1,0 +1,16 @@
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/CMakeFiles/core.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/CMakeFiles/clientlib.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/CMakeFiles/server.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/CMakeFiles/edit_cache.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/CMakeFiles/rebuild_cache.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/CMakeFiles/core_autogen_timestamp_deps.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/CMakeFiles/core_autogen.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/CMakeFiles/clientlib_autogen_timestamp_deps.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/CMakeFiles/clientlib_autogen.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/CMakeFiles/server_autogen_timestamp_deps.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/CMakeFiles/server_autogen.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/Shark_UI/CMakeFiles/Shark_ui.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/Shark_UI/CMakeFiles/edit_cache.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/Shark_UI/CMakeFiles/rebuild_cache.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/Shark_UI/CMakeFiles/Shark_ui_autogen_timestamp_deps.dir
+/Users/yanbatytskiy/SynologyDrive/SynologyDrive/CPP/MacOS/GitProjects/Shark_3_0_Qt/build_macos/Shark_UI/CMakeFiles/Shark_ui_autogen.dir
